@@ -12,9 +12,7 @@ import {
   searchNfts,
 } from '../../../src/sdk/api.js';
 
-const describeLive = process.env.SDK_TEST_MODE === 'live' ? describe : describe.skip;
-
-describeLive('SDK API live integration', () => {
+describe('SDK API live integration', () => {
   it('searches and fetches NFTs from the SuperRare API', async () => {
     const search = await searchNfts({ chainId: 1, page: 1, perPage: 1 });
 

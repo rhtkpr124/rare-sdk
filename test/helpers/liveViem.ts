@@ -5,7 +5,7 @@ import { loadDotEnv } from './env.js';
 loadDotEnv();
 
 export function hasTestRpcUrl(): boolean {
-  return process.env.SDK_TEST_MODE === 'live' && Boolean(process.env.TEST_RPC_URL);
+  return Boolean(process.env.TEST_RPC_URL);
 }
 
 export function getTestRpcUrl(): string {

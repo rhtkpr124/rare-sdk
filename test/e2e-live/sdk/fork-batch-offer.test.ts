@@ -25,9 +25,7 @@ import { loadDotEnv } from '../../helpers/env.js';
 
 loadDotEnv();
 
-const describeFork = process.env.SDK_TEST_MODE === 'fork'
-  ? describe.sequential
-  : describe.skip;
+const describeFork = describe.sequential;
 const localForkRpcUrl = 'http://127.0.0.1:8545';
 const localForkHost = '127.0.0.1';
 const localForkPort = '8545';
