@@ -14,6 +14,16 @@ CLI-only dependencies).
 npm install @rareprotocol/rare-sdk viem
 ```
 
+The SDK supports Node.js 20.19 and newer. It publishes ESM and CommonJS builds;
+browser applications may use the ESM entry points when their bundler provides
+the wallet, RPC, and file capabilities required by the methods they call.
+
+## Client configuration
+
+`createRareClient` accepts a viem public client for reads and simulation. Add a
+wallet client for write operations. Use `apiBaseUrl` for non-production Rare
+API access and `uniswapApiKey` only for hosted Uniswap routing.
+
 ## Usage
 
 Start with one client for public reads and account features. No RPC connection is needed:
@@ -45,17 +55,53 @@ const status = await rare.listing.status({
 });
 ```
 
-Subpath exports mirror the ones previously published by the CLI package:
+Features are grouped by intent under `rare.listing`, `rare.offer`,
+`rare.auction`, `rare.collection`, `rare.liquidEdition`, `rare.bridge`,
+`rare.swap`, `rare.search`, `rare.nft`, `rare.token`, and `rare.utils`.
+Batch listings and release configuration are available through
+`rare.listing.batch` and `rare.listing.release`; ERC-1155 collection,
+listing, and offer behavior is nested under its corresponding intent namespace.
+Methods return structured results and reject on RPC, API, wallet, or validation
+failure.
+
+The package intentionally exposes only these supported entry points:
 
 | Import | Contents |
 | --- | --- |
 | `@rareprotocol/rare-sdk` (or `./client`) | `createRareClient` + SDK namespaces |
 | `@rareprotocol/rare-sdk/contracts` | contract addresses + ABIs per chain |
 | `@rareprotocol/rare-sdk/utils` | public helpers |
+| `@rareprotocol/rare-sdk/data-access` | typed Rare API client and errors |
+
+Implementation modules, including planners, shell helpers, individual ABI
+files, and data-access internals, are private. Consumers should use only the
+documented root, `client`, `contracts`, `utils`, and `data-access` entry points.
+
+Catchable approval errors, including `MinterApprovalRequiredError`, are exported
+from the root package and `@rareprotocol/rare-sdk/client`.
+
+Liquid-edition curve configuration helpers are available both as standalone
+utilities and on a configured client:
+
+```ts
+import { getCurvePresetDefinition, parseCurveConfig } from '@rareprotocol/rare-sdk/utils';
+
+const preset = getCurvePresetDefinition('medium-demand');
+const segments = parseCurveConfig(curveJson, '1000000', 60);
+
+const samePreset = rare.utils.liquidCurve.getPresetDefinition('medium-demand');
+const sameSegments = rare.utils.liquidCurve.parseConfig({
+  value: curveJson,
+  totalCurveSupplyTokens: '1000000',
+  tickSpacing: 60,
+});
+```
 
 ## Regenerating the Rare API types
 
-Generate endpoint and response types from the production Rare API:
+The generator reads `RARE_API_BASE_URL` from the process environment, then from
+a local `.env`, and otherwise uses `https://api.superrare.com`. Values are parsed
+as data rather than evaluated by a shell.
 
 ```bash
 npm run generate:types
@@ -688,3 +734,31 @@ a deployed Rare API with the arbitrary-origin Auth update.
 ### Request controls
 
 New API-backed methods keep operation data separate from request controls. For example, `rare.notifications.list({ page: 1, perPage: 20 }, { signal })` and `rare.posts.comment(postId, { body, parentCommentId }, { signal })`. Methods with no operation input accept request controls directly, such as `rare.profile.get({ signal })`. Public messaging reads remain anonymous by default; use `rare.messaging.public.history(roomId, { limit: 20 }, { authenticated: true, signal })` for viewer-specific visibility. Upload metadata stays in the third argument; cancellation controls go in the fourth: `rare.upload(file, filename, { access: 'private' }, { signal })`.
+## Reference documentation
+
+Generate API reference Markdown directly from the public SDK source:
+
+```bash
+npm run docs:build
+```
+
+The generated reference is written to `docs/reference/`.
+
+## Development and releases
+
+Use Node 20.19 or 22 and install the lockfile with `npm ci`. Before opening a
+pull request or preparing a release, run:
+
+```bash
+npm run typecheck
+npm run lint
+npm test
+npm run docs:build
+npm run package:check
+```
+
+Releases are published from a GitHub Release whose tag matches the package
+version (`v<version>`). The release workflow installs from the lockfile, runs the
+full prepublish validation and package check, then publishes with npm provenance.
+Publishing requires the repository's npm trusted-publisher configuration; no npm
+token is stored in the workflow.

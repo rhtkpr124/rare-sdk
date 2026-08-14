@@ -1,0 +1,15 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "entryPoints": [
+    "src/sdk/index.ts",
+    "src/sdk/contracts.ts",
+    "src/sdk/public-utils.ts",
+    "src/data-access/index.ts"
+  ],
+  "entryPointStrategy": "expand",
+  "excludeInternal": true,
+  "includeVersion": true,
+  "out": "docs/reference",
+  "plugin": ["typedoc-plugin-markdown"],
+  "readme": "none"
+}

@@ -187,9 +187,10 @@ export function createLiquidNamespace(
     async get(params) {
       return api.getLiquidEdition(buildLiquidEditionId(chain, params));
     },
-    async getFactoryConfig(): Promise<LiquidFactoryConfig> {
+    async getFactoryConfig(params = {}): Promise<LiquidFactoryConfig> {
       const liquidFactory = requireConfiguredAddress(addresses.liquidFactory, 'Liquid Editions factory', chain);
-      return fetchLiquidFactoryConfig(publicClient, liquidFactory);
+      const factoryConfig = await fetchLiquidFactoryConfig(publicClient, liquidFactory);
+      return resolveLiquidFactoryConfigForSupplyOrThrow(factoryConfig, params.totalSupply).factoryConfig;
     },
 
     async generatePresetCurves(params): Promise<GeneratePresetCurvesResult> {

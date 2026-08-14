@@ -23,6 +23,7 @@ import type { BatchAuctionNamespace } from './types/batch-auction.js';
 import {
   planBatchAuctionBid,
   planBatchAuctionCreate,
+  planBatchAuctionCreateLocalInputs,
   planBatchAuctionRoot,
   planBatchAuctionStatus,
   shapeBatchAuctionCurrentBidRead,
@@ -32,6 +33,7 @@ import {
   type BatchAuctionReadDetails,
   type BatchAuctionRootContext,
 } from './batch-auction-core.js';
+import { parseBatchTokenListArtifact } from './batch-core.js';
 import {
   generateApiNftMerkleRoot,
   isApiNftMerkleProofResolutionError,
@@ -49,6 +51,10 @@ export function createBatchAuctionNamespace(
 ): BatchAuctionNamespace {
   return {
     async create(params): ReturnType<BatchAuctionNamespace['create']> {
+      planBatchAuctionCreateLocalInputs({ ...params, currency: undefined }, currentUnixTimestamp());
+      if (params.artifact !== undefined) {
+        parseBatchTokenListArtifact(JSON.stringify(params.artifact));
+      }
       const batchAuctionHouse = requireContractAddress(chain, 'batchAuctionHouse');
       const { walletClient, account, accountAddress } = requireWallet(config);
       const resolvedParams = await resolveBatchAuctionCreateParams(config, params);
