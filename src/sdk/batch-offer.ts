@@ -22,10 +22,12 @@ import type { BatchOfferNamespace } from './types/batch-offer.js';
 import {
   planBatchOfferAccept,
   planBatchOfferCreate,
+  planBatchOfferCreateLocalInputs,
   planBatchOfferRoot,
   shapeBatchOfferRead,
   shapeBatchOfferStatus,
 } from './batch-offer-core.js';
+import { parseBatchTokenListArtifact } from './batch-core.js';
 import {
   generateApiNftMerkleRoot,
   isApiNftMerkleProofResolutionError,
@@ -45,6 +47,10 @@ export function createBatchOfferNamespace(
 ): BatchOfferNamespace {
   return {
     async create(params): ReturnType<BatchOfferNamespace['create']> {
+      planBatchOfferCreateLocalInputs({ ...params, currency: undefined }, currentUnixTimestamp());
+      if (params.artifact !== undefined) {
+        parseBatchTokenListArtifact(JSON.stringify(params.artifact));
+      }
       const batchOfferCreator = requireContractAddress(chain, 'batchOfferCreator');
       const marketplaceSettingsSource = requireContractAddress(chain, 'auction');
       const { walletClient, account, accountAddress } = requireWallet(config);
@@ -270,6 +276,10 @@ export function createBatchOfferNamespace(
       }, block.timestamp);
     },
   };
+}
+
+function currentUnixTimestamp(): bigint {
+  return BigInt(Math.floor(Date.now() / 1000));
 }
 
 async function resolveBatchOfferCreateParams(

@@ -102,7 +102,7 @@ export type SetLiquidEditionRenderContractResult = {
 export type LiquidEditionNamespace = {
   /** Indexed public discovery data for an edition on the client chain. */
   get: (params: { contract: Address }) => Promise<LiquidEdition>;
-  getFactoryConfig: () => Promise<LiquidFactoryConfig>;
+  getFactoryConfig: (params?: { totalSupply?: AmountInput }) => Promise<LiquidFactoryConfig>;
   generatePresetCurves: (params: GeneratePresetCurvesParams) => Promise<GeneratePresetCurvesResult>;
   validateCurves: (params: ValidateLiquidCurvesParams) => Promise<LiquidCurvePreview>;
   deploy: {

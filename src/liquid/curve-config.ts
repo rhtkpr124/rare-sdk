@@ -69,7 +69,8 @@ type UsdTokenPriceCurveInput = {
   sharesPercent: number;
 };
 
-type TokenSupplyAmount = string | number;
+export type LiquidCurveSupplyAmount = string | number;
+export type CurvePresetDescription = Pick<CurvePresetDefinition, 'title' | 'description'>;
 type NormalizedShare = {
   decimal: string;
   scaledUnits: bigint;
@@ -229,7 +230,7 @@ function formatScaledShareDecimal(scaledUnits: bigint): string {
   return `${integerUnits}.${fractionalUnits.toString().padStart(18, '0').replace(/0+$/, '')}`;
 }
 
-function toApproxTokenAmount(value: TokenSupplyAmount, label: string): number {
+function toApproxTokenAmount(value: LiquidCurveSupplyAmount, label: string): number {
   const numeric = typeof value === 'number' ? value : Number(value);
   if (!Number.isFinite(numeric) || numeric <= 0) {
     throw new Error(`Liquid factory ${label} is invalid`);
@@ -527,7 +528,7 @@ function invalidSegmentResult(): NormalizedSegmentResult {
 
 export function parseCurveConfig(
   value: string,
-  totalCurveSupplyTokens: TokenSupplyAmount,
+  totalCurveSupplyTokens: LiquidCurveSupplyAmount,
   tickSpacing: number,
 ): LiquidCurveSegment[] {
   const parsed = parseCurveConfigJson(value);
@@ -668,7 +669,7 @@ export function buildCurvePreview(
   };
 }
 
-export function getCurvePresetDefinition(preset: CurvePresetKey): { title: string; description: string } {
+export function getCurvePresetDefinition(preset: CurvePresetKey): CurvePresetDescription {
   const definition = CURVE_PRESET_DEFINITIONS[preset];
   return { title: definition.title, description: definition.description };
 }
