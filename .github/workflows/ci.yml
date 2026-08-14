@@ -11,16 +11,12 @@ permissions:
 jobs:
   validate:
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        node-version: ['20.19.0', '22']
 
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: '22'
           cache: npm
       - run: npm ci
       - run: npm run typecheck
@@ -28,8 +24,6 @@ jobs:
       - run: npm run lint
       - run: npm run build
       - run: npm run test
-      - if: matrix.node-version == '22'
-        run: npm run test:coverage
-      - if: matrix.node-version == '22'
-        run: npm run docs:build
+      - run: npm run test:coverage
+      - run: npm run docs:build
       - run: npm run package:check

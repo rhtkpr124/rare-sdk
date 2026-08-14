@@ -14,7 +14,7 @@ CLI-only dependencies).
 npm install @rareprotocol/rare-sdk viem
 ```
 
-The SDK supports Node.js 20.19 and newer. It publishes ESM and CommonJS builds;
+The SDK supports Node.js 22 and newer. It publishes ESM and CommonJS builds;
 browser applications may use the ESM entry points when their bundler provides
 the wallet, RPC, and file capabilities required by the methods they call.
 
@@ -746,7 +746,7 @@ The generated reference is written to `docs/reference/`.
 
 ## Development and releases
 
-Use Node 20.19 or 22 and install the lockfile with `npm ci`. Before opening a
+Use Node 22 or newer and install the lockfile with `npm ci`. Before opening a
 pull request or preparing a release, run:
 
 ```bash

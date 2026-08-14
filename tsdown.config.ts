@@ -10,9 +10,8 @@ export default defineConfig({
   // ESM and .cjs/.d.cts for CommonJS, selected via the exports map.
   format: ['esm', 'cjs'],
   platform: 'node',
-  // Match the oldest runtime declared in package.json. Newer Node releases can
-  // consume this output, while Node 20 must not receive Node 22-only syntax.
-  target: 'node20.19',
+  // Match the minimum supported runtime declared in package.json.
+  target: 'node22',
   fixedExtension: false,
   dts: true,
   clean: true,
