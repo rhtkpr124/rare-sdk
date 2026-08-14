@@ -12,7 +12,7 @@ import { loadDotEnv } from '../../helpers/env.js';
 
 loadDotEnv();
 
-const describeRareApiMerkle = process.env.SDK_TEST_MODE === 'live' && process.env.RARE_API_BASE_URL
+const describeRareApiMerkle = process.env.RARE_API_BASE_URL
   ? describe
   : describe.skip;
 

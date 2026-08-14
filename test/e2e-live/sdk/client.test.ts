@@ -7,10 +7,9 @@ import { createRareClient } from '../../../src/sdk/client.js';
 import { createTestSepoliaPublicClient, hasTestRpcUrl } from '../../helpers/liveViem.js';
 
 const describeLive = hasTestRpcUrl() ? describe : describe.skip;
-const itLiveApi = process.env.SDK_TEST_MODE === 'live' ? it : it.skip;
 
 describe('Rare SDK client API integration', () => {
-  itLiveApi('exposes read API methods through the client using public inputs', async (ctx) => {
+  it('exposes read API methods through the client using public inputs', async (ctx) => {
     const rare = createRareClient({
       publicClient: createPublicClient({
         chain: mainnet,

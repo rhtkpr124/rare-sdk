@@ -101,10 +101,9 @@
     "test:integration:account:browser": "vitest run test/integration-deployed/account-browser.test.ts --no-file-parallelism",
     "lint": "eslint src test scripts eslint-local-rules",
     "test:typecheck": "tsc -p tsconfig.test.json --noEmit",
-    "test": "npm run build && npm run test:typecheck && SDK_TEST_MODE=routine vitest run --config vitest.config.ts",
-    "test:live": "npm run build && npm run test:typecheck && SDK_TEST_MODE=live vitest run test/integration/sdk --config vitest.config.ts",
-    "test:fork": "npm run build && npm run test:typecheck && SDK_TEST_MODE=fork vitest run test/integration/sdk/fork-batch-offer.test.ts --config vitest.config.ts",
-    "test:coverage": "npm run build && npm run test:typecheck && SDK_TEST_MODE=routine vitest run --coverage --config vitest.config.ts"
+    "test": "npm run build && npm run test:typecheck && vitest run --exclude 'test/e2e-live/**' --config vitest.config.ts",
+    "test:live": "npm run build && npm run test:typecheck && vitest run --config vitest.config.ts",
+    "test:coverage": "npm run build && npm run test:typecheck && vitest run --exclude 'test/e2e-live/**' --coverage --config vitest.config.ts"
   },
   "dependencies": {
     "buffer": "6.0.3",
