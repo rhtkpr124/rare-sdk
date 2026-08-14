@@ -6,7 +6,7 @@ project follows semantic versioning.
 ## Unreleased
 
 - Establish SDK-owned CI, code generation, lint rules, tests, documentation,
-  package validation, and provenance publishing.
+  and package validation.
 
 ## 0.1.3 - 2026-07-24
 

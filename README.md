@@ -756,9 +756,3 @@ npm test
 npm run docs:build
 npm run package:check
 ```
-
-Releases are published from a GitHub Release whose tag matches the package
-version (`v<version>`). The release workflow installs from the lockfile, runs the
-full prepublish validation and package check, then publishes with npm provenance.
-Publishing requires the repository's npm trusted-publisher configuration; no npm
-token is stored in the workflow.
