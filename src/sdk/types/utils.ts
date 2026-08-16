@@ -24,6 +24,11 @@ export type {
   UtilsTreeProofParams,
   UtilsTreeProofVerifyParams,
 } from '../batch-core.js';
+export type BuildBatchTokenTreeParams = BuildUtilsTreeParams;
+export type BatchTokenTreeArtifact = UtilsTreeArtifact;
+export type BatchTokenTreeProofArtifact = UtilsTreeProofArtifact;
+export type BatchTokenTreeProofParams = UtilsTreeProofParams;
+export type BatchTokenTreeProofVerifyParams = UtilsTreeProofVerifyParams;
 export type { UtilsMerkleProofArtifact, UtilsMerkleProofParams } from './batch-listing.js';
 export type {
   CurvePresetDescription,
@@ -32,13 +37,13 @@ export type {
   LiquidCurveSupplyAmount,
 } from '../../liquid/curve-config.js';
 
-export type UtilsParseCurveConfigParams = {
+export type ParseCurveConfigParams = {
   value: string;
   totalCurveSupplyTokens: LiquidCurveSupplyAmount;
   tickSpacing: number;
 };
 
-export type UtilsBuildBatchListingArtifactParams =
+export type BuildBatchListingArtifactParams =
   | {
       source: 'root-artifact';
       artifact: BatchListingRootArtifact;
@@ -49,39 +54,39 @@ export type UtilsBuildBatchListingArtifactParams =
     }
   | {
       source: 'token-tree';
-      artifact: UtilsTreeArtifact;
+      artifact: BatchTokenTreeArtifact;
       currency: Address;
       price: string;
       splitAddresses?: Address[];
       splitRatios?: number[];
     };
 
-export type UtilsBuildBatchListingArtifactResult = BatchListingRootArtifact;
+export type BuildBatchListingArtifactResult = BatchListingRootArtifact;
 
-export type UtilsValidateReleaseAllowlistParams = {
+export type NormalizeReleaseAllowlistConfigParams = {
   contract: Address;
   root?: Hex;
   artifact?: ReleaseAllowlistArtifact;
   endTime: TimestampInput;
 };
 
-export type UtilsValidatedReleaseAllowlist = {
+export type NormalizedReleaseAllowlistConfig = {
   contract: Address;
   root: Hex;
   endTimestamp: bigint;
 };
 
-export type UtilsNamespace = {
+export type RareUtilsNamespace = {
   tree: {
-    build: (params: BuildUtilsTreeParams) => UtilsTreeArtifact;
-    proof: (params: UtilsTreeProofParams) => UtilsTreeProofArtifact;
-    verify: (params: UtilsTreeProofVerifyParams) => boolean;
+    build: (params: BuildBatchTokenTreeParams) => BatchTokenTreeArtifact;
+    proof: (params: BatchTokenTreeProofParams) => BatchTokenTreeProofArtifact;
+    verify: (params: BatchTokenTreeProofVerifyParams) => boolean;
   };
   merkle: {
     proof: (params: UtilsMerkleProofParams) => UtilsMerkleProofArtifact;
   };
   liquidCurve: {
     getPresetDefinition: (preset: CurvePresetKey) => CurvePresetDescription;
-    parseConfig: (params: UtilsParseCurveConfigParams) => LiquidCurveSegment[];
+    parseConfig: (params: ParseCurveConfigParams) => LiquidCurveSegment[];
   };
-}
+};
