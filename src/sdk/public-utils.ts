@@ -1,12 +1,12 @@
 import {
-  buildBatchTokenTreeArtifact,
-  getBatchTokenProof,
+  buildBatchTokenTreeArtifact as buildBatchTokenTreeInternal,
+  getBatchTokenProof as getBatchTokenProofInternal,
   normalizeBytes32,
-  normalizeTokenId,
+  normalizeTokenId as normalizeTokenIdInternal,
   parseBatchTokenListArtifactOrBuild,
   parseBatchTokenProofInput,
   validateBatchTokenProofInputMatchesTarget,
-  verifyBatchTokenProof,
+  verifyBatchTokenProof as verifyBatchTokenProofInternal,
 } from './batch-core.js';
 import { buildMerkleProofArtifact, validateProofArtifact, validateRootArtifact } from './merkle-core.js';
 import {
@@ -15,10 +15,10 @@ import {
 } from './batch-listing-core.js';
 import {
   buildReleaseAllowlistArtifactFromInput,
-  getReleaseAllowlistProof,
-  normalizeReleaseAllowlistProof,
-  normalizeReleasePrice,
-  normalizeReleaseStartTime,
+  getReleaseAllowlistProof as getReleaseAllowlistProofInternal,
+  normalizeReleaseAllowlistProof as normalizeReleaseAllowlistProofInternal,
+  normalizeReleasePrice as normalizeReleasePriceInternal,
+  normalizeReleaseStartTime as normalizeReleaseStartTimeInternal,
   planReleaseAllowlistConfig,
   parseReleaseAllowlistArtifactJson,
 } from './release-core.js';
@@ -30,66 +30,66 @@ export type {
   LiquidCurveSupplyAmount,
 } from '../liquid/curve-config.js';
 import type {
-  BuildUtilsTreeParams,
-  UtilsBuildBatchListingArtifactParams,
-  UtilsBuildBatchListingArtifactResult,
-  UtilsTreeArtifact,
-  UtilsTreeProofArtifact,
-  UtilsTreeProofParams,
-  UtilsTreeProofVerifyParams,
-  UtilsValidateReleaseAllowlistParams,
-  UtilsValidatedReleaseAllowlist,
+  BatchTokenTreeArtifact,
+  BatchTokenTreeProofArtifact,
+  BatchTokenTreeProofParams,
+  BatchTokenTreeProofVerifyParams,
+  BuildBatchListingArtifactParams,
+  BuildBatchListingArtifactResult,
+  BuildBatchTokenTreeParams,
+  NormalizedReleaseAllowlistConfig,
+  NormalizeReleaseAllowlistConfigParams,
 } from './types/utils.js';
 import type { UtilsMerkleProofArtifact, UtilsMerkleProofParams } from './types/utils.js';
 
 export type {
-  BuildUtilsTreeParams,
-  UtilsTreeArtifact,
-  UtilsTreeProofArtifact,
-  UtilsTreeProofParams,
-  UtilsTreeProofVerifyParams,
+  BuildBatchTokenTreeParams,
+  BatchTokenTreeArtifact,
+  BatchTokenTreeProofArtifact,
+  BatchTokenTreeProofParams,
+  BatchTokenTreeProofVerifyParams,
   UtilsMerkleProofArtifact,
   UtilsMerkleProofParams,
-  UtilsParseCurveConfigParams,
-  UtilsBuildBatchListingArtifactParams,
-  UtilsBuildBatchListingArtifactResult,
-  UtilsValidateReleaseAllowlistParams,
-  UtilsValidatedReleaseAllowlist,
+  ParseCurveConfigParams,
+  BuildBatchListingArtifactParams,
+  BuildBatchListingArtifactResult,
+  NormalizeReleaseAllowlistConfigParams,
+  NormalizedReleaseAllowlistConfig,
 } from './types/utils.js';
 
-export function buildUtilsTree(params: BuildUtilsTreeParams): UtilsTreeArtifact {
-  return buildBatchTokenTreeArtifact(params);
+export function buildBatchTokenTree(params: BuildBatchTokenTreeParams): BatchTokenTreeArtifact {
+  return buildBatchTokenTreeInternal(params);
 }
 
-export function getUtilsTreeProof(params: UtilsTreeProofParams): UtilsTreeProofArtifact {
-  return getBatchTokenProof(params);
+export function getBatchTokenProof(params: BatchTokenTreeProofParams): BatchTokenTreeProofArtifact {
+  return getBatchTokenProofInternal(params);
 }
 
-export function verifyUtilsTreeProof(params: UtilsTreeProofVerifyParams): boolean {
-  return verifyBatchTokenProof(params);
+export function verifyBatchTokenProof(params: BatchTokenTreeProofVerifyParams): boolean {
+  return verifyBatchTokenProofInternal(params);
 }
 
-export function buildUtilsMerkleProof(params: UtilsMerkleProofParams): UtilsMerkleProofArtifact {
+export function buildMerkleProof(params: UtilsMerkleProofParams): UtilsMerkleProofArtifact {
   return buildMerkleProofArtifact(params.artifact, params.contract, params.tokenId, params.buyer);
 }
 
 // Offline artifact helpers. These intentionally expose stable consumer operations,
 // while the representation-specific planners remain internal implementation details.
-export const parseUtilsTreeInput = parseBatchTokenListArtifactOrBuild;
-export const parseUtilsTreeProof = parseBatchTokenProofInput;
-export const validateUtilsTreeProofTarget = validateBatchTokenProofInputMatchesTarget;
-export const normalizeUtilsMerkleRoot = normalizeBytes32;
-export const normalizeUtilsTokenId = normalizeTokenId;
-export const parseUtilsBatchListingArtifact = parseBatchListingCreateRootArtifactInput;
+export const parseBatchTokenTreeInput = parseBatchTokenListArtifactOrBuild;
+export const parseBatchTokenProof = parseBatchTokenProofInput;
+export const validateBatchTokenProofTarget = validateBatchTokenProofInputMatchesTarget;
+export const normalizeMerkleRoot = normalizeBytes32;
+export const normalizeTokenId = normalizeTokenIdInternal;
+export const parseBatchListingArtifact = parseBatchListingCreateRootArtifactInput;
 /**
  * Builds and validates a portable batch-listing root artifact.
  *
  * @throws When overrides are incomplete, splits are invalid, or the resulting
  * artifact cannot be registered by the batch-listing contract.
  */
-export function buildUtilsBatchListingArtifact(
-  params: UtilsBuildBatchListingArtifactParams,
-): UtilsBuildBatchListingArtifactResult {
+export function buildBatchListingArtifact(
+  params: BuildBatchListingArtifactParams,
+): BuildBatchListingArtifactResult {
   return params.source === 'root-artifact'
     ? planBatchListingCreateArtifact({
         kind: 'root-artifact',
@@ -108,23 +108,23 @@ export function buildUtilsBatchListingArtifact(
         splitRatios: params.splitRatios,
       });
 }
-export const validateUtilsMerkleRootArtifact = validateRootArtifact;
-export const validateUtilsMerkleProofArtifact = validateProofArtifact;
+export const validateMerkleRootArtifact = validateRootArtifact;
+export const validateMerkleProofArtifact = validateProofArtifact;
 
-export const buildUtilsReleaseAllowlist = buildReleaseAllowlistArtifactFromInput;
-export const getUtilsReleaseAllowlistProof = getReleaseAllowlistProof;
-export const normalizeUtilsReleaseAllowlistProof = normalizeReleaseAllowlistProof;
-export const normalizeUtilsReleasePrice = normalizeReleasePrice;
-export const normalizeUtilsReleaseStartTime = normalizeReleaseStartTime;
+export const buildReleaseAllowlistArtifact = buildReleaseAllowlistArtifactFromInput;
+export const getReleaseAllowlistProof = getReleaseAllowlistProofInternal;
+export const normalizeReleaseAllowlistProof = normalizeReleaseAllowlistProofInternal;
+export const normalizeReleasePrice = normalizeReleasePriceInternal;
+export const normalizeReleaseStartTime = normalizeReleaseStartTimeInternal;
 /**
  * Validates and normalizes a release allowlist configuration without I/O.
  *
  * @throws When neither a root nor artifact is supplied, the root is malformed,
  * or `endTime` is not a valid positive timestamp.
  */
-export function validateUtilsReleaseAllowlistConfig(
-  params: UtilsValidateReleaseAllowlistParams,
-): UtilsValidatedReleaseAllowlist {
+export function normalizeReleaseAllowlistConfig(
+  params: NormalizeReleaseAllowlistConfigParams,
+): NormalizedReleaseAllowlistConfig {
   return planReleaseAllowlistConfig(params);
 }
-export const parseUtilsReleaseAllowlistArtifact = parseReleaseAllowlistArtifactJson;
+export const parseReleaseAllowlistArtifact = parseReleaseAllowlistArtifactJson;

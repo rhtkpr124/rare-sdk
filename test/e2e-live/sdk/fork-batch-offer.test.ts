@@ -196,7 +196,7 @@ describeFork('SDK fork integration write paths', () => {
         amount: '1000000000000',
         splitAddresses: [listingSeller.account, listingBuyer.account],
         splitRatios: [70, 30],
-        tokens: tree.tokens.map((token) => ({
+        tokens: tree.tokens.map((token: { contractAddress: Address; tokenId: string }) => ({
           contract: token.contractAddress,
           tokenId: token.tokenId,
         })),
