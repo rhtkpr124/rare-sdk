@@ -8,7 +8,7 @@ import type {
 } from '../../contracts/addresses.js';
 
 export type IntegerInput = bigint | number | string;
-export type AmountInput = bigint | number | string;
+export type AmountInput = bigint;
 export type TimestampInput = IntegerInput | Date;
 export type WalletAccount = NonNullable<WalletClient['account']>;
 export type {

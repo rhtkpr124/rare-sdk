@@ -361,7 +361,7 @@ describe('Sovereign collection core', () => {
     expect(planCollectionRoyaltyInfo({
       contract: COLLECTION_ADDRESS,
       tokenId: 1,
-      price: '500',
+      price: 500n,
     }).salePrice).toBe(500n);
   });
 

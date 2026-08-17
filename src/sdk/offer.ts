@@ -1,5 +1,4 @@
 import {
-  parseUnits,
   type Address,
   type PublicClient,
 } from 'viem';
@@ -9,13 +8,9 @@ import { ETH_ADDRESS, type SupportedChain } from '../contracts/addresses.js';
 import type { RareClientConfig } from './types/client.js';
 import type { OfferMarketplaceNamespace } from './types/offer.js';
 import { approveNftContractIfNeeded, runWithApprovalSideEffectAlert } from './approvals-shell.js';
-import {
-  preparePaymentForSpender,
-  resolveCurrencyDecimals,
-} from './payments-shell.js';
+import { preparePaymentForSpender } from './payments-shell.js';
 import { requireWallet } from './wallet-shell.js';
 import { requireInput } from './validation-core.js';
-import { stringifyAmountInput } from './amounts-core.js';
 import {
   planOfferAccept,
   planOfferCancel,
@@ -38,9 +33,7 @@ export function createOfferNamespace(
       const { walletClient, account, accountAddress } = requireWallet(config);
       const currency = params.currency === undefined ? ETH_ADDRESS : resolveCurrencyForSdk(params.currency, chain).address;
       const price = requireInput(params.price, 'price');
-      const amount = typeof price === 'bigint'
-        ? price
-        : parseUnits(stringifyAmountInput(price, 'price'), await resolveCurrencyDecimals(publicClient, chain, currency));
+      const amount = price;
       const plan = planOfferCreate({ ...params, price: amount, currency });
 
       const payment = await preparePaymentForSpender({
@@ -100,9 +93,7 @@ export function createOfferNamespace(
       const { walletClient, account, accountAddress } = requireWallet(config);
       const currency = params.currency === undefined ? ETH_ADDRESS : resolveCurrencyForSdk(params.currency, chain).address;
       const price = requireInput(params.price, 'price');
-      const amount = typeof price === 'bigint'
-        ? price
-        : parseUnits(stringifyAmountInput(price, 'price'), await resolveCurrencyDecimals(publicClient, chain, currency));
+      const amount = price;
       const plan = planOfferAccept({ ...params, price: amount, currency }, accountAddress);
 
       const approvalTxHash = await approveNftContractIfNeeded({

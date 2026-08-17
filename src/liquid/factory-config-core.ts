@@ -1,4 +1,4 @@
-import { formatUnits, parseUnits, type Address } from 'viem';
+import { formatUnits, type Address } from 'viem';
 
 export type LiquidFactoryConfig = {
   baseToken: Address;
@@ -15,7 +15,7 @@ export type LiquidFactoryConfig = {
   poolTickSpacing: number;
 }
 
-export type LiquidTokenAmountInput = bigint | number | string;
+export type LiquidTokenAmountInput = bigint;
 
 export type LiquidTokenSupplyAmountError =
   | 'invalid-decimal'
@@ -114,40 +114,10 @@ export function parseLiquidTokenSupplyAmount(
   value: LiquidTokenAmountInput,
   field = 'totalSupply',
 ): LiquidTokenSupplyAmountResult {
-  if (typeof value === 'bigint') {
-    if (value <= 0n) {
-      return invalidSupplyAmount('not-positive', `${field} must be greater than 0.`);
-    }
-    return { isValid: true, amountWei: value };
-  }
-
-  if (typeof value === 'number') {
-    if (!Number.isFinite(value)) {
-      return invalidSupplyAmount('non-finite-number', `${field} must be a valid finite decimal amount.`);
-    }
-    if (Number.isInteger(value) && !Number.isSafeInteger(value)) {
-      return invalidSupplyAmount(
-        'unsafe-number',
-        `${field} is too large to pass as a number. Pass it as a string or bigint to avoid precision loss.`,
-      );
-    }
-  }
-
-  const rawValue = String(value);
-  const decimalMatch = /^(\d+)(?:\.(\d+))?$/.exec(rawValue);
-  if (!decimalMatch) {
-    return invalidSupplyAmount('invalid-decimal', `${field} must be a valid positive decimal amount.`);
-  }
-  const fractionalDigits = decimalMatch[2]?.length ?? 0;
-  if (fractionalDigits > 18) {
-    return invalidSupplyAmount('too-many-decimals', `${field} cannot have more than 18 decimal places.`);
-  }
-
-  const amount = parseUnits(rawValue, 18);
-  if (amount <= 0n) {
+  if (value <= 0n) {
     return invalidSupplyAmount('not-positive', `${field} must be greater than 0.`);
   }
-  return { isValid: true, amountWei: amount };
+  return { isValid: true, amountWei: value };
 }
 
 export function withLiquidFactoryMaxTotalSupply(

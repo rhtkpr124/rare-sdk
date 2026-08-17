@@ -42,12 +42,12 @@ describe('Liquid Edition SDK shell receipt handling', () => {
     expect(defaultConfig.maxTotalSupplyTokens).toBe('1000000');
     expect(defaultConfig.curvePoolSupplyTokens).toBe('900000');
 
-    const customConfig = await namespace.getFactoryConfig({ totalSupply: '500000' });
+    const customConfig = await namespace.getFactoryConfig({ totalSupply: 500_000n * 10n ** 18n });
     expect(customConfig.maxTotalSupplyTokens).toBe('500000');
     expect(customConfig.creatorLaunchRewardTokens).toBe('100000');
     expect(customConfig.curvePoolSupplyTokens).toBe('400000');
 
-    await expect(namespace.getFactoryConfig({ totalSupply: '99999' })).rejects.toThrow(
+    await expect(namespace.getFactoryConfig({ totalSupply: 99_999n * 10n ** 18n })).rejects.toThrow(
       /creator launch reward/i,
     );
   });
@@ -125,7 +125,7 @@ describe('Liquid Edition SDK shell receipt handling', () => {
       name: 'Approval Required',
       symbol: 'APPR',
       tokenUri: 'ipfs://token',
-      initialRareLiquidity: '1',
+      initialRareLiquidity: 1_000_000_000_000_000_000n,
       curves,
     })).rejects.toBeInstanceOf(PaymentApprovalRequiredError);
     expect(writeContract).not.toHaveBeenCalled();

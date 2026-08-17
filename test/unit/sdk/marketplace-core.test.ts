@@ -26,7 +26,7 @@ const NOW_SECONDS = 1767225600n;
 
 describe('marketplace transaction planning', () => {
   it('plans listing create defaults and normalized values', () => {
-    expect(planListingCreate({ contract: nftContract, tokenId: '1', price: '0.5' }, accountAddress)).toEqual({
+    expect(planListingCreate({ contract: nftContract, tokenId: '1', price: 500_000_000_000_000_000n }, accountAddress)).toEqual({
       nftAddress: nftContract,
       tokenId: 1n,
       currency: ETH_ADDRESS,
@@ -38,7 +38,7 @@ describe('marketplace transaction planning', () => {
   });
 
   it('allows zero-price listings because the Bazaar treats them as disabled listings', () => {
-    expect(planListingCreate({ contract: nftContract, tokenId: '1', price: '0' }, accountAddress).price).toBe(0n);
+    expect(planListingCreate({ contract: nftContract, tokenId: '1', price: 0n }, accountAddress).price).toBe(0n);
   });
 
   it('plans listing create with custom splits and validates them before contract writes', () => {
@@ -47,7 +47,7 @@ describe('marketplace transaction planning', () => {
         {
           contract: nftContract,
           tokenId: '1',
-          price: '0.5',
+          price: 500_000_000_000_000_000n,
           splitAddresses: [accountAddress, buyerAddress],
           splitRatios: [70, 30],
         },
@@ -60,7 +60,7 @@ describe('marketplace transaction planning', () => {
 
     expect(() =>
       planListingCreate(
-        { contract: nftContract, tokenId: '1', price: '1', splitAddresses: [], splitRatios: [] },
+        { contract: nftContract, tokenId: '1', price: 1_000_000_000_000_000_000n, splitAddresses: [], splitRatios: [] },
         accountAddress,
       ),
     ).toThrow('splitAddresses must include at least 1 address.');
@@ -69,7 +69,7 @@ describe('marketplace transaction planning', () => {
         {
           contract: nftContract,
           tokenId: '1',
-          price: '1',
+          price: 1_000_000_000_000_000_000n,
           splitAddresses: [accountAddress, buyerAddress],
           splitRatios: [100],
         },
@@ -81,7 +81,7 @@ describe('marketplace transaction planning', () => {
         {
           contract: nftContract,
           tokenId: '1',
-          price: '1',
+          price: 1_000_000_000_000_000_000n,
           splitAddresses: [accountAddress, buyerAddress],
           splitRatios: [60, 20],
         },
@@ -95,7 +95,7 @@ describe('marketplace transaction planning', () => {
       tokenId: 3n,
       target: PUBLIC_LISTING_TARGET,
     });
-    expect(planListingBuy({ contract: nftContract, tokenId: '4', price: '1', currency: erc20Currency })).toEqual({
+    expect(planListingBuy({ contract: nftContract, tokenId: '4', price: 1_000_000_000_000_000_000n, currency: erc20Currency })).toEqual({
       tokenId: 4n,
       currency: erc20Currency,
       amount: parseEther('1'),
@@ -108,7 +108,7 @@ describe('marketplace transaction planning', () => {
         {
           contract: nftContract,
           tokenId: '3',
-          price: '2',
+          price: 2_000_000_000_000_000_000n,
           endTime: '1767229200',
         },
         accountAddress,
@@ -125,7 +125,7 @@ describe('marketplace transaction planning', () => {
       splitAddresses: [accountAddress],
       splitRatios: [100],
     });
-    expect(planAuctionBid({ contract: nftContract, tokenId: '8', price: '1' })).toEqual({
+    expect(planAuctionBid({ contract: nftContract, tokenId: '8', price: 1_000_000_000_000_000_000n })).toEqual({
       tokenId: 8n,
       currency: ETH_ADDRESS,
       amount: parseEther('1'),
@@ -139,7 +139,7 @@ describe('marketplace transaction planning', () => {
         {
           contract: nftContract,
           tokenId: '3',
-          price: '0',
+          price: 0n,
           endTime: '1778503600',
           startTime: '1778500000',
           splitAddresses: [accountAddress, buyerAddress],
@@ -163,7 +163,7 @@ describe('marketplace transaction planning', () => {
     expect(() => planAuctionCreate({
       contract: nftContract,
       tokenId: '1',
-      price: '1',
+      price: 1_000_000_000_000_000_000n,
       endTime: '1767229200',
       splitAddresses: [accountAddress, buyerAddress],
       splitRatios: [50],
@@ -172,7 +172,7 @@ describe('marketplace transaction planning', () => {
     expect(() => planAuctionCreate({
       contract: nftContract,
       tokenId: '1',
-      price: '1',
+      price: 1_000_000_000_000_000_000n,
       endTime: '1767229200',
       splitAddresses: [accountAddress, buyerAddress],
       splitRatios: [50, 40],
@@ -181,7 +181,7 @@ describe('marketplace transaction planning', () => {
     expect(() => planAuctionCreate({
       contract: nftContract,
       tokenId: '1',
-      price: '0',
+      price: 0n,
       endTime: '1778503600',
       auctionType: 'scheduled',
       startTime: '-1',
@@ -189,7 +189,7 @@ describe('marketplace transaction planning', () => {
   });
 
   it('plans offer create, cancel, and accept inputs', () => {
-    expect(planOfferCreate({ contract: nftContract, tokenId: '5', price: '2', currency: erc20Currency })).toEqual({
+    expect(planOfferCreate({ contract: nftContract, tokenId: '5', price: 2_000_000_000_000_000_000n, currency: erc20Currency })).toEqual({
       tokenId: 5n,
       currency: erc20Currency,
       amount: parseEther('2'),
@@ -198,7 +198,7 @@ describe('marketplace transaction planning', () => {
       tokenId: 11n,
       currency: ETH_ADDRESS,
     });
-    expect(planOfferAccept({ contract: nftContract, tokenId: '12', price: '1' }, accountAddress)).toEqual({
+    expect(planOfferAccept({ contract: nftContract, tokenId: '12', price: 1_000_000_000_000_000_000n }, accountAddress)).toEqual({
       tokenId: 12n,
       currency: ETH_ADDRESS,
       amount: parseEther('1'),
@@ -210,7 +210,7 @@ describe('marketplace transaction planning', () => {
         {
           contract: nftContract,
           tokenId: '12',
-          price: '1',
+          price: 1_000_000_000_000_000_000n,
           splitAddresses: [accountAddress, buyerAddress],
           splitRatios: [70, 30],
         },
@@ -223,24 +223,24 @@ describe('marketplace transaction planning', () => {
   });
 
   it('rejects unsafe money and token inputs before shell code can read or write', () => {
-    expect(() => planListingBuy({ contract: nftContract, tokenId: '1', price: '0' })).toThrow(
+    expect(() => planListingBuy({ contract: nftContract, tokenId: '1', price: 0n })).toThrow(
       'price must be greater than 0.',
     );
     expect(() =>
       planAuctionCreate(
-        { contract: nftContract, tokenId: '1', price: '0', endTime: '1767229200' },
+        { contract: nftContract, tokenId: '1', price: 0n, endTime: '1767229200' },
         accountAddress,
         NOW_SECONDS,
       ),
     ).toThrow('price must be greater than 0.');
     expect(() =>
       planAuctionCreate(
-        { contract: nftContract, tokenId: '1', price: '1', endTime: '1767225600' },
+        { contract: nftContract, tokenId: '1', price: 1_000_000_000_000_000_000n, endTime: '1767225600' },
         accountAddress,
         NOW_SECONDS,
       ),
     ).toThrow('endTime must be after the auction start time.');
-    expect(() => planOfferCreate({ contract: nftContract, tokenId: '-1', price: '1' })).toThrow(
+    expect(() => planOfferCreate({ contract: nftContract, tokenId: '-1', price: 1_000_000_000_000_000_000n })).toThrow(
       'tokenId must be greater than or equal to 0.',
     );
   });
@@ -248,7 +248,7 @@ describe('marketplace transaction planning', () => {
   it('validates offer accept splits before contract writes', () => {
     expect(() =>
       planOfferAccept(
-        { contract: nftContract, tokenId: '1', price: '1', splitAddresses: [], splitRatios: [] },
+        { contract: nftContract, tokenId: '1', price: 1_000_000_000_000_000_000n, splitAddresses: [], splitRatios: [] },
         accountAddress,
       ),
     ).toThrow('splitAddresses must include at least 1 address.');
@@ -257,7 +257,7 @@ describe('marketplace transaction planning', () => {
         {
           contract: nftContract,
           tokenId: '1',
-          price: '1',
+          price: 1_000_000_000_000_000_000n,
           splitAddresses: [accountAddress, buyerAddress],
           splitRatios: [100],
         },
@@ -269,7 +269,7 @@ describe('marketplace transaction planning', () => {
         {
           contract: nftContract,
           tokenId: '1',
-          price: '1',
+          price: 1_000_000_000_000_000_000n,
           splitAddresses: [accountAddress, buyerAddress],
           splitRatios: [60, 20],
         },

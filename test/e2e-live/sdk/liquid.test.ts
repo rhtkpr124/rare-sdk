@@ -58,7 +58,7 @@ describeLive('Liquid Editions SDK live integration', () => {
       name: 'Invalid Shares',
       symbol: 'BAD',
       tokenUri: 'ipfs://token',
-      initialRareLiquidity: '1',
+      initialRareLiquidity: 1_000_000_000_000_000_000n,
       curves: [
         { tickLower: 0, tickUpper: 60_000, numPositions: 1, shares: '1e-7' },
         { tickLower: 60_000, tickUpper: 120_000, numPositions: 1, shares: '0.9999999' },

@@ -84,8 +84,8 @@ test('deriveLiquidFactoryConfig rejects ticks that do not align to spacing', () 
   );
 });
 
-test('parseLiquidTokenSupplyAmount parses human token amounts to 18 decimal units', () => {
-  assert.deepEqual(parseLiquidTokenSupplyAmount('123.45'), {
+test('parseLiquidTokenSupplyAmount accepts bigint base units', () => {
+  assert.deepEqual(parseLiquidTokenSupplyAmount(123_450_000_000_000_000_000n), {
     isValid: true,
     amountWei: 123_450_000_000_000_000_000n,
   });
@@ -95,21 +95,11 @@ test('parseLiquidTokenSupplyAmount parses human token amounts to 18 decimal unit
   });
 });
 
-test('parseLiquidTokenSupplyAmount returns structured validation failures', () => {
-  assert.deepEqual(parseLiquidTokenSupplyAmount('0'), {
+test('parseLiquidTokenSupplyAmount returns a structured positivity failure', () => {
+  assert.deepEqual(parseLiquidTokenSupplyAmount(0n), {
     isValid: false,
     error: 'not-positive',
     errorMessage: 'totalSupply must be greater than 0.',
-  });
-  assert.deepEqual(parseLiquidTokenSupplyAmount('not-a-number'), {
-    isValid: false,
-    error: 'invalid-decimal',
-    errorMessage: 'totalSupply must be a valid positive decimal amount.',
-  });
-  assert.deepEqual(parseLiquidTokenSupplyAmount('0.0000000000000000001'), {
-    isValid: false,
-    error: 'too-many-decimals',
-    errorMessage: 'totalSupply cannot have more than 18 decimal places.',
   });
 });
 
@@ -126,7 +116,7 @@ test('resolveLiquidFactoryConfigForSupply recalculates curve supply for custom t
     },
   );
 
-  const custom = resolveLiquidFactoryConfigForSupply(config, '250000');
+  const custom = resolveLiquidFactoryConfigForSupply(config, 250_000n * 10n ** 18n);
 
   assert.equal(custom.isValid, true);
   if (!custom.isValid) throw new Error('expected valid custom supply config');
@@ -149,7 +139,7 @@ test('resolveLiquidFactoryConfigForSupply returns a structured failure when supp
     },
   );
 
-  assert.deepEqual(resolveLiquidFactoryConfigForSupply(config, '100000'), {
+  assert.deepEqual(resolveLiquidFactoryConfigForSupply(config, 100_000n * 10n ** 18n), {
     isValid: false,
     error: 'below-creator-launch-reward',
     errorMessage: 'totalSupply must be greater than the Liquid factory creator launch reward.',

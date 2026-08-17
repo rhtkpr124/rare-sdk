@@ -91,7 +91,7 @@ export type CollectionTokenCreatorResult = {
 export type CollectionRoyaltyInfoParams = {
   contract: Address;
   tokenId: IntegerInput;
-  price?: IntegerInput;
+  price?: bigint;
 }
 
 export type CollectionRoyaltyInfoResult = {
@@ -107,7 +107,7 @@ export type CollectionRoyaltyInfoResult = {
 export type CollectionStatusParams = {
   contract: Address;
   tokenId?: IntegerInput;
-  price?: IntegerInput;
+  price?: bigint;
 }
 
 export type CollectionStatusResult = {

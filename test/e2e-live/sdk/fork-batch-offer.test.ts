@@ -81,7 +81,7 @@ describeFork('SDK fork integration write paths', () => {
       const expiry = Math.floor(Date.now() / 1000) + 3_600;
       const created = await buyer.rare.offer.batch.create({
         root: revokeTree.root,
-        price: '0.000001',
+        price: 1_000_000_000_000n,
         endTime: expiry,
       });
       expect(created.creator).toBe(buyer.account);
@@ -121,7 +121,7 @@ describeFork('SDK fork integration write paths', () => {
 
       await buyer.rare.offer.batch.create({
         root: acceptTree.root,
-        price: '0.000001',
+        price: 1_000_000_000_000n,
         endTime: expiry,
       });
       const accepted = await seller.rare.offer.batch.accept({
@@ -230,7 +230,7 @@ describeFork('SDK fork integration write paths', () => {
       const bought = await listingBuyer.rare.listing.batch.buy({
         creator: listingSeller.account,
         currency: 'eth',
-        price: '0.000001',
+        price: 1_000_000_000_000n,
         proofArtifact: {
           root: proof.root,
           contract: proof.contractAddress,
@@ -294,7 +294,7 @@ describeFork('SDK fork integration write paths', () => {
       const createdForCancel = await seller.rare.auction.batch.create({
         root: cancelTree.root,
         artifact: cancelTree,
-        price: '0.000001',
+        price: 1_000_000_000_000n,
         endTime: Math.floor(Date.now() / 1000) + 60,
       });
       expect(createdForCancel.creator).toBe(seller.account);
@@ -332,7 +332,7 @@ describeFork('SDK fork integration write paths', () => {
       await seller.rare.auction.batch.create({
         root: settleTree.root,
         artifact: settleTree,
-        price: '0.000001',
+        price: 1_000_000_000_000n,
         endTime: Math.floor(Date.now() / 1000) + settleAuctionDurationSeconds,
       });
       const bid = await buyer.rare.auction.batch.bid({
@@ -341,7 +341,7 @@ describeFork('SDK fork integration write paths', () => {
         proof: settleProof.proof,
         contract: collection.contract,
         tokenId: tokens[2],
-        price: '0.000001',
+        price: 1_000_000_000_000n,
       });
       expect(bid.bidder).toBe(buyer.account);
       expect(bid.creator).toBe(seller.account);
@@ -428,7 +428,7 @@ describeFork('SDK fork integration write paths', () => {
       const royalty = await seller.rare.collection.royalty.status({
         contract: collection.contract,
         tokenId: batchMint.fromTokenId,
-        price: 10_000,
+        price: 10_000n,
       });
       expect(royalty.receiver).toBe(seller.account);
       expect(royalty.royaltyAmount).toBeGreaterThanOrEqual(0n);
@@ -485,7 +485,7 @@ describeFork('SDK fork integration write paths', () => {
 
       const configured = await seller.rare.listing.release.configure({
         contract,
-        price: 0,
+        price: 0n,
         startTime: 1,
         maxMints: 2,
         splitAddresses: [seller.account],

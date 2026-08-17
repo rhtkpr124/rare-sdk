@@ -119,6 +119,33 @@ await rare.collection.deploy.lazyErc721({
 });
 ```
 
+### Crypto values use bigint base units
+
+Public SDK prices, payment amounts, swap inputs, liquid-edition supplies, and
+royalty sale prices accept `bigint` base units only. Convert user-facing
+decimal values before calling the SDK; for example, use viem's `parseEther` or
+`parseUnits` with the selected ERC-20 currency's decimals.
+
+```ts
+import { parseEther, parseUnits } from 'viem';
+
+await rare.listing.create({
+  contract: '0x…',
+  tokenId: 1n,
+  price: parseEther('0.5'),
+});
+
+await rare.offer.create({
+  contract: '0x…',
+  tokenId: 1n,
+  currency: 'usdc',
+  price: parseUnits('12.50', 6),
+});
+```
+
+Serialized batch-listing artifacts retain string amounts because JSON cannot
+represent bigint values; live SDK method inputs are bigint-only.
+
 Liquid-edition curve configuration helpers are available both as standalone
 utilities and on a configured client:
 

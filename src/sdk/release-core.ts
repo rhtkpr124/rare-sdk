@@ -4,8 +4,6 @@ import {
   isAddressEqual,
   isHex,
   keccak256,
-  parseEther,
-  parseUnits,
   type Address,
   type Hex,
 } from 'viem';
@@ -193,23 +191,11 @@ export function normalizeReleasePrice(opts: {
   amount: AmountInput;
   currencyDecimals: number | null;
 }): bigint {
-  const { currencyAddress, amount, currencyDecimals } = opts;
-
-  if (typeof amount === 'bigint') {
-    if (amount < 0n) {
-      throw new Error('price must be greater than or equal to 0.');
-    }
-    return amount;
-  }
-
-  const parsed = currencyAddress === ETH_ADDRESS
-    ? parseEther(String(amount))
-    : parseUnits(String(amount), requireCurrencyDecimals(currencyDecimals));
-
-  if (parsed < 0n) {
+  const { amount } = opts;
+  if (amount < 0n) {
     throw new Error('price must be greater than or equal to 0.');
   }
-  return parsed;
+  return amount;
 }
 
 export function resolveReleaseSplits(opts: {
@@ -712,16 +698,6 @@ export function shapeReleaseStatus(opts: {
     isEth: opts.directSale.currencyAddress === ETH_ADDRESS,
     now: opts.nowSeconds,
   };
-}
-
-function requireCurrencyDecimals(decimals: number | null): number {
-  if (decimals === null) {
-    throw new Error('currencyDecimals is required to normalize ERC20 price amounts.');
-  }
-  if (!Number.isInteger(decimals) || decimals < 0) {
-    throw new Error('currencyDecimals must be a non-negative integer.');
-  }
-  return decimals;
 }
 
 function requireReleaseAccountCounter(value: bigint | null, label: string): bigint {

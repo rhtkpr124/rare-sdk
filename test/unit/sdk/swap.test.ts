@@ -16,12 +16,12 @@ const swapAccount = privateKeyToAccount(
 );
 const buyTokenAutoApproveParams = {
   token: rareAddress,
-  amountIn: '1',
+  amountIn: 1_000_000_000_000_000_000n,
   autoApprove: false,
 } satisfies BuyTokenParams;
 const sellTokenAutoApproveParams = {
   token: rareAddress,
-  amountIn: '1',
+  amountIn: 1_000_000_000_000_000_000n,
   autoApprove: false,
 } satisfies SellTokenParams;
 
@@ -60,7 +60,7 @@ describe('Swap SDK fallback handling', () => {
 
     await expect(rare.swap.quoteBuyToken({
       token: rareAddress,
-      amountIn: '0.001',
+      amountIn: 1_000_000_000_000_000n,
     })).rejects.toThrow('bad local quoter');
     expect(fetchMock).not.toHaveBeenCalled();
   });
@@ -81,14 +81,14 @@ describe('Swap SDK fallback handling', () => {
 
     await expect(rare.swap.buyToken({
       token: rareAddress,
-      amountIn: '0.001',
+      amountIn: 1_000_000_000_000_000n,
       route: 'uniswap',
       deadline: 0,
     })).rejects.toThrow('deadline must be greater than 0.');
 
     await expect(rare.swap.sellToken({
       token: rareAddress,
-      amountIn: '1',
+      amountIn: 1_000_000_000_000_000_000n,
       route: 'uniswap',
       deadline: '-1',
     })).rejects.toThrow('deadline must be greater than 0.');
@@ -111,7 +111,7 @@ describe('Swap SDK fallback handling', () => {
 
     await expect(rare.swap.quoteBuyToken({
       token: rareAddress,
-      amountIn: '0.001',
+      amountIn: 1_000_000_000_000_000n,
       route: 'uniswap',
     })).rejects.toThrow('A Uniswap API key is required to use the Uniswap route.');
 
@@ -137,7 +137,7 @@ describe('Swap SDK fallback handling', () => {
 
     await expect(rare.swap.quoteBuyToken({
       token: rareAddress,
-      amountIn: '0.001',
+      amountIn: 1_000_000_000_000_000n,
       route: 'uniswap',
     })).rejects.toThrow('stop after headers');
 
@@ -163,7 +163,7 @@ describe('Swap SDK fallback handling', () => {
 
     await expect(rare.swap.quoteBuyToken({
       token: baseRareAddress,
-      amountIn: '0.001',
+      amountIn: 1_000_000_000_000_000n,
       route: 'auto',
     })).rejects.toThrow('reached Uniswap fallback');
 
@@ -189,8 +189,8 @@ describe('Swap SDK fallback handling', () => {
 
     await expect(rare.swap.sellToken({
       token: rareAddress,
-      amountIn: '1',
-      minAmountOut: '0.1',
+      amountIn: 1_000_000_000_000_000_000n,
+      minAmountOut: 100_000_000_000_000_000n,
       route: 'raw',
       commands: '0xzz',
       inputs: ['0x12'],
@@ -231,8 +231,8 @@ describe('Swap SDK fallback handling', () => {
     await expect(namespace.sellToken({
       route: 'raw',
       token: rareAddress,
-      amountIn: '1',
-      minAmountOut: '0.1',
+      amountIn: 1_000_000_000_000_000_000n,
+      minAmountOut: 100_000_000_000_000_000n,
       commands: '0x00',
       inputs: ['0x00'],
     })).rejects.toBeInstanceOf(PaymentApprovalRequiredError);

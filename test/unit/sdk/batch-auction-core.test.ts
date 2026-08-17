@@ -40,7 +40,7 @@ describe('batch auction core', () => {
 
     expect(planBatchAuctionCreate({
       artifact,
-      price: '0.5',
+      price: 500_000_000_000_000_000n,
       endTime: END_TIME,
     }, ACCOUNT, NOW_SECONDS)).toEqual({
       root: ROOT,
@@ -60,7 +60,7 @@ describe('batch auction core', () => {
 
     expect(planBatchAuctionCreate({
       artifact,
-      price: '0.5',
+      price: 500_000_000_000_000_000n,
       endTime: END_TIME,
       autoApprove: false,
     }, ACCOUNT, NOW_SECONDS).approvalContracts).toEqual([CONTRACT]);
@@ -68,13 +68,13 @@ describe('batch auction core', () => {
     expect(() => planBatchAuctionCreate({
       artifact,
       root: '0x1111111111111111111111111111111111111111111111111111111111111111',
-      price: '0.5',
+      price: 500_000_000_000_000_000n,
       endTime: END_TIME,
     }, ACCOUNT, NOW_SECONDS)).toThrow('root does not match artifact root.');
 
     expect(() => planBatchAuctionCreate({
       root: ROOT,
-      price: '0',
+      price: 0n,
       endTime: END_TIME,
     }, ACCOUNT, NOW_SECONDS)).toThrow('price must be greater than 0.');
   });
@@ -92,7 +92,7 @@ describe('batch auction core', () => {
       proofArtifact: proof,
       contract: CONTRACT,
       tokenId: '2',
-      price: '1',
+      price: 1_000_000_000_000_000_000n,
     })).toEqual({
       creator: CREATOR,
       root: ROOT,
@@ -119,7 +119,7 @@ describe('batch auction core', () => {
       proofArtifact: proof,
       contract: CONTRACT,
       tokenId: '1',
-      price: '1',
+      price: 1_000_000_000_000_000_000n,
     })).toThrow('Batch auction proof is not valid for the requested token.');
 
     expect(() => planBatchAuctionStatus({
