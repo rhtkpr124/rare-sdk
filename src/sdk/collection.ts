@@ -13,7 +13,7 @@ import { collectionStatusAbi } from '../contracts/abis/collection-status.js';
 import { rareErc1155Abi } from '../contracts/abis/rare-erc1155.js';
 import { requireContractAddress, type SupportedChain } from '../contracts/addresses.js';
 import type { RareClientConfig } from './types/client.js';
-import type { CollectionNamespace } from './types/collection.js';
+import type { CollectionNamespace, LazyErc721DeploymentVariant } from './types/collection.js';
 import { requireWallet } from './wallet-shell.js';
 import {
   buildCollectionMintBatchWrite,
@@ -32,9 +32,26 @@ import {
   planCollectionTokenUri,
   planCreateLazySovereignCollection,
   shapeCollectionPrepareMintEvent,
+  type LazySovereignCollectionContractType,
 } from './collection-core.js';
 
 export type * from './types/collection.js';
+
+function resolveLazyErc721Variant(value: unknown): {
+  variant: LazyErc721DeploymentVariant;
+  contractType: LazySovereignCollectionContractType;
+} {
+  const variant = value ?? 'standard';
+  if (variant === 'standard') return { variant, contractType: 'lazy' };
+  if (variant === 'royalty-guard') return { variant, contractType: 'lazy-royalty-guard' };
+  if (variant === 'deadman-royalty-guard') {
+    return { variant, contractType: 'lazy-deadman-royalty-guard' };
+  }
+  throw new Error(
+    `Unsupported Lazy ERC-721 deployment variant "${String(variant)}". ` +
+      'Supported: standard, royalty-guard, deadman-royalty-guard.',
+  );
+}
 
 export function createCollectionNamespace(
   publicClient: PublicClient,
@@ -148,15 +165,21 @@ export function createCollectionNamespace(
       ...collectionDeploy,
 
       async lazyErc721(params): ReturnType<CollectionNamespace['deploy']['lazyErc721']> {
-        const plan = planCreateLazySovereignCollection(params);
+        const { variant, contractType } = resolveLazyErc721Variant(params.variant);
+        const plan = planCreateLazySovereignCollection({
+          name: params.name,
+          symbol: params.symbol,
+          maxTokens: params.maxTokens,
+          contractType,
+        });
         const factoryAddress = requireContractAddress(chain, 'lazySovereignFactory');
         const { walletClient, account } = requireWallet(config);
-        const contractType = await publicClient.readContract({
+        const encodedContractType = await publicClient.readContract({
           address: factoryAddress,
           abi: lazySovereignFactoryAbi,
           functionName: plan.contractTypeReadName,
         });
-        const write = buildCreateLazySovereignCollectionWrite(plan, contractType);
+        const write = buildCreateLazySovereignCollectionWrite(plan, encodedContractType);
         const txHash = await walletClient.writeContract({
           address: factoryAddress,
           abi: lazySovereignFactoryAbi,
@@ -182,7 +205,7 @@ export function createCollectionNamespace(
           receipt,
           contract: createdLog.args.contractAddress,
           factory: factoryAddress,
-          contractType: plan.contractType,
+          variant,
           nextStep: 'Prepare lazy mint metadata, approve RareMinter, then Configure release sale and mint settings.',
         };
       },

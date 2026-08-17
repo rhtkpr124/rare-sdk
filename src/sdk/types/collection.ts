@@ -1,5 +1,4 @@
 import type { Address } from 'viem';
-import type { LazySovereignCollectionContractType } from '../collection-core.js';
 import type { Collection } from '../api.js';
 import type { IntegerInput, TransactionResult } from './common.js';
 import type {
@@ -32,13 +31,18 @@ export type DeployLazyErc721Params = {
   name: string;
   symbol: string;
   maxTokens: IntegerInput;
-  contractType?: LazySovereignCollectionContractType;
+  variant?: LazyErc721DeploymentVariant;
 }
+
+export type LazyErc721DeploymentVariant =
+  | 'standard'
+  | 'royalty-guard'
+  | 'deadman-royalty-guard';
 
 export type DeployLazyErc721Result = {
   contract: Address;
   factory: Address;
-  contractType: LazySovereignCollectionContractType;
+  variant: LazyErc721DeploymentVariant;
   nextStep: string;
 } & TransactionResult
 
