@@ -30,7 +30,6 @@ export type ReleaseMintDirectSaleParams = {
   currency?: CurrencyInput;
   price?: AmountInput;
   proof?: readonly Hash[];
-  recipient?: Address;
   autoApprove?: boolean;
 }
 

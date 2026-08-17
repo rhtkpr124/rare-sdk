@@ -90,7 +90,6 @@ export type ReleaseDirectSaleMintPlan = {
   price?: AmountInput;
   proof: Hex[];
   proofProvided: boolean;
-  recipient?: Address;
   autoApprove: boolean;
 };
 
@@ -302,7 +301,6 @@ export function planReleaseDirectSaleMint(params: ResolvedCurrencyParam<ReleaseM
     price: params.price,
     proof: normalizeReleaseAllowlistProof(params.proof ?? []),
     proofProvided: params.proof !== undefined,
-    recipient: params.recipient,
     autoApprove: params.autoApprove ?? false,
   };
 }
@@ -483,9 +481,6 @@ export function preflightReleaseDirectSaleMint(params: {
   }
   if (!status.configured) {
     throw new Error('RareMinter direct sale is not configured for this contract.');
-  }
-  if (plan.recipient !== undefined && !isAddressEqual(plan.recipient, buyer)) {
-    throw new Error('RareMinter direct sale mint does not support a separate recipient; it mints to the connected wallet.');
   }
   if (status.startTime > nowSeconds) {
     throw new Error(`RareMinter direct sale has not started. Starts at ${status.startTime}.`);
