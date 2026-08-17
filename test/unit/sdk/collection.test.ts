@@ -281,6 +281,20 @@ function isHex(value: unknown): value is `0x${string}` {
 }
 
 describe('SDK collection namespace', () => {
+  it('rejects unsupported public deployment variants before RPC or wallet access', async () => {
+    const collection = createTestCollectionNamespace('available');
+
+    await expect(collection.deploy.lazyErc721({
+      name: 'Invalid Variant',
+      symbol: 'NOPE',
+      maxTokens: 100,
+      // @ts-expect-error exercising runtime validation for JavaScript callers.
+      variant: 'lazy-royalty-guard',
+    })).rejects.toThrow(
+      'Unsupported Lazy ERC-721 deployment variant "lazy-royalty-guard". Supported: standard, royalty-guard, deadman-royalty-guard.',
+    );
+  });
+
   it('includes default royalty reads when the collection supports them', async () => {
     const collection = createTestCollectionNamespace('available');
 

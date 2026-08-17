@@ -104,6 +104,21 @@ Callers that intentionally want the previous one-call behavior can pass
 `autoApprove: true` on approval-capable writes, including swap token sells and
 liquid-edition deployment with initial RARE liquidity.
 
+### Lazy ERC-721 deployment variants
+
+`rare.collection.deploy.lazyErc721` exposes the implementation choice as
+`variant`: `standard`, `royalty-guard`, or `deadman-royalty-guard`. The former
+public `contractType` field and its `lazy-*` values are not accepted.
+
+```ts
+await rare.collection.deploy.lazyErc721({
+  name: 'Release Collection',
+  symbol: 'REL',
+  maxTokens: 1000,
+  variant: 'royalty-guard',
+});
+```
+
 Liquid-edition curve configuration helpers are available both as standalone
 utilities and on a configured client:
 

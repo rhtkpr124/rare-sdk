@@ -10,6 +10,9 @@ project follows semantic versioning.
 - **Breaking:** approval-capable writes now default to `autoApprove: false`.
   Pass `autoApprove: true` to preserve one-call approval-and-write behavior, or
   catch the exported approval-required errors and retry after user consent.
+- **Breaking:** Lazy ERC-721 deployment uses `variant` with `standard`,
+  `royalty-guard`, or `deadman-royalty-guard` values instead of the public
+  `contractType` field and `lazy-*` values.
 
 ## 0.1.3 - 2026-07-24
 
