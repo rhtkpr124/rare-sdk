@@ -1,6 +1,6 @@
 import { isAddressEqual, type Address, type Hash, type PublicClient, type WalletClient } from 'viem';
 import { batchListingAbi } from '../contracts/abis/batch-listing.js';
-import type { SupportedChain } from '../contracts/addresses.js';
+import { ETH_ADDRESS, type SupportedChain } from '../contracts/addresses.js';
 import type {
   BatchListingCancelResult,
   BatchListingCreateResult,
@@ -60,8 +60,26 @@ export function createBatchListingNamespace(
 ): BatchListingNamespace {
   return {
     async create(params): Promise<BatchListingCreateResult> {
+      if (params.artifact.chainId !== undefined && params.artifact.chainId !== addresses.chainId) {
+        throw new Error(
+          `Batch token tree artifact chainId ${params.artifact.chainId.toString()} does not match client chainId ${addresses.chainId.toString()}.`,
+        );
+      }
       const { walletClient, account, accountAddress } = requireWallet(config);
-      const artifact = await resolveApiBatchListingRootArtifact(config, params.artifact);
+      const currency = params.currency === undefined
+        ? ETH_ADDRESS
+        : resolveCurrencyForSdk(params.currency, addresses.chain).address;
+      const artifact = await resolveApiBatchListingRootArtifact(config, {
+        root: params.artifact.root,
+        currency,
+        amount: params.price.toString(),
+        splitAddresses: params.splitAddresses ?? [],
+        splitRatios: params.splitRatios ?? [],
+        tokens: params.artifact.tokens.map((token) => ({
+          contract: token.contractAddress,
+          tokenId: token.tokenId,
+        })),
+      });
       const splitConfig = planBatchListingRootRegistration(artifact, accountAddress);
 
       const uniqueContracts = uniqueAddresses(artifact.tokens.map((token) => token.contract));

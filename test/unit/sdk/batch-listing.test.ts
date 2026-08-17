@@ -29,6 +29,18 @@ function rareApiRootFetch(root = hex32('2')): typeof fetch {
   });
 }
 
+function batchTokenArtifact(tokens: Array<{ contractAddress: Address; tokenId: string }>) {
+  return {
+    version: 1 as const,
+    type: 'rare-batch-token-list' as const,
+    root: hex32('2'),
+    count: tokens.length,
+    chainId: addresses.chainId,
+    tokens,
+    entries: [],
+  };
+}
+
 async function parseJsonBody(input: RequestInfo | URL, init: RequestInit | undefined): Promise<unknown> {
   const body = input instanceof Request ? await input.clone().text() : init?.body;
   if (typeof body !== 'string') {
@@ -38,6 +50,31 @@ async function parseJsonBody(input: RequestInfo | URL, init: RequestInit | undef
 }
 
 describe('batch listing namespace', () => {
+  it('rejects a token artifact for a different chain before API or wallet work', async () => {
+    let apiCalled = false;
+    const namespace = createBatchListingNamespace(
+      {} as never,
+      {
+        publicClient: {} as never,
+        apiFetch: async () => {
+          apiCalled = true;
+          return new Response();
+        },
+      },
+      addresses,
+    );
+
+    await expect(namespace.create({
+      artifact: {
+        ...batchTokenArtifact([{ contractAddress: accountAddress, tokenId: '1' }]),
+        chainId: 1,
+      },
+      price: 1n,
+    })).rejects.toThrow('artifact chainId 1 does not match client chainId 11155111');
+
+    expect(apiCalled).toBe(false);
+  });
+
   it('skips approval tx hashes when approval is already in place', async () => {
     const writeCalls: unknown[] = [];
     const namespace = createBatchListingNamespace(
@@ -66,17 +103,11 @@ describe('batch listing namespace', () => {
     );
 
     const result = await namespace.create({
-      artifact: {
-        root: hex32('2'),
-        currency: '0x0000000000000000000000000000000000000000',
-        amount: '1',
-        splitAddresses: [],
-        splitRatios: [],
-        tokens: [
-          { contract: accountAddress, tokenId: '1' },
-          { contract: accountAddress, tokenId: '2' },
-        ],
-      },
+      artifact: batchTokenArtifact([
+        { contractAddress: accountAddress, tokenId: '1' },
+        { contractAddress: accountAddress, tokenId: '2' },
+      ]),
+      price: 1n,
     });
 
     expect(result.approvalTxHashes).toBeUndefined();
@@ -105,17 +136,11 @@ describe('batch listing namespace', () => {
 
     await expect(
       namespace.create({
-        artifact: {
-          root: hex32('2'),
-          currency: '0x0000000000000000000000000000000000000000',
-          amount: '1',
-          splitAddresses: [],
-          splitRatios: [],
-          tokens: [
-            { contract: accountAddress, tokenId: '1' },
-            { contract: accountAddress, tokenId: '2' },
-          ],
-        },
+        artifact: batchTokenArtifact([
+          { contractAddress: accountAddress, tokenId: '1' },
+          { contractAddress: accountAddress, tokenId: '2' },
+        ]),
+        price: 1n,
       }),
     ).rejects.toThrow(/is owned by/);
   });
@@ -254,17 +279,11 @@ describe('batch listing namespace', () => {
 
     const result = await namespace.create({
       autoApprove: true,
-      artifact: {
-        root: hex32('2'),
-        currency: '0x0000000000000000000000000000000000000000',
-        amount: '1',
-        splitAddresses: [],
-        splitRatios: [],
-        tokens: [
-          { contract: accountAddress, tokenId: '1' },
-          { contract: accountAddress, tokenId: '2' },
-        ],
-      },
+      artifact: batchTokenArtifact([
+        { contractAddress: accountAddress, tokenId: '1' },
+        { contractAddress: accountAddress, tokenId: '2' },
+      ]),
+      price: 1n,
     });
 
     expect(writeCalls[0]?.functionName).toBe('setApprovalForAll');
@@ -315,17 +334,11 @@ describe('batch listing namespace', () => {
 
     const result = await namespace.create({
       autoApprove: true,
-      artifact: {
-        root: hex32('2'),
-        currency: '0x0000000000000000000000000000000000000000',
-        amount: '1',
-        splitAddresses: [],
-        splitRatios: [],
-        tokens: [
-          { contract: contractA, tokenId: '1' },
-          { contract: contractB, tokenId: '2' },
-        ],
-      },
+      artifact: batchTokenArtifact([
+        { contractAddress: contractA, tokenId: '1' },
+        { contractAddress: contractB, tokenId: '2' },
+      ]),
+      price: 1n,
     });
 
     expect(maxActiveApprovalWrites).toBe(1);
