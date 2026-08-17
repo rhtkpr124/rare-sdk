@@ -92,30 +92,22 @@ describe('SDK helper normalization', () => {
     expect(() => toUnixTimestamp('2026-05-18Tbad', 'startTime')).toThrow('startTime must be an integer.');
   });
 
-  it('normalizes amount inputs to wei', () => {
+  it('preserves bigint base-unit amounts', () => {
     expect(toWei(5n)).toBe(5n);
-    expect(toWei('1')).toBe(1_000_000_000_000_000_000n);
-    expect(toWei(0.5)).toBe(500_000_000_000_000_000n);
-  });
-
-  it('rejects unsafe numeric amounts', () => {
-    expect(toWei('1.000000000000000001')).toBe(1_000_000_000_000_000_001n);
-    expect(toWei(0.1)).toBe(100_000_000_000_000_000n);
-    expect(() => toWei(Number.MAX_SAFE_INTEGER + 1)).toThrow('string or bigint');
   });
 
   it('allows zero money amounts when zero is a meaningful contract value', () => {
-    expect(toNonNegativeWei('0', 'price')).toBe(0n);
-    expect(toNonNegativeWei('1', 'price')).toBe(1_000_000_000_000_000_000n);
-    expect(() => toNonNegativeWei('-0.1', 'price')).toThrow(
+    expect(toNonNegativeWei(0n, 'price')).toBe(0n);
+    expect(toNonNegativeWei(1n, 'price')).toBe(1n);
+    expect(() => toNonNegativeWei(-1n, 'price')).toThrow(
       'price must be greater than or equal to 0.',
     );
   });
 
   it('rejects non-positive money amounts before payment writes', () => {
-    expect(toPositiveWei('1', 'amount')).toBe(1_000_000_000_000_000_000n);
-    expect(() => toPositiveWei('0', 'amount')).toThrow('amount must be greater than 0.');
-    expect(() => toPositiveWei('-0.1', 'amount')).toThrow('amount must be greater than 0.');
+    expect(toPositiveWei(1n, 'amount')).toBe(1n);
+    expect(() => toPositiveWei(0n, 'amount')).toThrow('amount must be greater than 0.');
+    expect(() => toPositiveWei(-1n, 'amount')).toThrow('amount must be greater than 0.');
   });
 });
 
@@ -439,7 +431,7 @@ describe('currency decimal resolution', () => {
     expect(getKnownCurrencyDecimals(rare, 'sepolia')).toBe(18);
     expect(getKnownCurrencyDecimals(usdc, 'sepolia')).toBe(6);
     expect(await resolveCurrencyDecimals(client, 'sepolia', usdc)).toBe(6);
-    expect(await toCurrencyAmount(client, 'sepolia', usdc, '1.25', 'price')).toBe(1250000n);
+    expect(await toCurrencyAmount(client, 'sepolia', usdc, 1_250_000n, 'price')).toBe(1_250_000n);
   });
 
   it('reads decimals for arbitrary ERC20 currencies', async () => {

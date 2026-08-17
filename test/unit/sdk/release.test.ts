@@ -52,11 +52,11 @@ async function expectRejectionCause(
 }
 
 describe('release namespace shell errors', () => {
-  it('preserves the ERC20 decimals read failure as the wrapped cause', async () => {
-    const cause = new Error('decimals rpc failed');
+  it('does not read ERC20 decimals for bigint prices', async () => {
+    const cause = new Error('owner rpc failed');
     const release = createReleaseTestNamespace({
       async readContract(params: { functionName: string }): Promise<never> {
-        expect(params.functionName).toBe('decimals');
+        expect(params.functionName).toBe('owner');
         throw cause;
       },
     });
@@ -65,10 +65,10 @@ describe('release namespace shell errors', () => {
       release.configure({
         contract: collection,
         currency: customCurrency,
-        price: '1',
+        price: 1_000_000_000_000_000_000n,
         maxMints: 1,
       }),
-      `Unable to read decimals for ERC20 currency ${customCurrency}`,
+      `Unable to read owner() from collection ${collection}`,
       cause,
     );
   });
@@ -88,7 +88,7 @@ describe('release namespace shell errors', () => {
     await expectRejectionCause(
       ownerReadRelease.configure({
         contract: collection,
-        price: '1',
+        price: 1_000_000_000_000_000_000n,
         maxMints: 1,
       }),
       `Unable to read owner() from collection ${collection}`,
@@ -112,7 +112,7 @@ describe('release namespace shell errors', () => {
     await expectRejectionCause(
       simulationRelease.configure({
         contract: collection,
-        price: '1',
+        price: 1_000_000_000_000_000_000n,
         maxMints: 1,
       }),
       `Collection ${collection} must expose mintTo(address)`,
@@ -162,14 +162,14 @@ describe('release namespace shell errors', () => {
 
     await expect(release.configure({
       contract: collection,
-      price: '1',
+      price: 1_000_000_000_000_000_000n,
       maxMints: 1,
       autoApprove: false,
     })).rejects.toThrow(`Minter approval is required for collection ${collection} and minter ${rareMinter}.`);
 
     const configured = await release.configure({
       contract: collection,
-      price: '1',
+      price: 1_000_000_000_000_000_000n,
       maxMints: 1,
       autoApprove: true,
     });
@@ -215,7 +215,7 @@ describe('release namespace shell errors', () => {
 
     const configured = await release.configure({
       contract: collection,
-      price: '1',
+      price: 1_000_000_000_000_000_000n,
       maxMints: 1,
       autoApprove: true,
     });
@@ -249,7 +249,7 @@ describe('release namespace shell errors', () => {
 
     await expect(release.configure({
       contract: collection,
-      price: '1',
+      price: 1_000_000_000_000_000_000n,
       maxMints: 1,
       autoApprove: true,
     })).rejects.toThrow(`Lazy Sovereign minter approval for ${rareMinter} reverted`);
@@ -270,7 +270,7 @@ describe('release namespace shell errors', () => {
 
     await expect(release.configure({
       contract: collection,
-      price: '1',
+      price: 1_000_000_000_000_000_000n,
       maxMints: 1,
     })).rejects.toThrow(`Contract owner is ${otherAddress}.`);
 
@@ -311,7 +311,7 @@ describe('release namespace shell errors', () => {
     try {
       await release.configure({
         contract: collection,
-        price: '1',
+        price: 1_000_000_000_000_000_000n,
         maxMints: 1,
         autoApprove: true,
       });

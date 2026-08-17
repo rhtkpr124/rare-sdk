@@ -315,7 +315,7 @@ describe('ERC1155 core planning', () => {
           seller,
           tokenId: '2',
           quantity: '3',
-          price: '0.01',
+          price: 10_000_000_000_000_000n,
           currency: 'eth',
         },
       ],
@@ -331,7 +331,7 @@ describe('ERC1155 core planning', () => {
       seller,
       tokenId: 2n,
       quantity: 3n,
-      priceInput: '0.01',
+      priceInput: 10_000_000_000_000_000n,
     });
 
     expect(planErc1155CheckoutResolved({

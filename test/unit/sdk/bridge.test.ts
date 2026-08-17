@@ -47,7 +47,7 @@ describe('bridge SDK namespace', () => {
     const rare = createRareClient({ publicClient, account: accountAddress });
 
     const quote = await rare.bridge.quote({
-      amount: '1.5',
+      amount: 1_500_000_000_000_000_000n,
       destinationChain: 'base-sepolia',
       recipient: recipientAddress,
     });

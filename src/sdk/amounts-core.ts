@@ -1,4 +1,3 @@
-import { parseEther } from 'viem';
 import type { AmountInput, IntegerInput } from './types/common.js';
 
 const MAX_SAFE_INTEGER_BIGINT = BigInt(Number.MAX_SAFE_INTEGER);
@@ -37,18 +36,6 @@ export function toSafeIntegerNumber(value: IntegerInput, field: string): number 
   return Number(integer);
 }
 
-export function stringifyAmountInput(value: Exclude<AmountInput, bigint>, field: string): string {
-  if (typeof value === 'number') {
-    if (!Number.isFinite(value)) {
-      throw new Error(`${field} must be a valid finite decimal amount.`);
-    }
-    if (Number.isInteger(value) && !Number.isSafeInteger(value)) {
-      throw new Error(`${field} is too large to pass as a number. Pass it as a string or bigint to avoid precision loss.`);
-    }
-  }
-  return String(value);
-}
-
 export function toNonNegativeInteger(value: IntegerInput, field: string): bigint {
   const normalized = toInteger(value, field);
   if (normalized < 0n) {
@@ -66,11 +53,7 @@ export function toPositiveInteger(value: IntegerInput, field: string): bigint {
 }
 
 export function toWei(value: AmountInput): bigint {
-  if (typeof value === 'bigint') {
-    return value;
-  }
-
-  return parseEther(stringifyAmountInput(value, 'amount'));
+  return value;
 }
 
 export function toNonNegativeWei(value: AmountInput, field: string): bigint {

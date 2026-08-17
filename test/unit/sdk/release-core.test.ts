@@ -38,7 +38,7 @@ describe('release configure planning', () => {
       planReleaseConfigure(
         {
           contract: collection,
-          price: '0.5',
+          price: 500_000_000_000_000_000n,
           maxMints: '3',
         },
         {
@@ -64,7 +64,7 @@ describe('release configure planning', () => {
         {
           contract: collection,
           currency: erc20Currency,
-          price: '1.25',
+          price: 1_250_000n,
           startTime: '2024-01-02T00:00:00.000Z',
           maxMints: 10,
           splitAddresses: [accountAddress, recipientAddress],
@@ -89,19 +89,19 @@ describe('release configure planning', () => {
   it('rejects invalid release business inputs before shell writes', () => {
     expect(
       planReleaseConfigure(
-        { contract: collection, price: '1', maxMints: 0 },
+        { contract: collection, price: 1_000_000_000_000_000_000n, maxMints: 0 },
         { accountAddress, currencyDecimals: null, nowSeconds: 1n },
       ).maxMints,
     ).toBe(0n);
     expect(() =>
       planReleaseConfigure(
-        { contract: collection, price: '1', maxMints: -1 },
+        { contract: collection, price: 1_000_000_000_000_000_000n, maxMints: -1 },
         { accountAddress, currencyDecimals: null, nowSeconds: 1n },
       ),
     ).toThrow('maxMints must be an integer between 0 and 100.');
     expect(() =>
       planReleaseConfigure(
-        { contract: collection, price: '1', maxMints: 101 },
+        { contract: collection, price: 1_000_000_000_000_000_000n, maxMints: 101 },
         { accountAddress, currencyDecimals: null, nowSeconds: 1n },
       ),
     ).toThrow('maxMints must be an integer between 0 and 100.');
@@ -115,13 +115,11 @@ describe('release configure planning', () => {
         defaultRecipient: accountAddress,
       }),
     ).toThrow('splitRatios must sum to 100 (got 50).');
-    expect(() =>
-      normalizeReleasePrice({
-        currencyAddress: erc20Currency,
-        amount: '1',
-        currencyDecimals: null,
-      }),
-    ).toThrow('currencyDecimals is required to normalize ERC20 price amounts.');
+    expect(() => normalizeReleasePrice({
+      currencyAddress: erc20Currency,
+      amount: -1n,
+      currencyDecimals: null,
+    })).toThrow('price must be greater than or equal to 0.');
   });
 
   it('checks collection ownership as pure release validation', () => {
@@ -437,13 +435,13 @@ describe('release direct sale mint planning', () => {
     expect(planReleaseDirectSaleMint({
       contract: collection,
       quantity: '2',
-      price: '0.5',
+      price: 500_000_000_000_000_000n,
       proof: [root],
     })).toEqual({
       contract: collection,
       quantity: 2,
       currency: undefined,
-      price: '0.5',
+      price: 500_000_000_000_000_000n,
       proof: [root],
       proofProvided: true,
       recipient: undefined,

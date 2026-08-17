@@ -21,7 +21,7 @@ describe('batch create local preflight ordering', () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch');
     const offer = createBatchOfferNamespace({ getBlock } as unknown as PublicClient, config, 'sepolia');
 
-    await expect(offer.create({ artifact, price: '0', endTime: '4102444800' })).rejects.toThrow(
+    await expect(offer.create({ artifact, price: 0n, endTime: '4102444800' })).rejects.toThrow(
       'price must be greater than 0.',
     );
     expect(getBlock).not.toHaveBeenCalled();
@@ -33,7 +33,7 @@ describe('batch create local preflight ordering', () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch');
     const auction = createBatchAuctionNamespace({} as PublicClient, config, 'sepolia');
 
-    await expect(auction.create({ artifact, price: '1', endTime: '1' })).rejects.toThrow(
+    await expect(auction.create({ artifact, price: 1_000_000_000_000_000_000n, endTime: '1' })).rejects.toThrow(
       'endTime must be in the future.',
     );
     expect(fetchSpy).not.toHaveBeenCalled();
@@ -48,7 +48,7 @@ describe('batch create local preflight ordering', () => {
       root: '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' as const,
     };
 
-    await expect(auction.create({ artifact: invalidArtifact, price: '1', endTime: '4102444800' })).rejects.toThrow(
+    await expect(auction.create({ artifact: invalidArtifact, price: 1_000_000_000_000_000_000n, endTime: '4102444800' })).rejects.toThrow(
       'Batch token artifact root does not match its token list.',
     );
     expect(fetchSpy).not.toHaveBeenCalled();

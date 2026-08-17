@@ -7,12 +7,10 @@ import {
   erc20Abi,
   isAddressEqual,
   maxUint256,
-  parseUnits,
 } from 'viem';
 import { auctionAbi } from '../contracts/abis/auction.js';
 import { ETH_ADDRESS, listCurrencies, type SupportedChain } from '../contracts/addresses.js';
 import type { AmountInput, WalletAccount } from './types/common.js';
-import { stringifyAmountInput } from './amounts-core.js';
 
 type TransactionReceiptClient = {
   waitForTransactionReceipt: (params: { hash: Hash }) => Promise<TransactionReceipt>;
@@ -91,39 +89,22 @@ export async function resolveCurrencyDecimals(
 }
 
 export async function toCurrencyAmount(
-  publicClient: Pick<PublicClient, 'readContract'>,
-  chain: SupportedChain,
-  currency: Address,
+  _publicClient: Pick<PublicClient, 'readContract'>,
+  _chain: SupportedChain,
+  _currency: Address,
   value: AmountInput,
-  field: string,
+  _field: string,
 ): Promise<bigint> {
-  if (typeof value === 'bigint') {
-    return value;
-  }
-
-  return parseUnits(
-    stringifyAmountInput(value, field),
-    await resolveCurrencyDecimals(publicClient, chain, currency),
-  );
+  return value;
 }
 
 export async function toTokenAmount(
-  publicClient: PublicClient,
-  token: Address,
+  _publicClient: PublicClient,
+  _token: Address,
   value: AmountInput,
-  field: string,
+  _field: string,
 ): Promise<bigint> {
-  if (typeof value === 'bigint') {
-    return value;
-  }
-
-  const rawValue = stringifyAmountInput(value, field);
-  if (!/^\d+(\.\d+)?$/.test(rawValue)) {
-    throw new Error(`${field} must be a valid positive decimal amount.`);
-  }
-
-  const decimals = await getTokenDecimals(publicClient, token);
-  return parseUnits(rawValue, decimals);
+  return value;
 }
 
 export async function ensureTokenAllowance(

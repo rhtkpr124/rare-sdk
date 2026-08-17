@@ -1,6 +1,5 @@
 import {
   isAddressEqual,
-  parseUnits,
   parseEventLogs,
   type Address,
   type Hex,
@@ -10,13 +9,9 @@ import { batchOfferAbi } from '../contracts/abis/batch-offer.js';
 import { tokenAbi } from '../contracts/abis/token.js';
 import { ETH_ADDRESS, chainIds, requireContractAddress, type SupportedChain } from '../contracts/addresses.js';
 import { approveNftContractIfNeeded, runWithApprovalSideEffectAlert } from './approvals-shell.js';
-import {
-  preparePaymentForSpender,
-  resolveCurrencyDecimals,
-} from './payments-shell.js';
+import { preparePaymentForSpender } from './payments-shell.js';
 import { requireInput } from './validation-core.js';
 import { requireWallet } from './wallet-shell.js';
-import { stringifyAmountInput } from './amounts-core.js';
 import type { RareClientConfig } from './types/client.js';
 import type { BatchOfferNamespace } from './types/batch-offer.js';
 import {
@@ -60,9 +55,7 @@ export function createBatchOfferNamespace(
         ? ETH_ADDRESS
         : resolveCurrencyForSdk(resolvedParams.currency, chain).address;
       const price = requireInput(resolvedParams.price, 'price');
-      const amount = typeof price === 'bigint'
-        ? price
-        : parseUnits(stringifyAmountInput(price, 'price'), await resolveCurrencyDecimals(publicClient, chain, currency));
+      const amount = price;
       const plan = planBatchOfferCreate({ ...resolvedParams, price: amount, currency }, block.timestamp);
       const payment = await preparePaymentForSpender({
         publicClient,

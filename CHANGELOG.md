@@ -13,6 +13,9 @@ project follows semantic versioning.
 - **Breaking:** Lazy ERC-721 deployment uses `variant` with `standard`,
   `royalty-guard`, or `deadman-royalty-guard` values instead of the public
   `contractType` field and `lazy-*` values.
+- **Breaking:** public crypto-denominated inputs now require bigint base units.
+  Applications must convert decimal UI values with `parseEther`, `parseUnits`,
+  or an equivalent caller-owned conversion before invoking the SDK.
 
 ## 0.1.3 - 2026-07-24
 

@@ -10,7 +10,7 @@ describeLive('SDK bridge integration', () => {
     const rare = createRareClient({ publicClient: createTestSepoliaPublicClient() });
 
     const quote = await rare.bridge.quote({
-      amount: '1',
+      amount: 1_000_000_000_000_000_000n,
       destinationChain: 'base-sepolia',
       recipient: '0x1111111111111111111111111111111111111111',
     });

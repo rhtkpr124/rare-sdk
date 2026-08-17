@@ -144,7 +144,7 @@ export type CollectionTokenPlan = {
 }
 
 export type PlanCollectionRoyaltyInfoParams = {
-  price?: IntegerInput;
+  price?: bigint;
 } & PlanCollectionTokenParams
 
 export type CollectionRoyaltyInfoPlan = {
