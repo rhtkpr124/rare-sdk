@@ -253,6 +253,7 @@ describe('batch listing namespace', () => {
     );
 
     const result = await namespace.create({
+      autoApprove: true,
       artifact: {
         root: hex32('2'),
         currency: '0x0000000000000000000000000000000000000000',
@@ -313,6 +314,7 @@ describe('batch listing namespace', () => {
     );
 
     const result = await namespace.create({
+      autoApprove: true,
       artifact: {
         root: hex32('2'),
         currency: '0x0000000000000000000000000000000000000000',

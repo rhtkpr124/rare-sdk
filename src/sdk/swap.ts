@@ -524,7 +524,16 @@ export function createSwapNamespace(
 
       const approvalTxHash = params.tokenIn === ETH_ADDRESS
         ? undefined
-        : await ensureTokenAllowance(publicClient, walletClient, account, accountAddress, params.tokenIn, router, amountIn);
+        : await ensureTokenAllowance(
+            publicClient,
+            walletClient,
+            account,
+            accountAddress,
+            params.tokenIn,
+            router,
+            amountIn,
+            params.autoApprove,
+          );
 
       const { txHash, receipt } = await runWithApprovalSideEffectAlert({
         operation: 'swap tokens',
@@ -811,7 +820,7 @@ export function createSwapNamespace(
         amount: quoteDetails.quote.amountIn,
         tokenOut: ETH_ADDRESS,
       });
-      if (params.autoApprove === false && (approval.cancel !== null || approval.approval !== null)) {
+      if (params.autoApprove !== true && (approval.cancel !== null || approval.approval !== null)) {
         throw new PaymentApprovalRequiredError({
           requiredAmount: quoteDetails.quote.amountIn,
           spenderAddress: approval.approval?.to ?? approval.cancel?.to ?? params.token,

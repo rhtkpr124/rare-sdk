@@ -192,7 +192,7 @@ export async function approveNftContractIfNeeded(opts: {
     return undefined;
   }
 
-  if (opts.autoApprove === false) {
+  if (opts.autoApprove !== true) {
     throw new NftApprovalRequiredError({
       nftAddress: opts.nftAddress,
       operator: opts.operator,

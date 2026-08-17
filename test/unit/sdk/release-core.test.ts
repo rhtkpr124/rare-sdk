@@ -447,7 +447,7 @@ describe('release direct sale mint planning', () => {
       proof: [root],
       proofProvided: true,
       recipient: undefined,
-      autoApprove: true,
+      autoApprove: false,
     });
 
     expect(() => planReleaseDirectSaleMint({

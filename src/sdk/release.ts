@@ -186,7 +186,7 @@ async function approveReleaseMinterIfNeeded(opts: {
     return undefined;
   }
 
-  if (opts.autoApprove === false) {
+  if (opts.autoApprove !== true) {
     throw new MinterApprovalRequiredError({
       collection: opts.contract,
       minter: opts.minter,

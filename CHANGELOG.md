@@ -7,6 +7,9 @@ project follows semantic versioning.
 
 - Establish SDK-owned code generation, lint rules, tests, documentation, and
   package validation.
+- **Breaking:** approval-capable writes now default to `autoApprove: false`.
+  Pass `autoApprove: true` to preserve one-call approval-and-write behavior, or
+  catch the exported approval-required errors and retry after user consent.
 
 ## 0.1.3 - 2026-07-24
 

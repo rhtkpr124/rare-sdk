@@ -134,7 +134,7 @@ export async function ensureTokenAllowance(
   token: Address,
   spender: Address,
   amount: bigint,
-  autoApprove = true,
+  autoApprove = false,
 ): Promise<Hash | undefined> {
   if (isAddressEqual(token, ETH_ADDRESS) || amount === 0n) {
     return undefined;
@@ -270,7 +270,7 @@ export async function preparePaymentAmountForSpender(opts: {
     requiredAmount,
   } = opts;
   const isEth = isAddressEqual(currency, ETH_ADDRESS);
-  const autoApprove = opts.autoApprove ?? true;
+  const autoApprove = opts.autoApprove ?? false;
 
   if (requiredAmount === 0n) {
     return {

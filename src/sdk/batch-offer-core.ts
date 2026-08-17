@@ -131,7 +131,7 @@ export function planBatchOfferAccept(
     contract: params.contract,
     tokenId: local.tokenId,
     ...planSplitRecipients(params.splitAddresses, params.splitRatios, accountAddress),
-    autoApprove: params.autoApprove ?? true,
+    autoApprove: params.autoApprove ?? false,
   };
 }
 
