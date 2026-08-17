@@ -444,7 +444,6 @@ describe('release direct sale mint planning', () => {
       price: 500_000_000_000_000_000n,
       proof: [root],
       proofProvided: true,
-      recipient: undefined,
       autoApprove: false,
     });
 
@@ -606,20 +605,6 @@ describe('release direct sale mint planning', () => {
       nowSeconds: 100n,
     })).toThrow('Allowlist proof does not match the connected wallet and release root.');
 
-    expect(() => preflightReleaseDirectSaleMint({
-      status: shapeReleaseStatus({
-        ...baseStatusInput,
-        allowlist: { root: ZERO_BYTES32, endTimestamp: 0n },
-        totalSupply: 0n,
-        maxSupply: 2n,
-      }),
-      plan: planReleaseDirectSaleMint({
-        contract: collection,
-        recipient: recipientAddress,
-      }),
-      buyer: accountAddress,
-      nowSeconds: 100n,
-    })).toThrow('does not support a separate recipient');
   });
 
   it('shapes minted token ranges from MintDirectSale event arguments', () => {

@@ -1,15 +1,20 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
 import { createPublicClient, http } from 'viem';
 import { mainnet } from 'viem/chains';
 import * as client from '../../../src/sdk/index.js';
 import * as contracts from '../../../src/sdk/contracts.js';
 import * as utils from '../../../src/sdk/public-utils.js';
+import type { ReleaseMintDirectSaleParams } from '../../../src/sdk/types/release.js';
 
 afterEach(() => {
   vi.unstubAllGlobals();
 });
 
 describe('public SDK API surface', () => {
+  it('does not expose a recipient input for direct-sale release minting', () => {
+    expectTypeOf<ReleaseMintDirectSaleParams>().not.toHaveProperty('recipient');
+  });
+
   it('keeps the client runtime exports focused on the high-level SDK', () => {
     expect(Object.keys(client).sort()).toEqual([
       'ApprovalSideEffectError',

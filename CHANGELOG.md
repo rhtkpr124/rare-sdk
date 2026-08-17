@@ -5,6 +5,8 @@ project follows semantic versioning.
 
 ## Unreleased
 
+- Removed the unsupported `recipient` input from RareMinter direct-sale release mint parameters. Mint results still report the connected wallet as the observed recipient.
+
 - Establish SDK-owned code generation, lint rules, tests, documentation, and
   package validation.
 - **Breaking:** approval-capable writes now default to `autoApprove: false`.
