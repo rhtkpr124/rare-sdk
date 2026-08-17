@@ -21,6 +21,7 @@ export type RouterSellParams = {
   inputs: readonly `0x${string}`[];
   recipient?: Address;
   deadline?: IntegerInput;
+  autoApprove?: boolean;
 }
 
 export type RouterSwapTokensParams = {
@@ -32,6 +33,7 @@ export type RouterSwapTokensParams = {
   inputs: readonly `0x${string}`[];
   recipient?: Address;
   deadline?: IntegerInput;
+  autoApprove?: boolean;
 }
 
 export type BuyRareParams = {

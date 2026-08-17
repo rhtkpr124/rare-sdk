@@ -212,6 +212,7 @@ describe('payment approval planning', () => {
       spenderAddress: spender,
       currency,
       requiredAmount: 5n,
+      autoApprove: true,
     });
 
     await expect(payment).rejects.toThrow(`ERC20 approval transaction ${approvalTxHash} did not succeed.`);
@@ -242,6 +243,7 @@ describe('payment approval planning', () => {
         spenderAddress: spender,
         currency,
         requiredAmount: 5n,
+        autoApprove: true,
       });
 
       const assertion = expect(payment).rejects.toThrow(
@@ -281,6 +283,7 @@ describe('payment approval planning', () => {
         spenderAddress: spender,
         currency,
         requiredAmount: 5n,
+        autoApprove: true,
       });
       await vi.advanceTimersByTimeAsync(500);
       const payment = await paymentPromise;
@@ -331,7 +334,7 @@ describe('payment approval planning', () => {
     expect(waitForTransactionReceipt).not.toHaveBeenCalled();
   });
 
-  it('returns a typed ERC20 approval-required error before writing when auto approval is disabled', async () => {
+  it('returns a typed ERC20 approval-required error before writing by default', async () => {
     const token = '0x9999999999999999999999999999999999999999';
     const spender = '0x8888888888888888888888888888888888888888';
     const writeContract = vi.fn(async (): Promise<never> => {
@@ -359,7 +362,6 @@ describe('payment approval planning', () => {
       token,
       spender,
       5n,
-      false,
     )).rejects.toBeInstanceOf(PaymentApprovalRequiredError);
 
     expect(writeContract).not.toHaveBeenCalled();
@@ -368,7 +370,7 @@ describe('payment approval planning', () => {
 });
 
 describe('NFT approval planning', () => {
-  it('returns a typed approval-required error before writing when auto approval is disabled', async () => {
+  it('returns a typed approval-required error before writing by default', async () => {
     const nftAddress = '0x7777777777777777777777777777777777777777';
     const operator = '0x8888888888888888888888888888888888888888';
     const approval = approveNftContractIfNeeded({
@@ -390,7 +392,6 @@ describe('NFT approval planning', () => {
       accountAddress: sellerAddress,
       nftAddress,
       operator,
-      autoApprove: false,
     });
 
     await expect(approval).rejects.toBeInstanceOf(NftApprovalRequiredError);

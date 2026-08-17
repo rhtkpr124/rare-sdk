@@ -317,7 +317,7 @@ export function planReleaseDirectSaleMint(params: ResolvedCurrencyParam<ReleaseM
     proof: normalizeReleaseAllowlistProof(params.proof ?? []),
     proofProvided: params.proof !== undefined,
     recipient: params.recipient,
-    autoApprove: params.autoApprove ?? true,
+    autoApprove: params.autoApprove ?? false,
   };
 }
 

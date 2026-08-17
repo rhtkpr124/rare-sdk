@@ -1767,7 +1767,7 @@ async function approveMinterIfNeeded(opts: {
   if (isApproved) {
     return undefined;
   }
-  if (opts.autoApprove === false) {
+  if (opts.autoApprove !== true) {
     throw new MinterApprovalRequiredError({ collection: opts.contract, minter: opts.minter });
   }
   const approvalTxHash = await opts.walletClient.writeContract({

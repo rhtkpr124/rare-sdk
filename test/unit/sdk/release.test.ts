@@ -171,6 +171,7 @@ describe('release namespace shell errors', () => {
       contract: collection,
       price: '1',
       maxMints: 1,
+      autoApprove: true,
     });
 
     expect(configured.txHash).toBe(txHash);
@@ -216,6 +217,7 @@ describe('release namespace shell errors', () => {
       contract: collection,
       price: '1',
       maxMints: 1,
+      autoApprove: true,
     });
 
     expect(configured.txHash).toBe(txHash);
@@ -249,6 +251,7 @@ describe('release namespace shell errors', () => {
       contract: collection,
       price: '1',
       maxMints: 1,
+      autoApprove: true,
     })).rejects.toThrow(`Lazy Sovereign minter approval for ${rareMinter} reverted`);
   });
 
@@ -310,6 +313,7 @@ describe('release namespace shell errors', () => {
         contract: collection,
         price: '1',
         maxMints: 1,
+        autoApprove: true,
       });
     } catch (error) {
       caught = error;

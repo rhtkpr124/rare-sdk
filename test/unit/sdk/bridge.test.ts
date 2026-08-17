@@ -90,6 +90,7 @@ describe('bridge SDK namespace', () => {
       amount: 2n,
       destinationChain: 'base-sepolia',
       recipient: recipientAddress,
+      autoApprove: true,
     });
 
     expect(writeContract.mock.calls.map(([params]) => params)).toEqual([
@@ -143,6 +144,7 @@ describe('bridge SDK namespace', () => {
       amount: 2n,
       destinationChain: 'base-sepolia',
       recipient: recipientAddress,
+      autoApprove: true,
     })).rejects.toMatchObject({
       name: 'ApprovalSideEffectError',
       operation: 'bridge send',

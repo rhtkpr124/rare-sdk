@@ -1,5 +1,5 @@
 /* eslint-disable no-restricted-syntax, @typescript-eslint/explicit-function-return-type */
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   encodeAbiParameters,
   encodeEventTopics,
@@ -10,6 +10,7 @@ import {
 } from 'viem';
 import { liquidFactoryAbi } from '../../../src/contracts/abis/liquid-factory.js';
 import { createLiquidNamespace } from '../../../src/sdk/liquid.js';
+import { PaymentApprovalRequiredError } from '../../../src/sdk/payments-shell.js';
 import type { LiquidCurveSegment } from '../../../src/liquid/curve-config.js';
 
 const accountAddress = '0x1000000000000000000000000000000000000000' as Address;
@@ -93,6 +94,41 @@ describe('Liquid Edition SDK shell receipt handling', () => {
     })).rejects.toThrow(
       `Liquid Edition deploy transaction reverted before emitting LiquidTokenCreated. Transaction hash: ${txHash}. Block: 123.`,
     );
+  });
+
+  it('requires explicit approval for initial RARE liquidity', async () => {
+    const writeContract = vi.fn(async (): Promise<never> => {
+      throw new Error('unexpected approval write');
+    });
+    const namespace = createLiquidNamespace(
+      {
+        publicClient: {
+          async readContract(params: { functionName: string }) {
+            if (params.functionName === 'decimals') return 18;
+            if (params.functionName === 'allowance') return 0n;
+            return readLiquidFactoryConfigContract(params);
+          },
+          async waitForTransactionReceipt(): Promise<never> {
+            throw new Error('unexpected receipt wait');
+          },
+        } as never,
+        walletClient: {
+          account: { address: accountAddress },
+          writeContract,
+        } as never,
+      },
+      'sepolia',
+      { liquidFactory },
+    );
+
+    await expect(namespace.deploy.multiCurve({
+      name: 'Approval Required',
+      symbol: 'APPR',
+      tokenUri: 'ipfs://token',
+      initialRareLiquidity: '1',
+      curves,
+    })).rejects.toBeInstanceOf(PaymentApprovalRequiredError);
+    expect(writeContract).not.toHaveBeenCalled();
   });
 
   it('rejects reverted setRenderContract receipts before returning success', async () => {

@@ -80,6 +80,30 @@ documented root, `client`, `contracts`, `utils`, and `data-access` entry points.
 Catchable approval errors, including `MinterApprovalRequiredError`, are exported
 from the root package and `@rareprotocol/rare-sdk/client`.
 
+### Transaction approvals
+
+Write methods do not send ERC-20 allowance, NFT operator, or collection minter
+approval transactions unless the caller explicitly passes `autoApprove: true`.
+When an approval is required, the default behavior is to reject with the
+corresponding exported `PaymentApprovalRequiredError`,
+`NftApprovalRequiredError`, or `MinterApprovalRequiredError`. This lets an
+application obtain user consent before retrying:
+
+```ts
+try {
+  await rare.listing.create(params);
+} catch (error) {
+  if (error instanceof NftApprovalRequiredError) {
+    // Ask the user for consent, then retry intentionally.
+    await rare.listing.create({ ...params, autoApprove: true });
+  }
+}
+```
+
+Callers that intentionally want the previous one-call behavior can pass
+`autoApprove: true` on approval-capable writes, including swap token sells and
+liquid-edition deployment with initial RARE liquidity.
+
 Liquid-edition curve configuration helpers are available both as standalone
 utilities and on a configured client:
 

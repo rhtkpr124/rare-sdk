@@ -87,7 +87,7 @@ describe('batch offer core', () => {
       tokenId: 2n,
       splitAddresses: [ACCOUNT],
       splitRatios: [100],
-      autoApprove: true,
+      autoApprove: false,
     });
   });
 

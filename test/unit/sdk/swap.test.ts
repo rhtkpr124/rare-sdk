@@ -200,7 +200,7 @@ describe('Swap SDK fallback handling', () => {
     expect(writeContract).not.toHaveBeenCalled();
   });
 
-  it('honors autoApprove false for raw token sells before writing approvals', async () => {
+  it('requires explicit auto approval for raw token sells', async () => {
     const writeContract = vi.fn(async (): Promise<never> => {
       throw new Error('unexpected approval write');
     });
@@ -235,7 +235,6 @@ describe('Swap SDK fallback handling', () => {
       minAmountOut: '0.1',
       commands: '0x00',
       inputs: ['0x00'],
-      autoApprove: false,
     })).rejects.toBeInstanceOf(PaymentApprovalRequiredError);
     expect(writeContract).not.toHaveBeenCalled();
     expect(waitForTransactionReceipt).not.toHaveBeenCalled();
