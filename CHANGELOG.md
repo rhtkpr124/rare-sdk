@@ -16,6 +16,10 @@ project follows semantic versioning.
 - **Breaking:** public crypto-denominated inputs now require bigint base units.
   Applications must convert decimal UI values with `parseEther`, `parseUnits`,
   or an equivalent caller-owned conversion before invoking the SDK.
+- **Breaking:** batch listing creation now accepts the same token-tree artifact
+  as batch auction and offer creation, with price, currency, and splits passed
+  as explicit method parameters. Mixed listing registration artifacts are no
+  longer accepted by the create method.
 
 ## 0.1.3 - 2026-07-24
 

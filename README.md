@@ -146,6 +146,27 @@ await rare.offer.create({
 Serialized batch-listing artifacts retain string amounts because JSON cannot
 represent bigint values; live SDK method inputs are bigint-only.
 
+### Batch marketplace creation
+
+Batch listing, auction, and offer creation use the same token-tree artifact
+produced by `rare.utils.tree.build`. Marketplace terms stay in the method
+parameters instead of being embedded in a listing-specific registration
+artifact:
+
+```ts
+await rare.listing.batch.create({
+  artifact: tokenTreeArtifact,
+  price: parseEther('0.012'),
+  currency: 'eth',
+  splitAddresses,
+  splitRatios,
+});
+```
+
+The previous mixed batch-listing root artifact is not accepted by the V2
+create method. Portable token-tree artifacts remain reusable across listing,
+auction, and offer creation.
+
 Liquid-edition curve configuration helpers are available both as standalone
 utilities and on a configured client:
 

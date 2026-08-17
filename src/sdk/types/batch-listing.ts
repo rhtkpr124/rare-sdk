@@ -1,5 +1,6 @@
 import type { Address, Hash } from 'viem';
 import type { AmountInput, CurrencyInput, IntegerInput, TimestampInput, TransactionResult } from './common.js';
+import type { BatchTokenListArtifact } from '../batch-core.js';
 
 export type BatchListingTokenEntry = {
   contract: Address;
@@ -37,7 +38,11 @@ export type UtilsMerkleProofParams = {
 }
 
 export type BatchListingCreateParams = {
-  artifact: BatchListingRootArtifact;
+  artifact: BatchTokenListArtifact;
+  price: AmountInput;
+  currency?: CurrencyInput;
+  splitAddresses?: Address[];
+  splitRatios?: number[];
   autoApprove?: boolean;
 }
 

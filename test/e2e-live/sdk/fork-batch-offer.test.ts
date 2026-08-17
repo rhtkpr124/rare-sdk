@@ -190,20 +190,12 @@ describeFork('SDK fork integration write paths', () => {
       const apiFetch = nftMerkleRootFetch(tree.root);
       const listingSeller = createForkRareClient(chain, forkSellerPrivateKey, apiFetch);
       const listingBuyer = createForkRareClient(chain, forkBuyerPrivateKey, apiFetch);
-      const listingArtifact = {
-        root: tree.root,
+      const created = await listingSeller.rare.listing.batch.create({
+        artifact: tree,
+        price: 1_000_000_000_000n,
         currency: zeroAddress,
-        amount: '1000000000000',
         splitAddresses: [listingSeller.account, listingBuyer.account],
         splitRatios: [70, 30],
-        tokens: tree.tokens.map((token: { contractAddress: Address; tokenId: string }) => ({
-          contract: token.contractAddress,
-          tokenId: token.tokenId,
-        })),
-      };
-
-      const created = await listingSeller.rare.listing.batch.create({
-        artifact: listingArtifact,
         autoApprove: true,
       });
       expect(created.root).toBe(tree.root);
