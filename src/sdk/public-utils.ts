@@ -8,6 +8,7 @@ import {
   validateBatchTokenProofInputMatchesTarget,
   verifyBatchTokenProof as verifyBatchTokenProofInternal,
 } from './batch-core.js';
+import type { Hex } from 'viem';
 import { buildMerkleProofArtifact, validateProofArtifact, validateRootArtifact } from './merkle-core.js';
 import {
   parseBatchListingCreateRootArtifactInput,
@@ -41,8 +42,8 @@ import type {
   NormalizeReleaseAllowlistConfigParams,
 } from './types/utils.js';
 import type { UtilsMerkleProofArtifact, UtilsMerkleProofParams } from './types/utils.js';
-import { applyCartQuoteSpread, buildCartListingRootArtifact, buildCartOrder, buildCartPayoutRoute } from './cart-core.js';
-import type { BuildCartListingRootParams, BuildCartOrderParams, BuildCartRouteParams, CartListingRootArtifact, CartPayoutRoute, CartSignedOrder } from './types/cart.js';
+import { applyCartQuoteSpread, buildCartListingAuthorization, buildCartListingRootArtifact, buildCartOrder, buildCartPayoutRoute, getCartListingArtifactEntry, parseCartListingRootArtifact, validateCartListingRootArtifact } from './cart-core.js';
+import type { BuildCartListingRootParams, BuildCartOrderParams, BuildCartRouteParams, CartListingAuthorizationBundle, CartListingRootArtifact, CartListingRootArtifactEntry, CartListingSelection, CartPayoutRoute, CartSignedOrder } from './types/cart.js';
 
 export type {
   BuildBatchTokenTreeParams,
@@ -58,7 +59,7 @@ export type {
   NormalizeReleaseAllowlistConfigParams,
   NormalizedReleaseAllowlistConfig,
 } from './types/utils.js';
-export type { BuildCartListingRootParams, BuildCartOrderParams, BuildCartRouteParams, CartListingRootArtifact } from './types/cart.js';
+export type { BuildCartListingRootParams, BuildCartOrderParams, BuildCartRouteParams, CartListingAuthorizationBundle, CartListingRootArtifact, CartListingRootArtifactEntry, CartListingSelection } from './types/cart.js';
 
 export function buildBatchTokenTree(params: BuildBatchTokenTreeParams): BatchTokenTreeArtifact {
   return buildBatchTokenTreeInternal(params);
@@ -134,6 +135,14 @@ export const parseReleaseAllowlistArtifact = parseReleaseAllowlistArtifactJson;
 
 export function buildCartListingRoot(params: BuildCartListingRootParams): CartListingRootArtifact {
   return buildCartListingRootArtifact(params);
+}
+export function parseCartListingArtifact(content: string): CartListingRootArtifact { return parseCartListingRootArtifact(content); }
+export const validateCartListingArtifact = validateCartListingRootArtifact;
+export function getCartListingEntry(artifact: CartListingRootArtifact, listingDigest: Hex): CartListingRootArtifactEntry | undefined {
+  return getCartListingArtifactEntry(artifact, listingDigest);
+}
+export function buildCartListingPurchaseAuthorization(selections: readonly CartListingSelection[]): CartListingAuthorizationBundle {
+  return buildCartListingAuthorization(selections);
 }
 
 export function buildCartPurchaseOrder(params: BuildCartOrderParams): Omit<CartSignedOrder, 'platformSignature'> {
