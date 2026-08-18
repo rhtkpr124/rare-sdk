@@ -7,6 +7,9 @@ import {
   buildCartListingRootArtifact,
   buildCartOrder,
   buildCartPayoutRoute,
+  getCartListingArtifactEntry,
+  parseCartListingRootArtifact,
+  validateCartListingRootArtifact,
 } from '../../../src/sdk/cart-core.js';
 import { cartFulfillmentKinds, type CartListing } from '../../../src/sdk/types/cart.js';
 
@@ -44,6 +47,51 @@ describe('Cart functional core', () => {
     expect(result.listings).toEqual(listings);
     expect(result.authorization.listingRoots).toHaveLength(1);
     expect(result.authorization.listingRootIndexes).toEqual([0n, 0n]);
+  });
+
+  it('round-trips and validates a portable signed batch artifact', () => {
+    const artifact = { ...buildCartListingRootArtifact({ listings, chainId: 11_155_111, cart, nonce: 3n,
+      deadline: 2_000_000_000n }), signature: '0x1234' as Hex };
+    const parsed = parseCartListingRootArtifact(JSON.stringify(artifact));
+    expect(parsed).toEqual(artifact);
+    expect(getCartListingArtifactEntry(parsed, artifact.entries[1]!.listingDigest)).toEqual(artifact.entries[1]);
+    expect(getCartListingArtifactEntry(parsed, bytes32('f'))).toBeUndefined();
+  });
+
+  it('deduplicates equal roots after independent JSON deserialization', () => {
+    const artifact = { ...buildCartListingRootArtifact({ listings, chainId: 11_155_111, cart, nonce: 3n,
+      deadline: 2_000_000_000n }), signature: '0x1234' as Hex };
+    const first = parseCartListingRootArtifact(JSON.stringify(artifact));
+    const second = parseCartListingRootArtifact(JSON.stringify(artifact));
+    const result = buildCartListingAuthorization([
+      { artifact: first, listingDigest: first.entries[0]!.listingDigest },
+      { artifact: second, listingDigest: second.entries[1]!.listingDigest },
+    ]);
+    expect(result.authorization.listingRoots).toHaveLength(1);
+    expect(result.authorization.listingRootIndexes).toEqual([0n, 0n]);
+  });
+
+  it('combines selections from multiple independently signed roots', () => {
+    const first = { ...buildCartListingRootArtifact({ listings: [listings[0]!], chainId: 11_155_111, cart, nonce: 3n,
+      deadline: 2_000_000_000n }), signature: '0x1234' as Hex };
+    const second = { ...buildCartListingRootArtifact({ listings: [listings[1]!], chainId: 11_155_111, cart, nonce: 3n,
+      deadline: 2_000_000_000n }), signature: '0x5678' as Hex };
+    const result = buildCartListingAuthorization([
+      { artifact: first, listingDigest: first.entries[0]!.listingDigest },
+      { artifact: second, listingDigest: second.entries[0]!.listingDigest },
+    ]);
+    expect(result.authorization.listingRoots).toHaveLength(2);
+    expect(result.authorization.listingRootIndexes).toEqual([0n, 1n]);
+    expect(result.authorization.listingProofs).toEqual([[], []]);
+  });
+
+  it('rejects corrupt serialized roots and witnesses', () => {
+    const artifact = buildCartListingRootArtifact({ listings, chainId: 11_155_111, cart, nonce: 3n, deadline: 2_000_000_000n });
+    expect(() => validateCartListingRootArtifact({ ...artifact, root: { ...artifact.root, listingsRoot: bytes32('f') } }))
+      .toThrow('root does not match');
+    expect(() => validateCartListingRootArtifact({ ...artifact, entries: [
+      { ...artifact.entries[0]!, proof: [bytes32('f')] }, artifact.entries[1]!,
+    ] })).toThrow('Merkle witness');
   });
 
   it('hashes the complete immutable Purchase Order payload', () => {

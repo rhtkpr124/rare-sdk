@@ -9,6 +9,8 @@ project follows semantic versioning.
   fixed-quote Purchase Orders, policy-compatible route construction, optional
   Lens diagnostics, explicit payment and asset approvals, and verified checkout
   execution on the deployed Ethereum Sepolia Cart.
+- Add batch-oriented Cart artifact parsing, validation, leaf lookup, and
+  multi-root authorization builders for order-book storage and checkout assembly.
 
 - Removed the unsupported `recipient` input from RareMinter direct-sale release mint parameters. Mint results still report the connected wallet as the observed recipient.
 

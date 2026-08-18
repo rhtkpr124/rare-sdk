@@ -16,7 +16,7 @@ import type {
   LiquidCurveSegment,
   LiquidCurveSupplyAmount,
 } from '../../liquid/curve-config.js';
-import type { BuildCartListingRootParams, BuildCartOrderParams, BuildCartRouteParams, CartListingRootArtifact, CartPayoutRoute, CartSignedOrder } from './cart.js';
+import type { BuildCartListingRootParams, BuildCartOrderParams, BuildCartRouteParams, CartListingAuthorizationBundle, CartListingRootArtifact, CartListingRootArtifactEntry, CartListingSelection, CartPayoutRoute, CartSignedOrder } from './cart.js';
 
 export type {
   BuildUtilsTreeParams,
@@ -80,6 +80,10 @@ export type NormalizedReleaseAllowlistConfig = {
 export type RareUtilsNamespace = {
   cart: {
     buildListingRoot: (params: BuildCartListingRootParams) => CartListingRootArtifact;
+    parseListingArtifact: (content: string) => CartListingRootArtifact;
+    validateListingArtifact: (artifact: unknown) => asserts artifact is CartListingRootArtifact;
+    getListingEntry: (artifact: CartListingRootArtifact, listingDigest: Hex) => CartListingRootArtifactEntry | undefined;
+    buildListingAuthorization: (selections: readonly CartListingSelection[]) => CartListingAuthorizationBundle;
     buildOrder: (params: BuildCartOrderParams) => Omit<CartSignedOrder, 'platformSignature'>;
     applyQuoteSpread: (estimatedInput: bigint, spreadBps: bigint) => bigint;
     buildRoute: (params: BuildCartRouteParams) => CartPayoutRoute;

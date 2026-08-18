@@ -3,7 +3,7 @@ import { cartAbi } from '../contracts/abis/cart.js';
 import { cartLensAbi } from '../contracts/abis/cart-lens.js';
 import { ETH_ADDRESS, type SupportedChain } from '../contracts/addresses.js';
 import { approvalAbi, approveNftContractIfNeeded, runWithApprovalSideEffectAlert } from './approvals-shell.js';
-import { buildCartListingRootArtifact, buildCartOrder, cartDomain, hashCartListing, hashCartListingRoot, hashCartOrder } from './cart-core.js';
+import { buildCartListingAuthorization, buildCartListingRootArtifact, buildCartOrder, cartDomain, getCartListingArtifactEntry, hashCartListing, hashCartListingRoot, hashCartOrder, parseCartListingRootArtifact, validateCartListingRootArtifact } from './cart-core.js';
 import { preparePaymentAmountForSpender } from './payments-shell.js';
 import { waitForSuccessfulTransactionReceipt } from './transaction-receipt.js';
 import type { RareClientConfig } from './types/client.js';
@@ -54,6 +54,10 @@ export function createCartNamespace(
   return {
     listing: {
       buildRoot(params) { return buildCartListingRootArtifact(params); },
+      parseArtifact: parseCartListingRootArtifact,
+      validateArtifact: validateCartListingRootArtifact,
+      getEntry: getCartListingArtifactEntry,
+      buildAuthorization: buildCartListingAuthorization,
       async signRoot(artifact, signer) {
         if (!isAddressEqual(artifact.seller, signer.address)) throw new Error('Listing Root signer does not match artifact seller.');
         const root = { listingsRoot: artifact.root.listingsRoot, nonce: BigInt(artifact.root.nonce), deadline: BigInt(artifact.root.deadline) };

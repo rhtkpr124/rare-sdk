@@ -44,6 +44,11 @@ export type CartListingRootArtifact = {
   root: { listingsRoot: Hex; nonce: string; deadline: string };
   entries: CartListingRootArtifactEntry[]; signature?: Hex;
 };
+export type CartListingSelection = { artifact: CartListingRootArtifact; listingDigest: Hex };
+export type CartListingAuthorizationBundle = {
+  listings: CartListing[];
+  authorization: CartListingPurchaseAuthorization;
+};
 export type CartListingPurchaseAuthorization = {
   listingRoots: CartListingRoot[]; listingRootSignatures: Hex[];
   listingRootIndexes: bigint[]; listingProofs: Hex[][];
@@ -83,6 +88,10 @@ export type CartNamespace = {
   listing: {
     buildRoot: (params: BuildCartListingRootParams) => CartListingRootArtifact;
     signRoot: (artifact: CartListingRootArtifact, signer: CartTypedDataSigner) => Promise<CartListingRootArtifact>;
+    parseArtifact: (content: string) => CartListingRootArtifact;
+    validateArtifact: (artifact: unknown) => asserts artifact is CartListingRootArtifact;
+    getEntry: (artifact: CartListingRootArtifact, listingDigest: Hex) => CartListingRootArtifactEntry | undefined;
+    buildAuthorization: (selections: readonly CartListingSelection[]) => CartListingAuthorizationBundle;
     cancel: (listingDigest: Hex) => Promise<{ txHash: Hash; receipt: TransactionReceipt }>;
     cancelRoot: (rootDigest: Hex) => Promise<{ txHash: Hash; receipt: TransactionReceipt }>;
     invalidateNonce: () => Promise<{ txHash: Hash; receipt: TransactionReceipt }>;

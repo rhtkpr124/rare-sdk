@@ -78,6 +78,14 @@ const artifact = rare.cart.listing.buildRoot({
 });
 const signedListings = await rare.cart.listing.signRoot(artifact, sellerSigner);
 
+// Signed artifacts are JSON-safe for order-book storage. At checkout, select
+// leaves from one or more roots and assemble the contract witnesses.
+const storedArtifact = rare.cart.listing.parseArtifact(JSON.stringify(signedListings));
+const { listings: selectedListings, authorization } = rare.cart.listing.buildAuthorization([
+  { artifact: storedArtifact, listingDigest: storedArtifact.entries[0].listingDigest },
+  { artifact: storedArtifact, listingDigest: storedArtifact.entries[1].listingDigest },
+]);
+
 const route = rare.utils.cart.buildRoute({ paymentCurrency, legs });
 const unsigned = rare.cart.order.build({
   orderId,

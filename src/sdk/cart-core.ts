@@ -5,8 +5,9 @@ import {
 } from 'viem';
 import type {
   BuildCartListingRootParams, BuildCartOrderParams, CartFulfillmentAction, CartListing,
-  BuildCartRouteParams, CartListingPurchaseAuthorization, CartListingRootArtifact, CartOrderLine, CartPayoutRoute, CartRouteLeg,
-  CartPurchaseOrder, CartSignedOrder, CartValidationIssue, CartValidationResult,
+  BuildCartRouteParams, CartListingRootArtifact, CartOrderLine, CartPayoutRoute, CartRouteLeg,
+  CartPurchaseOrder, CartSignedOrder, CartValidationIssue, CartValidationResult, CartListingRootArtifactEntry,
+  CartListingSelection, CartListingAuthorizationBundle,
 } from './types/cart.js';
 
 export const cartEip712Name = 'SuperRare Cart';
@@ -95,17 +96,58 @@ export function parseCartArtifactListing(entry: CartListingRootArtifact['entries
     availableQuantity: BigInt(entry.listing.availableQuantity) };
 }
 
-export function buildCartListingAuthorization(entries: readonly { artifact: CartListingRootArtifact; listingDigest: Hex }[]): {
-  listings: CartListing[]; authorization: CartListingPurchaseAuthorization;
-} {
+export function parseCartListingRootArtifact(content: string): CartListingRootArtifact {
+  const parsed: unknown = JSON.parse(content);
+  validateCartListingRootArtifact(parsed);
+  return parsed;
+}
+
+export function validateCartListingRootArtifact(value: unknown): asserts value is CartListingRootArtifact {
+  if (typeof value !== 'object' || value === null) throw new Error('Cart Listing Root artifact must be an object.');
+  const artifact = value as Partial<CartListingRootArtifact>;
+  if (artifact.version !== 1 || artifact.type !== 'rare-cart-listing-root') throw new Error('Unsupported Cart Listing Root artifact version or type.');
+  if (!Number.isSafeInteger(artifact.chainId) || artifact.chainId! <= 0) throw new Error('Cart Listing Root artifact chainId must be a positive safe integer.');
+  if (!artifact.cart || !isAddress(artifact.cart) || !artifact.seller || !isAddress(artifact.seller)) throw new Error('Cart Listing Root artifact addresses are invalid.');
+  if (!artifact.root || !Array.isArray(artifact.entries) || artifact.entries.length === 0) throw new Error('Cart Listing Root artifact must contain a root and entries.');
+  if (!isBytes32(artifact.root.listingsRoot) || !isUnsignedIntegerString(artifact.root.nonce) || !isUnsignedIntegerString(artifact.root.deadline)) throw new Error('Cart Listing Root artifact root fields are invalid.');
+  if (artifact.signature !== undefined && !isHex(artifact.signature, { strict: true })) throw new Error('Cart Listing Root artifact signature is invalid.');
+  const parsedListings = artifact.entries.map((entry, index) => {
+    if (!entry || !isBytes32(entry.listingDigest) || !isBytes32(entry.leaf) || !Array.isArray(entry.proof) || !entry.proof.every(isBytes32)) {
+      throw new Error(`Cart Listing Root artifact entry ${index} is invalid.`);
+    }
+    return parseCartArtifactListing(entry);
+  });
+  const rebuilt = buildCartListingRootArtifact({ listings: parsedListings, chainId: artifact.chainId!, cart: artifact.cart,
+    nonce: BigInt(artifact.root.nonce), deadline: BigInt(artifact.root.deadline) });
+  if (rebuilt.seller !== getAddress(artifact.seller) || rebuilt.root.listingsRoot !== artifact.root.listingsRoot) throw new Error('Cart Listing Root artifact root does not match its entries.');
+  rebuilt.entries.forEach((entry, index) => {
+    const supplied = artifact.entries![index]!;
+    if (entry.listingDigest !== supplied.listingDigest || entry.leaf !== supplied.leaf ||
+      entry.proof.length !== supplied.proof.length || entry.proof.some((proof, proofIndex) => proof !== supplied.proof[proofIndex])) {
+      throw new Error(`Cart Listing Root artifact entry ${index} does not match its Merkle witness.`);
+    }
+  });
+}
+
+export function getCartListingArtifactEntry(artifact: CartListingRootArtifact, listingDigest: Hex): CartListingRootArtifactEntry | undefined {
+  validateCartListingRootArtifact(artifact);
+  return artifact.entries.find((entry) => entry.listingDigest === listingDigest);
+}
+
+export function buildCartListingAuthorization(entries: readonly CartListingSelection[]): CartListingAuthorizationBundle {
+  if (entries.length === 0) throw new Error('At least one Cart Listing selection is required.');
   const roots: CartListingRootArtifact[] = [];
+  const rootIndexes = new Map<string, number>();
   const listings: CartListing[] = [];
   const indexes: bigint[] = [];
   const proofs: Hex[][] = [];
   for (const selected of entries) {
+    validateCartListingRootArtifact(selected.artifact);
     if (!selected.artifact.signature) throw new Error('Selected Listing Root artifact is not signed.');
-    let rootIndex = roots.indexOf(selected.artifact);
-    if (rootIndex < 0) { rootIndex = roots.length; roots.push(selected.artifact); }
+    const key = cartListingRootIdentity(selected.artifact);
+    let rootIndex = rootIndexes.get(key);
+    if (rootIndex === undefined) { rootIndex = roots.length; roots.push(selected.artifact); rootIndexes.set(key, rootIndex); }
+    else if (roots[rootIndex]!.signature !== selected.artifact.signature) throw new Error('Matching Cart Listing Roots contain conflicting signatures.');
     const entry = selected.artifact.entries.find((candidate) => candidate.listingDigest === selected.listingDigest);
     if (!entry) throw new Error(`Listing ${selected.listingDigest} is not present in its root artifact.`);
     listings.push(parseCartArtifactListing(entry)); indexes.push(BigInt(rootIndex)); proofs.push(entry.proof);
@@ -115,6 +157,11 @@ export function buildCartListingAuthorization(entries: readonly { artifact: Cart
     listingRootSignatures: roots.map((artifact) => artifact.signature!), listingRootIndexes: indexes, listingProofs: proofs,
   } };
 }
+function cartListingRootIdentity(artifact: CartListingRootArtifact): string {
+  return [artifact.chainId, artifact.cart, artifact.seller, artifact.root.listingsRoot, artifact.root.nonce, artifact.root.deadline].join(':').toLowerCase();
+}
+function isBytes32(value: unknown): value is Hex { return typeof value === 'string' && isHex(value, { strict: true }) && value.length === 66; }
+function isUnsignedIntegerString(value: unknown): value is string { return typeof value === 'string' && /^(0|[1-9][0-9]*)$/.test(value); }
 
 export function buildCartOrder(params: BuildCartOrderParams): Omit<CartSignedOrder, 'platformSignature'> {
   const route = params.route ?? { commands: '0x', inputs: [] };
