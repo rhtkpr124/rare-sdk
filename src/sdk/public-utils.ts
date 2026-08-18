@@ -41,6 +41,8 @@ import type {
   NormalizeReleaseAllowlistConfigParams,
 } from './types/utils.js';
 import type { UtilsMerkleProofArtifact, UtilsMerkleProofParams } from './types/utils.js';
+import { applyCartQuoteSpread, buildCartListingRootArtifact, buildCartOrder, buildCartPayoutRoute } from './cart-core.js';
+import type { BuildCartListingRootParams, BuildCartOrderParams, BuildCartRouteParams, CartListingRootArtifact, CartPayoutRoute, CartSignedOrder } from './types/cart.js';
 
 export type {
   BuildBatchTokenTreeParams,
@@ -56,6 +58,7 @@ export type {
   NormalizeReleaseAllowlistConfigParams,
   NormalizedReleaseAllowlistConfig,
 } from './types/utils.js';
+export type { BuildCartListingRootParams, BuildCartOrderParams, BuildCartRouteParams, CartListingRootArtifact } from './types/cart.js';
 
 export function buildBatchTokenTree(params: BuildBatchTokenTreeParams): BatchTokenTreeArtifact {
   return buildBatchTokenTreeInternal(params);
@@ -128,3 +131,17 @@ export function normalizeReleaseAllowlistConfig(
   return planReleaseAllowlistConfig(params);
 }
 export const parseReleaseAllowlistArtifact = parseReleaseAllowlistArtifactJson;
+
+export function buildCartListingRoot(params: BuildCartListingRootParams): CartListingRootArtifact {
+  return buildCartListingRootArtifact(params);
+}
+
+export function buildCartPurchaseOrder(params: BuildCartOrderParams): Omit<CartSignedOrder, 'platformSignature'> {
+  return buildCartOrder(params);
+}
+
+export { applyCartQuoteSpread };
+
+export function buildCartRoute(params: BuildCartRouteParams): CartPayoutRoute {
+  return buildCartPayoutRoute(params);
+}

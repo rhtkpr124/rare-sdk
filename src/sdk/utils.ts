@@ -6,11 +6,18 @@ import {
 } from './batch-core.js';
 import { buildMerkleProofArtifact } from './merkle-core.js';
 import { getCurvePresetDefinition, parseCurveConfig } from '../liquid/curve-config.js';
+import { applyCartQuoteSpread, buildCartListingRootArtifact, buildCartOrder, buildCartPayoutRoute } from './cart-core.js';
 
 export type * from './types/utils.js';
 
 export function createUtilsNamespace(): RareUtilsNamespace {
   return {
+    cart: {
+      buildListingRoot: buildCartListingRootArtifact,
+      buildOrder: buildCartOrder,
+      applyQuoteSpread: applyCartQuoteSpread,
+      buildRoute: buildCartPayoutRoute,
+    },
     tree: {
       build(params): ReturnType<RareUtilsNamespace['tree']['build']> {
         return buildBatchTokenTreeArtifact(params);

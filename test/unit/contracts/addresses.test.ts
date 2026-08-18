@@ -5,6 +5,8 @@ import {
   ETH_ADDRESS,
   getCanonicalRareEthPool,
   getCanonicalUsdcEthPool,
+  getCartAddress,
+  getCartLensAddress,
   getContractAddresses,
   getErc721ApprovalManagerAddress,
   getErc1155ApprovalManagerAddress,
@@ -52,10 +54,15 @@ describe('chain and currency helpers', () => {
       liquidFactory: getAddress('0xb1777091C953fa2aC1fD67f2b3e2f61343F5Ce5e'),
       swapRouter: getAddress('0x429c3Ee66E7f6CDA12C5BadE4104aF3277aA2305'),
       v4Quoter: getAddress('0x61B3f2011A92d183C7dbaDBdA940a7555Ccf9227'),
+      cart: getAddress('0x1EBF35b3A76caEf60a009d2786A66A91D42A38Bc'),
+      cartLens: getAddress('0x1Af760FD56e0e41a45173E954D44C865F7A7F29e'),
     });
     expect(getRareMinterAddress('sepolia')).toBe('0xd28Dc0B89104d7BBd902F338a0193fF063617ccE');
     expect(getRareBridgeAddress('sepolia')).toBe('0xdC168291658f6C5F1D0b33E573c4d289DCA9dD08');
     expect(getCcipChainSelector('sepolia')).toBe(16015286601757825753n);
+    expect(getCartAddress('sepolia')).toBe(getAddress('0x1EBF35b3A76caEf60a009d2786A66A91D42A38Bc'));
+    expect(getCartLensAddress('sepolia')).toBe(getAddress('0x1Af760FD56e0e41a45173E954D44C865F7A7F29e'));
+    expect(() => getCartAddress('mainnet')).toThrow('cart contract is not configured');
     expect(getContractAddresses('mainnet').liquidFactory).toBe('0x25f993C222fE5e891128a782A5168f1C78629540');
     expect(getContractAddresses('mainnet').erc1155Marketplace).toBe(
       '0x0015F7659d86cd7F1049C039abE72AEd702De678',

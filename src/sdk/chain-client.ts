@@ -19,6 +19,7 @@ import { createSwapNamespace } from './swap.js';
 import { createReleaseNamespace } from './release.js';
 import { createCollectionNamespace } from './collection.js';
 import { createUtilsNamespace } from './utils.js';
+import { createCartNamespace } from './cart.js';
 import { buildNftUniversalTokenId } from './nft-core.js';
 import {
   createErc1155CollectionNamespace,
@@ -167,6 +168,8 @@ export function createChainClient(config: RareClientConfig, api = createRareApi(
       liquidFactory: addresses.liquidFactory,
       swapRouter: addresses.swapRouter,
       v4Quoter: addresses.v4Quoter,
+      cart: addresses.cart,
+      cartLens: addresses.cartLens,
     },
     liquidEdition: createLiquidNamespace(runtimeConfig, chain, addresses),
     bridge: createBridgeNamespace(publicClient, runtimeConfig, chain),
@@ -177,6 +180,7 @@ export function createChainClient(config: RareClientConfig, api = createRareApi(
     utils: createUtilsNamespace(),
     token: createTokenNamespace(publicClient, chain),
     currency: createCurrencyNamespace(publicClient, chain),
+    cart: createCartNamespace(publicClient, runtimeConfig, chain, chainId, addresses),
     search: {
       async liquidEditions(params = {}): ReturnType<RareClient['search']['liquidEditions']> {
         assertNoClientChainOverride(params, 'rare.search.liquidEditions', chain);

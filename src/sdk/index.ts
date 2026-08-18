@@ -16,6 +16,7 @@ export type * from './types/bridge.js';
 export type * from './types/swap.js';
 export type * from './types/collection.js';
 export type * from './types/utils.js';
+export type * from './types/cart.js';
 export type { CurvePresetKey, LiquidCurvePreview, LiquidCurveSegment } from '../liquid/curve-config.js';
 export type { LiquidFactoryConfig } from '../liquid/factory-config.js';
 
@@ -23,6 +24,7 @@ export { ApprovalSideEffectError, MinterApprovalRequiredError, NftApprovalRequir
 export type { ApprovalSideEffect } from './approvals-shell.js';
 export { PaymentApprovalRequiredError } from './payments-shell.js';
 export { Erc1155CheckoutAllItemsSkippedError } from './erc1155.js';
+export { CartExecutionError, CartPreparationError, CartVerificationError } from './cart.js';
 export type {
   LiquidEdition,
   LiquidEditionMediaItem,
