@@ -61,6 +61,54 @@ Features are grouped by intent under `rare.listing`, `rare.offer`,
 Batch listings and release configuration are available through
 `rare.listing.batch` and `rare.listing.release`; ERC-1155 collection,
 listing, and offer behavior is nested under its corresponding intent namespace.
+
+Cart commerce is grouped under `rare.cart.listing`, `rare.cart.order`, and
+`rare.cart.checkout`. Sellers build and sign portable Listing Root artifacts;
+the platform builds and signs a fixed customer quote; the payer prepares and
+executes the resulting atomic purchase. The payer is always the transaction
+sender and may be a collector, processor, or another third party.
+
+```ts
+const artifact = rare.cart.listing.buildRoot({
+  listings,
+  chainId: rare.chainId,
+  cart: rare.contracts.cart!,
+  nonce,
+  deadline,
+});
+const signedListings = await rare.cart.listing.signRoot(artifact, sellerSigner);
+
+const route = rare.utils.cart.buildRoute({ paymentCurrency, legs });
+const unsigned = rare.cart.order.build({
+  orderId,
+  paymentCurrency,
+  paymentAmount,
+  deadline,
+  lines,
+  route,
+  actions,
+});
+const signedOrder = await rare.cart.order.sign(unsigned, platformSigner);
+
+const preparation = await rare.cart.checkout.prepare({
+  ...signedOrder,
+  listings: selectedListings,
+  authorization,
+});
+if (preparation.ready) {
+  await rare.cart.checkout.execute({
+    ...signedOrder,
+    listings: selectedListings,
+    authorization,
+    autoApprove: true,
+  });
+}
+```
+
+`autoApprove` defaults to `false`. Cart collects the exact platform-signed
+`paymentAmount`; settlement recipients receive their exact signed Order Line
+amounts, while favorable routing variance is protocol spread. Pure portable
+builders are also available from `@rareprotocol/rare-sdk/utils`.
 Methods return structured results and reject on RPC, API, wallet, or validation
 failure.
 

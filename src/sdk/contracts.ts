@@ -7,6 +7,8 @@ export {
   defaultRpcUrls,
   ETH_ADDRESS,
   getBatchListingAddress,
+  getCartAddress,
+  getCartLensAddress,
   getCanonicalRareEthPool,
   getCanonicalUsdcEthPool,
   getCanonicalV4Pools,
@@ -45,6 +47,8 @@ export type {
 
 export { auctionAbi } from '../contracts/abis/auction.js';
 export { batchAuctionHouseAbi } from '../contracts/abis/batch-auctionhouse.js';
+export { cartAbi } from '../contracts/abis/cart.js';
+export { cartLensAbi } from '../contracts/abis/cart-lens.js';
 export { batchListingAbi } from '../contracts/abis/batch-listing.js';
 export { batchOfferAbi } from '../contracts/abis/batch-offer.js';
 export { collectionMintAbi } from '../contracts/abis/collection-mint.js';

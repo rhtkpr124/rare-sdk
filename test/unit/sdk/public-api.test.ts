@@ -19,6 +19,9 @@ describe('public SDK API surface', () => {
     expect(Object.keys(client).sort()).toEqual([
       'ApprovalSideEffectError',
       'AvatarProfileUpdateError',
+      'CartExecutionError',
+      'CartPreparationError',
+      'CartVerificationError',
       'Erc1155CheckoutAllItemsSkippedError',
       'MinterApprovalRequiredError',
       'NftApprovalRequiredError',
@@ -54,12 +57,18 @@ describe('public SDK API surface', () => {
     expect(contracts).toHaveProperty('getRareBridgeAddress');
     expect(contracts).toHaveProperty('isSupportedChain');
     expect(contracts).toHaveProperty('rareBridgeAbi');
+    expect(contracts).toHaveProperty('cartAbi');
+    expect(contracts).toHaveProperty('cartLensAbi');
   });
 
   it('exposes standalone pure helpers from the utils subpath', () => {
     expect(Object.keys(utils).sort()).toEqual([
+      'applyCartQuoteSpread',
       'buildBatchListingArtifact',
       'buildBatchTokenTree',
+      'buildCartListingRoot',
+      'buildCartPurchaseOrder',
+      'buildCartRoute',
       'buildMerkleProof',
       'buildReleaseAllowlistArtifact',
       'getBatchTokenProof',

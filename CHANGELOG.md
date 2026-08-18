@@ -5,6 +5,11 @@ project follows semantic versioning.
 
 ## Unreleased
 
+- Add the chain-bound Cart SDK with deterministic seller Listing Root artifacts,
+  fixed-quote Purchase Orders, policy-compatible route construction, optional
+  Lens diagnostics, explicit payment and asset approvals, and verified checkout
+  execution on the deployed Ethereum Sepolia Cart.
+
 - Removed the unsupported `recipient` input from RareMinter direct-sale release mint parameters. Mint results still report the connected wallet as the observed recipient.
 
 - Establish SDK-owned code generation, lint rules, tests, documentation, and
