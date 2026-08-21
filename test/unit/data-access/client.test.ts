@@ -87,6 +87,34 @@ describe('API client configuration', () => {
     });
   });
 
+  it('preserves structured Cart API error details', async () => {
+    vi.stubGlobal('fetch', async () =>
+      new Response(JSON.stringify({ error: {
+        code: 'listing_invalidated',
+        message: 'Cart Listing is not available',
+        retryable: false,
+        listingDigest: `0x${'11'.repeat(32)}`,
+        lineIndex: 1,
+      } }), {
+        status: 409,
+        headers: { 'Content-Type': 'application/json' },
+      }));
+
+    const client = createApiClient('https://rare-api.test');
+    const request = client.GET('/v1/nfts', { params: { query: { page: 1, perPage: 1 } } });
+
+    await expect(request).rejects.toMatchObject({
+      name: 'RareApiError',
+      status: 409,
+      details: {
+        code: 'listing_invalidated',
+        retryable: false,
+        lineIndex: 1,
+      },
+      message: 'API error 409 on /v1/nfts: Cart Listing is not available',
+    });
+  });
+
   it('falls back to response status text when API error bodies are not JSON', async () => {
     vi.stubGlobal('fetch', async () =>
       new Response('temporarily unavailable', {
