@@ -47,6 +47,9 @@ describe('public SDK API surface', () => {
 
     expect(rare.chain).toBe('mainnet');
     expect(rare.chainId).toBe(1);
+    expect(rare.cart.api.catalog.products.create).toBeTypeOf('function');
+    expect(rare.cart.api.listing.search).toBeTypeOf('function');
+    expect(rare.cart.api.checkout.prepareOrder).toBeTypeOf('function');
   });
 
   it('exposes contract building blocks from the contracts subpath', () => {
