@@ -84,6 +84,7 @@
     "generate:types": "tsx scripts/generate-openapi-types.ts",
     "docs:build": "typedoc",
     "package:check": "tsx scripts/validate-package.ts",
+    "prepare": "npm run build",
     "prepublishOnly": "npm run typecheck && npm run lint && npm run test",
     "test:integration:uploads": "vitest run test/integration-deployed/uploads.test.ts",
     "test:integration:account": "vitest run test/integration-deployed/account-auth.test.ts test/integration-deployed/account-origins.test.ts test/integration-deployed/account-transport.test.ts --no-file-parallelism",
