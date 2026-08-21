@@ -2,9 +2,9 @@ export class RareApiError extends Error {
   readonly status: number;
   readonly path: string;
   readonly code?: string;
-  readonly details?: ApiErrorField[];
+  readonly details?: unknown;
 
-  constructor(message: string, status: number, path: string, code?: string, details?: ApiErrorField[]) {
+  constructor(message: string, status: number, path: string, code?: string, details?: unknown) {
     super(`API error ${status} on ${path}: ${message}`);
     this.name = 'RareApiError';
     this.status = status;
@@ -17,8 +17,12 @@ export class RareApiError extends Error {
 export type ApiErrorField = { field: string; message: string };
 
 /** Parse additive application error fields without changing legacy messages. */
-export function parseApiError(value: unknown): { error?: string; code?: string; details?: ApiErrorField[] } {
+export function parseApiError(value: unknown): { error?: string; code?: string; details?: unknown } {
   if (typeof value !== 'object' || value === null) return {};
+  if ('error' in value && typeof value.error === 'object' && value.error !== null && 'message' in value.error && typeof value.error.message === 'string') {
+    const code = 'code' in value.error && typeof value.error.code === 'string' ? value.error.code : undefined;
+    return { error: value.error.message, ...(code === undefined ? {} : { code }), details: value.error };
+  }
   const error = 'error' in value && typeof value.error === 'string' ? value.error : undefined;
   const code = 'code' in value && typeof value.code === 'string' && /^[a-z][a-z0-9_]{0,63}$/.test(value.code) ? value.code : undefined;
   const details = 'details' in value && Array.isArray(value.details) && value.details.every(isApiErrorField) ? value.details : undefined;
