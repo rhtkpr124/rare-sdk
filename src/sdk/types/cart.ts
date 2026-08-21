@@ -1,4 +1,5 @@
 import type { Account, Address, Hash, Hex, TransactionReceipt } from 'viem';
+import type { CartApiNamespace } from './cart-api.js';
 
 export const cartFulfillmentKinds = {
   none: 0,
@@ -85,6 +86,7 @@ export type CartValidationIssue = { code: string; field: string; message: string
 export type CartValidationResult<T> = { isValid: true; value: T } | { isValid: false; issues: CartValidationIssue[] };
 
 export type CartNamespace = {
+  api: CartApiNamespace;
   listing: {
     buildRoot: (params: BuildCartListingRootParams) => CartListingRootArtifact;
     signRoot: (artifact: CartListingRootArtifact, signer: CartTypedDataSigner) => Promise<CartListingRootArtifact>;

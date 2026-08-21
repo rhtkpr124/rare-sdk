@@ -9,8 +9,10 @@ import { waitForSuccessfulTransactionReceipt } from './transaction-receipt.js';
 import type { RareClientConfig } from './types/client.js';
 import type { CartCheckoutParams, CartCheckoutPreparation, CartNamespace, CartSignedOrder, CartTypedDataSigner } from './types/cart.js';
 import { requireWallet } from './wallet-shell.js';
+import { createCartApiNamespace } from './cart-api.js';
 
 export type * from './types/cart.js';
+export type * from './types/cart-api.js';
 
 export class CartPreparationError extends Error {
   readonly code: string;
@@ -52,6 +54,7 @@ export function createCartNamespace(
   };
 
   return {
+    api: createCartApiNamespace({ baseUrl: config.apiBaseUrl, fetch: config.apiFetch }, { chainId, cartAddress: addresses.cart }),
     listing: {
       buildRoot(params) { return buildCartListingRootArtifact(params); },
       parseArtifact: parseCartListingRootArtifact,

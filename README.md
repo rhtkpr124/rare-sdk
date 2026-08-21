@@ -98,16 +98,19 @@ const unsigned = rare.cart.order.build({
 });
 const signedOrder = await rare.cart.order.sign(unsigned, platformSigner);
 
+// The chain-bound Cart API namespace manages catalog/order-book persistence and
+// asks rare-api to validate and platform-sign a buyer draft.
+const prepared = await rare.cart.api.checkout.prepareOrder({
+  paymentCurrency,
+  items: [{ listingDigest, quantity: 1n, recipient: buyerAddress }],
+});
+
 const preparation = await rare.cart.checkout.prepare({
-  ...signedOrder,
-  listings: selectedListings,
-  authorization,
+  ...prepared.executePurchase,
 });
 if (preparation.ready) {
   await rare.cart.checkout.execute({
-    ...signedOrder,
-    listings: selectedListings,
-    authorization,
+    ...prepared.executePurchase,
     autoApprove: true,
   });
 }
