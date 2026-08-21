@@ -12,6 +12,18 @@ import {
   validateCartListingRootArtifact,
 } from '../../../src/sdk/cart-core.js';
 import { cartFulfillmentKinds, type CartListing } from '../../../src/sdk/types/cart.js';
+import {
+  buildCartEip712Domain,
+  computeCartListingMerkleRoot,
+  deriveCartListingMerkleLeaf,
+  hashCartFulfillmentActions,
+  hashCartListing,
+  hashCartListingRoot,
+  hashCartOrderLines,
+  hashCartPayoutRoute,
+  hashCartPurchaseOrder,
+  verifyCartListingMerkleProof,
+} from '../../../src/sdk/public-utils.js';
 
 const seller = '0x1000000000000000000000000000000000000000' as Address;
 const cart = '0x2000000000000000000000000000000000000000' as Address;
@@ -39,6 +51,59 @@ describe('Cart functional core', () => {
       '0x39805ad1aa6fa18731378769f4f3558d791294fbb489b8745855b300be97965b',
     ]);
     expect(() => JSON.stringify(artifact)).not.toThrow();
+  });
+
+  it('exposes contract-compatible Cart protocol hash golden vectors', () => {
+    const artifact = buildCartListingRootArtifact({ listings: [listings[0]!], chainId: 11_155_111, cart, nonce: 3n,
+      deadline: 2_000_000_000n });
+    const root = { listingsRoot: artifact.root.listingsRoot, nonce: 3n, deadline: 2_000_000_000n };
+    const built = buildCartOrder({
+      orderId: bytes32('c'), paymentCurrency: zeroAddress, deadline: 2_000_000_000n, paymentAmount: 500n,
+      lines: [{ sku: bytes32('a'), listingHash: artifact.entries[0]!.listingDigest,
+        fulfillmentKind: cartFulfillmentKinds.erc721Transfer, quantity: 1n, settlementCurrency: zeroAddress,
+        amount: 100n, paymentRecipient: seller }],
+      actions: [{ lineIndex: 0n, quantity: 1n, recipient: seller }],
+    });
+
+    expect(buildCartEip712Domain(11_155_111n, cart)).toEqual({
+      name: 'SuperRare Cart', version: '1', chainId: 11_155_111n, verifyingContract: cart,
+    });
+    expect(hashCartListing(listings[0]!, 11_155_111n, cart)).toBe('0x056a20bad3561c36a41a1ed629e7a2021fbc9d2570c1a8692342ef2c1c97023e');
+    expect(hashCartListingRoot(root, 11_155_111n, cart)).toBe('0x8922eebeb8150e37b61190a02719cc1d0136cc5aa4a03a17b28a0fee7bdc460a');
+    expect(hashCartOrderLines(built.lines)).toBe('0xc02b9f957c0dd381478d59c0534f943355a7d70f36563a47b23b70d4e476f8e9');
+    expect(hashCartPayoutRoute(built.route)).toBe('0x3112387f541288de916e2809d7bf60d3f35729f4f1385c6c0b3385d6100c97ec');
+    expect(hashCartFulfillmentActions(built.actions)).toBe('0xba849680009431518c33bc2af2eb9cdc70aab55365b8e33eac1c35eb3223b1ff');
+    expect(hashCartPurchaseOrder(built.order, 11_155_111n, cart)).toBe('0xdf61113d72ef26b95c9ff6ef424459463e8a6ba23245df259ebe54316cbf8b8c');
+  });
+
+  it('produces identical hashes for equivalent safe number and bigint chain IDs', () => {
+    const artifact = buildCartListingRootArtifact({ listings: [listings[0]!], chainId: 11_155_111, cart, nonce: 3n,
+      deadline: 2_000_000_000n });
+    const root = { listingsRoot: artifact.root.listingsRoot, nonce: 3n, deadline: 2_000_000_000n };
+    const built = buildCartOrder({ orderId: bytes32('c'), paymentCurrency: zeroAddress, deadline: 2_000_000_000n,
+      paymentAmount: 1n, lines: [{ sku: bytes32('a'), listingHash: artifact.entries[0]!.listingDigest,
+        fulfillmentKind: cartFulfillmentKinds.erc721Transfer, quantity: 1n, settlementCurrency: zeroAddress,
+        amount: 1n, paymentRecipient: seller }] });
+    expect(hashCartListing(listings[0]!, 11_155_111, cart)).toBe(hashCartListing(listings[0]!, 11_155_111n, cart));
+    expect(hashCartListingRoot(root, 11_155_111, cart)).toBe(hashCartListingRoot(root, 11_155_111n, cart));
+    expect(hashCartPurchaseOrder(built.order, 11_155_111, cart)).toBe(hashCartPurchaseOrder(built.order, 11_155_111n, cart));
+    expect(hashCartListing(listings[0]!, 2n ** 100n, cart)).toMatch(/^0x[0-9a-f]{64}$/);
+    expect(() => hashCartListing(listings[0]!, Number.MAX_SAFE_INTEGER + 1, cart)).toThrow('safe integer');
+  });
+
+  it('derives and verifies sorted-pair Cart Listing Merkle witnesses', () => {
+    const artifact = buildCartListingRootArtifact({ listings, chainId: 11_155_111, cart, nonce: 3n, deadline: 2_000_000_000n });
+    artifact.entries.forEach((entry) => {
+      expect(deriveCartListingMerkleLeaf(entry.listingDigest)).toBe(entry.leaf);
+      expect(computeCartListingMerkleRoot(entry.leaf, entry.proof)).toBe(artifact.root.listingsRoot);
+      expect(verifyCartListingMerkleProof(entry.leaf, entry.proof, artifact.root.listingsRoot)).toBe(true);
+    });
+    const singleton = buildCartListingRootArtifact({ listings: [listings[0]!], chainId: 11_155_111, cart, nonce: 3n,
+      deadline: 2_000_000_000n });
+    expect(computeCartListingMerkleRoot(singleton.entries[0]!.leaf, [])).toBe(singleton.root.listingsRoot);
+    expect(verifyCartListingMerkleProof(artifact.entries[0]!.leaf, artifact.entries[0]!.proof, bytes32('f'))).toBe(false);
+    expect(() => computeCartListingMerkleRoot(artifact.entries[0]!.leaf, Array.from({ length: 65 }, () => bytes32('f'))))
+      .toThrow('cannot exceed 64');
   });
 
   it('assembles deduplicated seller authorization witnesses', () => {

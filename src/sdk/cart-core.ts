@@ -12,16 +12,23 @@ import type {
 
 export const cartEip712Name = 'SuperRare Cart';
 export const cartEip712Version = '1';
+export const cartMerkleMaxProofDepth = 64;
 const zeroHash = `0x${'00'.repeat(32)}` as Hex;
 const lineType = 'OrderLine(bytes32 sku,bytes32 listingHash,uint8 fulfillmentKind,uint256 quantity,address settlementCurrency,uint256 amount,address paymentRecipient)';
 const routeType = 'PayoutRoute(bytes commands,bytes[] inputs)';
 const actionType = 'FulfillmentAction(uint256 lineIndex,uint256 quantity,address recipient)';
 
-export function cartDomain(chainId: number, cart: Address) {
+export type CartChainId = number | bigint;
+
+export function cartDomain(chainId: CartChainId, cart: Address) {
+  if ((typeof chainId === 'number' && (!Number.isSafeInteger(chainId) || chainId <= 0)) ||
+    (typeof chainId === 'bigint' && chainId <= 0n)) {
+    throw new Error('Cart chainId must be a positive bigint or safe integer.');
+  }
   return { name: cartEip712Name, version: cartEip712Version, chainId, verifyingContract: cart } as const;
 }
 
-export function hashCartListing(listing: CartListing, chainId: number, cart: Address): Hex {
+export function hashCartListing(listing: CartListing, chainId: CartChainId, cart: Address): Hex {
   return hashTypedData({ domain: cartDomain(chainId, cart), primaryType: 'Listing', types: { Listing: [
     { name: 'listingId', type: 'bytes32' }, { name: 'seller', type: 'address' }, { name: 'sku', type: 'bytes32' },
     { name: 'fulfillmentKind', type: 'uint8' }, { name: 'tokenContract', type: 'address' }, { name: 'tokenId', type: 'uint256' },
@@ -30,19 +37,21 @@ export function hashCartListing(listing: CartListing, chainId: number, cart: Add
   ] }, message: listing });
 }
 
-export function hashCartListingRoot(root: { listingsRoot: Hex; nonce: bigint; deadline: bigint }, chainId: number, cart: Address): Hex {
+export function hashCartListingRoot(root: { listingsRoot: Hex; nonce: bigint; deadline: bigint }, chainId: CartChainId, cart: Address): Hex {
   return hashTypedData({ domain: cartDomain(chainId, cart), primaryType: 'ListingRoot', types: { ListingRoot: [
     { name: 'listingsRoot', type: 'bytes32' }, { name: 'nonce', type: 'uint256' }, { name: 'deadline', type: 'uint256' },
   ] }, message: root });
 }
 
-export function hashCartOrder(order: CartPurchaseOrder, chainId: number, cart: Address): Hex {
+export function hashCartPurchaseOrder(order: CartPurchaseOrder, chainId: CartChainId, cart: Address): Hex {
   return hashTypedData({ domain: cartDomain(chainId, cart), primaryType: 'PurchaseOrder', types: { PurchaseOrder: [
     { name: 'orderId', type: 'bytes32' }, { name: 'paymentCurrency', type: 'address' }, { name: 'deadline', type: 'uint256' },
     { name: 'paymentAmount', type: 'uint256' }, { name: 'orderLinesHash', type: 'bytes32' },
     { name: 'payoutRouteHash', type: 'bytes32' }, { name: 'fulfillmentActionsHash', type: 'bytes32' },
   ] }, message: order });
 }
+
+export const hashCartOrder = hashCartPurchaseOrder;
 
 function typeHash(value: string): Hex { return keccak256(toBytes(value)); }
 function hashArray(values: readonly Hex[]): Hex { return keccak256(concatHex(values)); }
@@ -68,6 +77,29 @@ export function hashCartFulfillmentActions(actions: readonly CartFulfillmentActi
   ))));
 }
 
+export function deriveCartListingMerkleLeaf(listingDigest: Hex): Hex {
+  assertBytes32(listingDigest, 'listingDigest');
+  return keccak256(encodeAbiParameters([{ type: 'bytes32' }], [listingDigest]));
+}
+
+export function computeCartListingMerkleRoot(leaf: Hex, proof: readonly Hex[]): Hex {
+  assertBytes32(leaf, 'leaf');
+  if (proof.length > cartMerkleMaxProofDepth) {
+    throw new Error(`Cart Listing Merkle proof cannot exceed ${cartMerkleMaxProofDepth} elements.`);
+  }
+  return proof.reduce((computed, sibling, index) => {
+    assertBytes32(sibling, `proof[${index}]`);
+    const left = computed.toLowerCase() as Hex;
+    const right = sibling.toLowerCase() as Hex;
+    return keccak256(concatHex(left <= right ? [left, right] : [right, left]));
+  }, leaf.toLowerCase() as Hex);
+}
+
+export function verifyCartListingMerkleProof(leaf: Hex, proof: readonly Hex[], expectedRoot: Hex): boolean {
+  assertBytes32(expectedRoot, 'expectedRoot');
+  return computeCartListingMerkleRoot(leaf, proof) === expectedRoot.toLowerCase();
+}
+
 export function buildCartListingRootArtifact(params: BuildCartListingRootParams): CartListingRootArtifact {
   const validation = validateCartListings(params.listings);
   if (!validation.isValid) throw new Error(validation.issues.map((issue) => issue.message).join(' '));
@@ -75,7 +107,7 @@ export function buildCartListingRootArtifact(params: BuildCartListingRootParams)
   const seller = getAddress(params.listings[0]!.seller);
   if (params.listings.some((listing) => getAddress(listing.seller) !== seller)) throw new Error('All Listings in a root must have the same seller.');
   const digests = params.listings.map((listing) => hashCartListing(listing, params.chainId, params.cart));
-  const leaves = digests.map((digest) => keccak256(encodeAbiParameters([{ type: 'bytes32' }], [digest])));
+  const leaves = digests.map(deriveCartListingMerkleLeaf);
   const levels = buildMerkleLevels(leaves);
   const listingsRoot = levels.at(-1)![0]!;
   return {
@@ -161,6 +193,9 @@ function cartListingRootIdentity(artifact: CartListingRootArtifact): string {
   return [artifact.chainId, artifact.cart, artifact.seller, artifact.root.listingsRoot, artifact.root.nonce, artifact.root.deadline].join(':').toLowerCase();
 }
 function isBytes32(value: unknown): value is Hex { return typeof value === 'string' && isHex(value, { strict: true }) && value.length === 66; }
+function assertBytes32(value: unknown, field: string): asserts value is Hex {
+  if (!isBytes32(value)) throw new Error(`${field} must be bytes32.`);
+}
 function isUnsignedIntegerString(value: unknown): value is string { return typeof value === 'string' && /^(0|[1-9][0-9]*)$/.test(value); }
 
 export function buildCartOrder(params: BuildCartOrderParams): Omit<CartSignedOrder, 'platformSignature'> {
