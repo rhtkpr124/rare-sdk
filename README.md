@@ -120,6 +120,14 @@ builders are also available from `@rareprotocol/rare-sdk/utils`.
 Methods return structured results and reject on RPC, API, wallet, or validation
 failure.
 
+Backend integrations can use the same `utils` entry point for Cart protocol
+hashing and verification: `buildCartEip712Domain`, `hashCartListing`,
+`hashCartListingRoot`, `hashCartPurchaseOrder`, `hashCartOrderLines`,
+`hashCartPayoutRoute`, `hashCartFulfillmentActions`,
+`deriveCartListingMerkleLeaf`, `computeCartListingMerkleRoot`, and
+`verifyCartListingMerkleProof`. Chain-bound helpers accept safe numeric chain
+IDs or bigint chain IDs without numeric coercion.
+
 The package intentionally exposes only these supported entry points:
 
 | Import | Contents |

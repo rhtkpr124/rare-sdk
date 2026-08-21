@@ -11,6 +11,8 @@ project follows semantic versioning.
   execution on the deployed Ethereum Sepolia Cart.
 - Add batch-oriented Cart artifact parsing, validation, leaf lookup, and
   multi-root authorization builders for order-book storage and checkout assembly.
+- Expose Cart EIP-712 hashes and contract-compatible sorted-pair Listing Merkle
+  verification from the public `utils` entry point, including bigint chain IDs.
 
 - Removed the unsupported `recipient` input from RareMinter direct-sale release mint parameters. Mint results still report the connected wallet as the observed recipient.
 
