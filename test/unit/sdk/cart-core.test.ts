@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { decodeAbiParameters, zeroAddress, type Address, type Hex } from 'viem';
+import { decodeAbiParameters, encodePacked, zeroAddress, type Address, type Hex } from 'viem';
 import {
   aggregateCartSettlementObligations,
   applyCartQuoteSpread,
@@ -9,9 +9,10 @@ import {
   buildCartPayoutRoute,
   getCartListingArtifactEntry,
   parseCartListingRootArtifact,
+  validateCartListings,
   validateCartListingRootArtifact,
 } from '../../../src/sdk/cart-core.js';
-import { cartFulfillmentKinds, type CartListing } from '../../../src/sdk/types/cart.js';
+import { cartFulfillmentKinds, type CartFulfillmentAction, type CartListing, type CartOrderLine } from '../../../src/sdk/types/cart.js';
 import {
   buildCartEip712Domain,
   computeCartListingMerkleRoot,
@@ -106,6 +107,19 @@ describe('Cart functional core', () => {
       .toThrow('cannot exceed 64');
   });
 
+  it('carries an unpaired node and verifies proofs for odd-sized roots', () => {
+    const oddArtifact = buildCartListingRootArtifact({
+      listings: [...listings, { ...listings[1]!, listingId: bytes32('3'), sku: bytes32('c'), tokenId: 3n }],
+      chainId: 11_155_111, cart, nonce: 3n, deadline: 2_000_000_000n,
+    });
+
+    expect(oddArtifact.entries).toHaveLength(3);
+    for (const entry of oddArtifact.entries) {
+      expect(verifyCartListingMerkleProof(entry.leaf, entry.proof, oddArtifact.root.listingsRoot)).toBe(true);
+    }
+    expect(oddArtifact.entries[2]!.proof).toHaveLength(1);
+  });
+
   it('assembles deduplicated seller authorization witnesses', () => {
     const artifact = { ...buildCartListingRootArtifact({ listings, chainId: 11_155_111, cart, nonce: 3n, deadline: 2_000_000_000n }), signature: '0x1234' as Hex };
     const result = buildCartListingAuthorization(artifact.entries.map((entry) => ({ artifact, listingDigest: entry.listingDigest })));
@@ -195,6 +209,123 @@ describe('Cart functional core', () => {
     ], route.inputs[0]!)).toEqual([
       '0x0000000000000000000000000000000000000001', 7n, 11n, [seller, output], true,
     ]);
+  });
+
+  it('encodes V2/V3 exact-input and exact-output route variants', () => {
+    const output = '0x3000000000000000000000000000000000000000' as Address;
+    const middle = '0x4000000000000000000000000000000000000000' as Address;
+    const v2Input = buildCartPayoutRoute({ paymentCurrency: seller, legs: [
+      { protocol: 'v2', mode: 'exact-input', path: [seller, output], amountIn: 11n, amountOutMinimum: 7n },
+    ] });
+    expect(v2Input.commands).toBe('0x08');
+    expect(decodeAbiParameters([
+      { type: 'address' }, { type: 'uint256' }, { type: 'uint256' }, { type: 'address[]' }, { type: 'bool' },
+    ], v2Input.inputs[0]!)).toEqual([
+      '0x0000000000000000000000000000000000000001', 11n, 7n, [seller, output], true,
+    ]);
+    const v2Output = buildCartPayoutRoute({ paymentCurrency: seller, legs: [
+      { protocol: 'v2', mode: 'exact-output', path: [seller, output], amountOut: 7n, amountInMaximum: 11n },
+    ] });
+    expect(v2Output.commands).toBe('0x09');
+    expect(decodeAbiParameters([
+      { type: 'address' }, { type: 'uint256' }, { type: 'uint256' }, { type: 'address[]' }, { type: 'bool' },
+    ], v2Output.inputs[0]!)).toEqual([
+      '0x0000000000000000000000000000000000000001', 7n, 11n, [seller, output], true,
+    ]);
+
+    const v3Input = buildCartPayoutRoute({ paymentCurrency: seller, legs: [
+      { protocol: 'v3', mode: 'exact-input', path: [seller, middle, output], fees: [500, 3000], amountIn: 11n, amountOutMinimum: 7n },
+    ] });
+    expect(v3Input.commands).toBe('0x00');
+    const v3InputValues = decodeAbiParameters([
+      { type: 'address' }, { type: 'uint256' }, { type: 'uint256' }, { type: 'bytes' }, { type: 'bool' },
+    ], v3Input.inputs[0]!);
+    expect(v3InputValues[0]).toBe('0x0000000000000000000000000000000000000001');
+    expect(v3InputValues[1]).toBe(11n);
+    expect(v3InputValues[2]).toBe(7n);
+    expect(v3InputValues[3]).toBe(encodePacked(
+      ['address', 'uint24', 'address', 'uint24', 'address'], [seller, 500, middle, 3000, output],
+    ));
+    expect(v3InputValues[4]).toBe(true);
+
+    const v3Output = buildCartPayoutRoute({ paymentCurrency: seller, legs: [
+      { protocol: 'v3', mode: 'exact-output', path: [seller, middle, output], fees: [500, 3000], amountOut: 7n, amountInMaximum: 11n },
+    ] });
+    expect(v3Output.commands).toBe('0x01');
+    const v3OutputValues = decodeAbiParameters([
+      { type: 'address' }, { type: 'uint256' }, { type: 'uint256' }, { type: 'bytes' }, { type: 'bool' },
+    ], v3Output.inputs[0]!);
+    expect(v3OutputValues[0]).toBe('0x0000000000000000000000000000000000000001');
+    expect(v3OutputValues[1]).toBe(7n);
+    expect(v3OutputValues[2]).toBe(11n);
+    expect(v3OutputValues[3]).toBe(encodePacked(
+      ['address', 'uint24', 'address', 'uint24', 'address'], [output, 3000, middle, 500, seller],
+    ));
+    expect(v3OutputValues[4]).toBe(true);
+
+    const split = buildCartPayoutRoute({ paymentCurrency: seller, legs: [
+      { protocol: 'v2', mode: 'exact-input', path: [seller, output], amountIn: 5n, amountOutMinimum: 3n },
+      { protocol: 'v2', mode: 'exact-input', path: [seller, middle], amountIn: 6n, amountOutMinimum: 4n },
+    ] });
+    expect(split.commands).toBe('0x0808');
+    expect(split.inputs).toHaveLength(2);
+  });
+
+  it('rejects invalid route combinations and paths', () => {
+    const output = '0x3000000000000000000000000000000000000000' as Address;
+    const v3 = { protocol: 'v3' as const, mode: 'exact-input' as const, path: [seller, output], fees: [500], amountIn: 1n, amountOutMinimum: 1n };
+    expect(() => buildCartPayoutRoute({ paymentCurrency: seller, legs: [
+      v3, { ...v3, mode: 'exact-output', amountOut: 1n, amountInMaximum: 1n },
+    ] })).toThrow('same execution mode');
+    expect(() => buildCartPayoutRoute({ paymentCurrency: seller, legs: [
+      { ...v3, path: [output, seller] },
+    ] })).toThrow('start in the payment currency');
+    expect(() => buildCartPayoutRoute({ paymentCurrency: seller, legs: [
+      { ...v3, path: [seller] },
+    ] })).toThrow('at least two currencies');
+    expect(() => buildCartPayoutRoute({ paymentCurrency: seller, legs: [
+      { ...v3, fees: [] },
+    ] })).toThrow('one fee per V3 hop');
+    expect(() => buildCartPayoutRoute({ paymentCurrency: seller, legs: [
+      { ...v3, fees: [0x1000000] },
+    ] })).toThrow('invalid uint24 fee');
+  });
+
+  it('rejects invalid authorization selections and conflicting signatures', () => {
+    const artifact = buildCartListingRootArtifact({ listings, chainId: 11_155_111, cart, nonce: 3n, deadline: 2_000_000_000n });
+    expect(() => buildCartListingAuthorization([])).toThrow('At least one');
+    expect(() => buildCartListingAuthorization([{ artifact, listingDigest: artifact.entries[0]!.listingDigest }]))
+      .toThrow('not signed');
+    const signed = { ...artifact, signature: '0x1234' as Hex };
+    expect(() => buildCartListingAuthorization([{ artifact: signed, listingDigest: bytes32('f') }]))
+      .toThrow('not present');
+    const conflicting = { ...signed, signature: '0x5678' as Hex };
+    expect(() => buildCartListingAuthorization([
+      { artifact: signed, listingDigest: signed.entries[0]!.listingDigest },
+      { artifact: conflicting, listingDigest: conflicting.entries[1]!.listingDigest },
+    ])).toThrow('conflicting signatures');
+  });
+
+  it('covers Listing and order validation boundaries', () => {
+    expect(validateCartListings([]).isValid).toBe(false);
+    expect(validateCartListings([{ ...listings[0]!, fulfillmentKind: cartFulfillmentKinds.offChain,
+      tokenContract: zeroAddress, tokenId: 0n }]).isValid).toBe(true);
+    expect(validateCartListings([{ ...listings[0]!, availableQuantity: 2n }]).isValid).toBe(false);
+    expect(validateCartListings([{ ...listings[0]!, fulfillmentKind: cartFulfillmentKinds.erc721MintTo, tokenId: 1n }]).isValid).toBe(false);
+    expect(validateCartListings([{ ...listings[0]!, fulfillmentKind: cartFulfillmentKinds.offChain,
+      tokenContract: cart, tokenId: 1n }]).isValid).toBe(false);
+
+    const line = { sku: bytes32('a'), listingHash: bytes32('1'), fulfillmentKind: cartFulfillmentKinds.erc721Transfer,
+      quantity: 1n, settlementCurrency: zeroAddress, amount: 1n, paymentRecipient: seller };
+    const build = (lines: CartOrderLine[] = [line], actions: CartFulfillmentAction[] = []) => buildCartOrder({
+      orderId: bytes32('c'), paymentCurrency: zeroAddress, deadline: 2_000_000_000n, paymentAmount: 1n, lines, actions,
+    });
+    expect(() => build([])).toThrow('between 1 and 20');
+    expect(() => build(Array.from({ length: 21 }, () => line))).toThrow('between 1 and 20');
+    expect(() => build([line], Array.from({ length: 21 }, () => ({ lineIndex: 0n, quantity: 1n, recipient: seller }))))
+      .toThrow('more than 20');
+    expect(() => build([{ ...line, amount: 0n }])).toThrow('quantity and amount must be positive');
+    expect(() => build([line], [{ lineIndex: 1n, quantity: 1n, recipient: seller }])).toThrow('is invalid');
   });
 
   it('rejects seller Listings that use the platform-only currency swap kind', () => {
