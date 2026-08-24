@@ -58,11 +58,25 @@ describe('Uniswap Trade API client', () => {
       swapper,
       protocols: ['V4', 'V3', 'V2'],
       routingPreference: 'BEST_PRICE',
-      urgency: 'normal',
       slippageTolerance: 1.25,
     });
     expect(quote.quote.output.amount).toBe('2000');
+    expect(quote.quote.input.maximumAmount).toBe('1100');
+    expect(quote.quote.output.minimumAmount).toBe('1900');
     expect(quote.quote.aggregatedOutputs?.[0]?.minAmount).toBe('1900');
+  });
+
+  it('requests exact-output quotes when selected by the caller', async () => {
+    const fetchMock = vi.fn(async (): Promise<Response> => Response.json({
+      ...buildQuoteResponse(),
+      quote: { ...buildQuotePayload(), tradeType: 'EXACT_OUTPUT' },
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+    await requestUniswapQuote({
+      apiKey: 'test-key', baseUrl, chainId: 11_155_111, tokenIn, tokenOut,
+      amount: 2_000n, swapper, slippageBps: 50, tradeType: 'EXACT_OUTPUT',
+    });
+    expect(parseJsonBody(getFetchCall(fetchMock).init)).toMatchObject({ type: 'EXACT_OUTPUT', amount: '2000' });
   });
 
   it('requires an API key before sending requests', async () => {
@@ -290,10 +304,12 @@ function buildQuotePayload(): UniswapQuotePayload {
     chainId: 11_155_111,
     input: {
       amount: '1000',
+      maximumAmount: '1100',
       token: tokenIn,
     },
     output: {
       amount: '2000',
+      minimumAmount: '1900',
       token: tokenOut,
       recipient: swapper,
     },

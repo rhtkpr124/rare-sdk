@@ -49,15 +49,18 @@ export type UniswapQuotePayload = {
   input: {
     amount: string;
     token: Address;
+    maximumAmount?: string;
   };
   output: {
     amount: string;
     token: Address;
     recipient: Address;
+    minimumAmount?: string;
   };
   swapper: Address;
   route: UniswapQuoteRouteHop[][];
-  slippage: number;
+  slippage?: number;
+  slippageTolerance?: number;
   tradeType: 'EXACT_INPUT' | 'EXACT_OUTPUT';
   quoteId: string;
   routeString?: string;
@@ -98,6 +101,7 @@ type QuoteRequestParams = {
   amount: bigint;
   swapper: Address;
   slippageBps: number;
+  tradeType?: UniswapQuotePayload['tradeType'];
 }
 
 function getBaseUrl(options?: UniswapApiRequestOptions): string {
@@ -135,6 +139,10 @@ function parseNumber(value: unknown, field: string): number {
     throw new Error(`Uniswap API response field "${field}" must be a finite number.`);
   }
   return value;
+}
+
+function parseOptionalNumber(value: unknown, field: string): number | undefined {
+  return value === undefined ? undefined : parseNumber(value, field);
 }
 
 function parseAddress(value: unknown, field: string): Address {
@@ -230,18 +238,22 @@ function parseQuoteRoute(value: unknown, field: string): UniswapQuoteRouteHop[][
 
 function parseQuoteInput(value: unknown, field: string): UniswapQuotePayload['input'] {
   const record = parseRecord(value, field);
+  const maximumAmount = parseOptionalString(record.maximumAmount, `${field}.maximumAmount`);
   return {
     amount: parseString(record.amount, `${field}.amount`),
     token: parseAddress(record.token, `${field}.token`),
+    ...(maximumAmount !== undefined ? { maximumAmount } : {}),
   };
 }
 
 function parseQuoteOutput(value: unknown, field: string): UniswapQuotePayload['output'] {
   const record = parseRecord(value, field);
+  const minimumAmount = parseOptionalString(record.minimumAmount, `${field}.minimumAmount`);
   return {
     amount: parseString(record.amount, `${field}.amount`),
     token: parseAddress(record.token, `${field}.token`),
     recipient: parseAddress(record.recipient, `${field}.recipient`),
+    ...(minimumAmount !== undefined ? { minimumAmount } : {}),
   };
 }
 
@@ -270,6 +282,8 @@ function parseAggregatedOutputs(value: unknown, field: string): UniswapQuotePayl
 function parseQuotePayload(value: unknown, field: string): UniswapQuotePayload {
   const record = parseRecord(value, field);
   const routeString = parseOptionalString(record.routeString, `${field}.routeString`);
+  const slippage = parseOptionalNumber(record.slippage, `${field}.slippage`);
+  const slippageTolerance = parseOptionalNumber(record.slippageTolerance, `${field}.slippageTolerance`);
   const aggregatedOutputs = parseAggregatedOutputs(record.aggregatedOutputs, `${field}.aggregatedOutputs`);
   const txFailureReasons =
     record.txFailureReasons === undefined
@@ -283,7 +297,8 @@ function parseQuotePayload(value: unknown, field: string): UniswapQuotePayload {
     output: parseQuoteOutput(record.output, `${field}.output`),
     swapper: parseAddress(record.swapper, `${field}.swapper`),
     route: parseQuoteRoute(record.route, `${field}.route`),
-    slippage: parseNumber(record.slippage, `${field}.slippage`),
+    ...(slippage !== undefined ? { slippage } : {}),
+    ...(slippageTolerance !== undefined ? { slippageTolerance } : {}),
     tradeType: parseTradeType(record.tradeType, `${field}.tradeType`),
     quoteId: parseString(record.quoteId, `${field}.quoteId`),
     ...(routeString !== undefined ? { routeString } : {}),
@@ -396,7 +411,7 @@ export async function requestUniswapQuote(params: QuoteRequestParams): Promise<U
     method: 'POST',
     headers: buildHeaders(params),
     body: JSON.stringify({
-      type: 'EXACT_INPUT',
+      type: params.tradeType ?? 'EXACT_INPUT',
       tokenInChainId: params.chainId,
       tokenOutChainId: params.chainId,
       amount: params.amount.toString(),
@@ -405,7 +420,6 @@ export async function requestUniswapQuote(params: QuoteRequestParams): Promise<U
       swapper: params.swapper,
       protocols: ['V4', 'V3', 'V2'],
       routingPreference: 'BEST_PRICE',
-      urgency: 'normal',
       slippageTolerance: params.slippageBps / 100,
     }),
   });

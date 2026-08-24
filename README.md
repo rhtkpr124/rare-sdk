@@ -104,6 +104,16 @@ const published = await rare.cart.listing.publish({
   autoApprove: true,
 });
 
+// Rare API can also request a wallet-independent route for exact settlement
+// obligations. Exact-output is the default; exact-input remains available for
+// compatible Universal Router execution plans.
+const routingQuote = await rare.cart.routing.quote({
+  paymentCurrency,
+  obligations: settlementObligations,
+  mode: 'exact-output',
+});
+rare.cart.routing.assertFresh(routingQuote);
+
 // Preparation is wallet-independent and creates no signature, approval,
 // persistence, or transaction.
 const preparation = await rare.cart.checkout.prepare({
@@ -122,6 +132,11 @@ amounts, while favorable routing variance is protocol spread. The signed route
 also carries the exact native `routerValue` forwarded to Universal Router.
 Pure portable Listing Root, authorization, order, route, hashing, and Merkle
 builders are available from `@rareprotocol/rare-sdk/utils` for advanced use.
+Cart routing uses the client-level `uniswapApiKey` (or
+`resolveUniswapApiKey`) and requires no wallet, account, approval, or write.
+The result contains JSON-safe exact settlements, expected and protected input
+amounts, expiration, and normalized quote evidence. Once the platform accepts
+and signs the route, execution never requotes or substitutes it.
 Methods return structured results and reject on RPC, API, wallet, or validation
 failure.
 

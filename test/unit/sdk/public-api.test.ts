@@ -21,6 +21,7 @@ describe('public SDK API surface', () => {
       'AvatarProfileUpdateError',
       'CartExecutionError',
       'CartPreparationError',
+      'CartRoutingError',
       'CartVerificationError',
       'Erc1155CheckoutAllItemsSkippedError',
       'MinterApprovalRequiredError',
@@ -82,6 +83,8 @@ describe('public SDK API surface', () => {
     expect(rare.cart.listing).not.toHaveProperty('buildRoot');
     expect(rare.cart.listing).not.toHaveProperty('signRoot');
     expect(rare.cart.listing).not.toHaveProperty('buildAuthorization');
+    expect(rare.cart.routing.quote).toBeTypeOf('function');
+    expect(rare.cart.routing.assertFresh).toBeTypeOf('function');
   });
 
   it('exposes contract building blocks from the contracts subpath', () => {

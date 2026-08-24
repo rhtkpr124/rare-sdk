@@ -3,6 +3,7 @@ import type {
   CartApiListingRoot, CartApiNamespace, CartApiPreparedPurchase, CartCheckoutIntent,
   CartCheckoutPreparation, CartListingIntent,
 } from './cart-api.js';
+import type { CartRoutingNamespace } from './cart-routing.js';
 
 export const cartFulfillmentKinds = {
   none: 0,
@@ -121,6 +122,7 @@ export type CartNamespace = {
     approve: (tokenContract: Address) => Promise<{ txHash?: Hash; receipt?: TransactionReceipt }>;
     revoke: (tokenContract: Address) => Promise<{ txHash?: Hash; receipt?: TransactionReceipt }>;
   };
+  routing: CartRoutingNamespace;
   listing: {
     prepare: (intent: CartListingIntent) => Promise<CartListingPreparation>;
     publish: (params: CartListingPublishParams) => Promise<CartListingPublishResult>;
