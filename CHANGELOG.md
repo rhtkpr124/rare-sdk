@@ -26,6 +26,9 @@ project follows semantic versioning.
   Sepolia CartLens and optional CartHashes helper deployment.
 - Align Cart route hashing, ABIs, Lens deployment, and prepared-purchase wire
   data with the signed Universal Router `routerValue` settlement boundary.
+- Add wallet-independent Cart routing quotes for exact settlement obligations,
+  with exact-output and exact-input execution modes, bounded payment input,
+  quote expiration and evidence, and opaque V2/V3/V4 Universal Router plans.
 - Add the chain-bound Cart SDK with deterministic seller Listing Root artifacts,
   fixed-quote Purchase Orders, policy-compatible route construction, optional
   Lens diagnostics, explicit payment and asset approvals, and verified checkout
