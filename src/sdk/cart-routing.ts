@@ -1,12 +1,14 @@
-import type { Address } from 'viem';
+import { getAddress, zeroAddress, type Address } from 'viem';
+import { cartAbi } from '../contracts/abis/cart.js';
 import type { SupportedChain } from '../contracts/addresses.js';
-import { requestUniswapQuote } from '../swap/uniswap-api.js';
+import { requestUniswapQuote, requestUniswapSwap } from '../swap/uniswap-api.js';
 import {
   assertCartRoutingQuoteFresh,
   buildCartRoutingQuoteResult,
   CartRoutingCoreError,
   cartRoutingDefaultSlippageBps,
   planCartRoutingQuote,
+  resolveCartRoutingMaximumInput,
 } from './cart-routing-core.js';
 import type { RareClientConfig } from './types/client.js';
 import type {
@@ -49,7 +51,7 @@ export function createCartRoutingNamespace(
       }
       const plan = createPlan(chain, cart, params);
       if (plan.foreignObligations.length === 0) {
-        return buildCartRoutingQuoteResult(plan, [], Date.now());
+        return buildCartRoutingQuoteResult(plan, zeroAddress, [], Date.now());
       }
 
       const apiKey = config.uniswapApiKey ?? await config.resolveUniswapApiKey?.();
@@ -61,20 +63,43 @@ export function createCartRoutingNamespace(
         );
       }
       try {
-        const quoted = await Promise.all(plan.foreignObligations.map(async (obligation) => ({
-          ...obligation,
-          response: await requestUniswapQuote({
+        const universalRouter = getAddress(await config.publicClient.readContract({
+          address: plan.cart,
+          abi: cartAbi,
+          functionName: 'universalRouter',
+        }));
+        const quoted = await Promise.all(plan.foreignObligations.map(async (obligation) => {
+          const exactOutputResponse = await requestUniswapQuote({
             apiKey,
             chainId: plan.chainId,
-            tokenIn: plan.inputToken,
-            tokenOut: obligation.outputToken,
+            tokenIn: plan.paymentCurrency,
+            tokenOut: obligation.settlementCurrency,
             amount: obligation.amount,
             swapper: plan.cart,
             slippageBps: cartRoutingDefaultSlippageBps,
             tradeType: 'EXACT_OUTPUT',
-          }),
-        })));
-        return buildCartRoutingQuoteResult(plan, quoted, Date.now());
+          });
+          const maximumInput = resolveCartRoutingMaximumInput(plan, obligation, exactOutputResponse);
+          const executionResponse = plan.mode === 'exact-output'
+            ? exactOutputResponse
+            : await requestUniswapQuote({
+                apiKey,
+                chainId: plan.chainId,
+                tokenIn: plan.paymentCurrency,
+                tokenOut: obligation.settlementCurrency,
+                amount: maximumInput,
+                swapper: plan.cart,
+                slippageBps: cartRoutingDefaultSlippageBps,
+                tradeType: 'EXACT_INPUT',
+              });
+          const swapResponse = await requestUniswapSwap({
+            apiKey,
+            quote: executionResponse.quote,
+            deadline: Math.floor(Date.now() / 1_000) + 60,
+          });
+          return { ...obligation, exactOutputResponse, executionResponse, swapResponse };
+        }));
+        return buildCartRoutingQuoteResult(plan, universalRouter, quoted, Date.now());
       } catch (cause) {
         throw toCartRoutingError(cause, plan.paymentCurrency);
       }

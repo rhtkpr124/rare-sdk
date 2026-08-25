@@ -28,7 +28,8 @@ project follows semantic versioning.
   data with the signed Universal Router `routerValue` settlement boundary.
 - Add wallet-independent Cart routing quotes for exact settlement obligations,
   with exact-output and exact-input execution modes, bounded payment input,
-  quote expiration and evidence, and opaque V2/V3/V4 Universal Router plans.
+  quote expiration and evidence, and opaque Uniswap-compiled V2/V3/V4
+  Universal Router plans validated against Cart's shallow command policy.
 - Add the chain-bound Cart SDK with deterministic seller Listing Root artifacts,
   fixed-quote Purchase Orders, policy-compatible route construction, optional
   Lens diagnostics, explicit payment and asset approvals, and verified checkout

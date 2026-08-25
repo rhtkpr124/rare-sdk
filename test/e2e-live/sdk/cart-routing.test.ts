@@ -24,7 +24,7 @@ describeLive('SDK Cart routing integration', () => {
         paymentCurrency: payment.address,
         obligations: [{ settlementCurrency: payment.address, amount: payment.amount }],
       });
-      expect(direct.route).toEqual({ commands: '0x', inputs: [] });
+      expect(direct.route).toEqual({ commands: '0x', inputs: [], routerValue: '0' });
 
       for (const settlement of currencies) {
         if (isAddressEqual(payment.address, settlement.address)) continue;

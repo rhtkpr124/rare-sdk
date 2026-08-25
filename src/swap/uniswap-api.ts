@@ -81,7 +81,7 @@ export type UniswapQuoteResponse = {
   permitData: unknown;
 }
 
-type UniswapSwapResponse = {
+export type UniswapSwapResponse = {
   requestId: string;
   swap: UniswapTransactionRequest;
   gasFee?: string;
