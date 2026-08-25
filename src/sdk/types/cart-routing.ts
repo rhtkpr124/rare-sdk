@@ -30,6 +30,7 @@ export type CartRoutingQuoteEvidence = {
   source: 'direct' | 'uniswap-api';
   mode: CartRoutingMode;
   quoteIds: string[];
+  compilerRequestIds: string[];
   quotedInput: string;
   protectedMaximumInput: string;
   exactOutputs: Array<{ settlementCurrency: Address; amount: string }>;
