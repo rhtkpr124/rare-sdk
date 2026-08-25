@@ -27,7 +27,7 @@ export type CartRoutingRoute = {
 };
 
 export type CartRoutingQuoteEvidence = {
-  source: 'direct' | 'uniswap-api';
+  source: 'direct' | 'uniswap-api' | 'known-pool-rpc';
   mode: CartRoutingMode;
   quoteIds: string[];
   compilerRequestIds: string[];

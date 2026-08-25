@@ -6,6 +6,7 @@ import {
   requestUniswapApproval,
   requestUniswapQuote,
   requestUniswapSwap,
+  UniswapApiError,
   type UniswapQuotePayload,
   type UniswapTransactionRequest,
 } from '../../../src/swap/uniswap-api.js';
@@ -74,8 +75,9 @@ describe('Uniswap Trade API client', () => {
     vi.stubGlobal('fetch', fetchMock);
     await requestUniswapQuote({
       apiKey: 'test-key', baseUrl, chainId: 11_155_111, tokenIn, tokenOut,
-      amount: 2_000n, swapper, slippageBps: 50, tradeType: 'EXACT_OUTPUT',
+      amount: 2_000n, swapper, slippageBps: 50, tradeType: 'EXACT_OUTPUT', permit2Disabled: false,
     });
+    expect(getFetchCall(fetchMock).init.headers).toMatchObject({ 'x-permit2-disabled': 'false' });
     expect(parseJsonBody(getFetchCall(fetchMock).init)).toMatchObject({ type: 'EXACT_OUTPUT', amount: '2000' });
   });
 
@@ -116,13 +118,13 @@ describe('Uniswap Trade API client', () => {
     expect(getFetchCall(fetchMock).url).toBe('https://trade-api.gateway.uniswap.org/v1/quote');
   });
 
-  it('surfaces non-OK API errors with response messages', async () => {
+  it('surfaces non-OK API errors with safe structured diagnostics', async () => {
     vi.stubGlobal('fetch', vi.fn(async (): Promise<Response> => Response.json(
-      { message: 'route unavailable' },
+      { errorCode: 'APIResponseValidationError', detail: 'protocols contains an unsupported value', requestId: 'provider-request-1' },
       { status: 400, statusText: 'Bad Request' },
     )));
 
-    await expect(requestUniswapQuote({
+    const request = requestUniswapQuote({
       apiKey: 'test-key',
       baseUrl,
       chainId: 1,
@@ -131,7 +133,14 @@ describe('Uniswap Trade API client', () => {
       amount: 1n,
       swapper,
       slippageBps: 50,
-    })).rejects.toThrow('Uniswap API 400 Bad Request: route unavailable');
+    });
+    await expect(request).rejects.toMatchObject({
+      name: 'UniswapApiError',
+      status: 400,
+      requestId: 'provider-request-1',
+      reason: 'protocols contains an unsupported value',
+    } satisfies Partial<UniswapApiError>);
+    await expect(request).rejects.not.toThrow('test-key');
   });
 
   it('validates quote, approval, and swap response shapes before returning them', async () => {
@@ -225,6 +234,8 @@ describe('Uniswap Trade API client', () => {
       baseUrl,
       quote: buildQuotePayload(),
       deadline: 1_800_000_000,
+      permit2Disabled: false,
+      simulateTransaction: false,
     });
 
     const approvalCall = getFetchCall(fetchMock, 0);
@@ -242,10 +253,11 @@ describe('Uniswap Trade API client', () => {
 
     const swapCall = getFetchCall(fetchMock, 1);
     expect(swapCall.url).toBe(`${baseUrl}/swap`);
+    expect(swapCall.init.headers).toMatchObject({ 'x-permit2-disabled': 'false' });
     expect(parseJsonBody(swapCall.init)).toMatchObject({
       quote: buildQuotePayload(),
       refreshGasPrice: true,
-      simulateTransaction: true,
+      simulateTransaction: false,
       safetyMode: 'SAFE',
       urgency: 'normal',
       deadline: 1_800_000_000,

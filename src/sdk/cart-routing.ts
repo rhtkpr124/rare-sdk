@@ -1,15 +1,17 @@
 import { getAddress, zeroAddress, type Address } from 'viem';
 import { cartAbi } from '../contracts/abis/cart.js';
 import type { SupportedChain } from '../contracts/addresses.js';
-import { requestUniswapQuote, requestUniswapSwap } from '../swap/uniswap-api.js';
+import { requestUniswapQuote, requestUniswapSwap, UniswapApiError } from '../swap/uniswap-api.js';
 import {
   assertCartRoutingQuoteFresh,
   buildCartRoutingQuoteResult,
   CartRoutingCoreError,
   cartRoutingDefaultSlippageBps,
   planCartRoutingQuote,
+  protectCartRoutingExactInput,
   resolveCartRoutingMaximumInput,
 } from './cart-routing-core.js';
+import { buildKnownPoolCartRoutingQuote } from './cart-routing-local.js';
 import type { RareClientConfig } from './types/client.js';
 import type {
   CartRoutingErrorCode,
@@ -56,11 +58,14 @@ export function createCartRoutingNamespace(
 
       const apiKey = config.uniswapApiKey ?? await config.resolveUniswapApiKey?.();
       if (!apiKey) {
-        throw new CartRoutingError(
-          'quote_unavailable',
-          'Cart routing requires a configured Uniswap API credential.',
-          { paymentCurrency: plan.paymentCurrency },
-        );
+        try {
+          const local = await buildKnownPoolCartRoutingQuote(config.publicClient, plan);
+          if (local !== null) return local;
+        } catch (cause) {
+          throw toCartRoutingError(cause, plan.paymentCurrency);
+        }
+        throw new CartRoutingError('quote_unavailable', 'No configured Cart routing source supports these currencies.',
+          { paymentCurrency: plan.paymentCurrency });
       }
       try {
         const universalRouter = getAddress(await config.publicClient.readContract({
@@ -78,6 +83,7 @@ export function createCartRoutingNamespace(
             swapper: plan.cart,
             slippageBps: cartRoutingDefaultSlippageBps,
             tradeType: 'EXACT_OUTPUT',
+            permit2Disabled: false,
           });
           const maximumInput = resolveCartRoutingMaximumInput(plan, obligation, exactOutputResponse);
           const executionResponse = plan.mode === 'exact-output'
@@ -87,20 +93,31 @@ export function createCartRoutingNamespace(
                 chainId: plan.chainId,
                 tokenIn: plan.paymentCurrency,
                 tokenOut: obligation.settlementCurrency,
-                amount: maximumInput,
+                amount: protectCartRoutingExactInput(maximumInput),
                 swapper: plan.cart,
                 slippageBps: cartRoutingDefaultSlippageBps,
                 tradeType: 'EXACT_INPUT',
+                permit2Disabled: false,
               });
           const swapResponse = await requestUniswapSwap({
             apiKey,
             quote: executionResponse.quote,
             deadline: Math.floor(Date.now() / 1_000) + 60,
+            permit2Disabled: false,
+            simulateTransaction: false,
           });
           return { ...obligation, exactOutputResponse, executionResponse, swapResponse };
         }));
         return buildCartRoutingQuoteResult(plan, universalRouter, quoted, Date.now());
       } catch (cause) {
+        if (cause instanceof UniswapApiError) {
+          try {
+            const local = await buildKnownPoolCartRoutingQuote(config.publicClient, plan);
+            if (local !== null) return local;
+          } catch (fallbackCause) {
+            throw toCartRoutingError(fallbackCause, plan.paymentCurrency);
+          }
+        }
         throw toCartRoutingError(cause, plan.paymentCurrency);
       }
     },
@@ -123,6 +140,15 @@ function toCartRoutingError(cause: unknown, paymentCurrency?: Address): CartRout
       ...(cause.settlementCurrency === undefined ? {} : { settlementCurrency: cause.settlementCurrency }),
     }, { cause });
   }
+  if (cause instanceof UniswapApiError) {
+    const code = classifyProviderFailure(cause.status, cause.reason);
+    return new CartRoutingError(code, safeRoutingMessage(code), {
+      ...(paymentCurrency === undefined ? {} : { paymentCurrency }),
+      providerStatus: cause.status,
+      ...(cause.requestId === undefined ? {} : { providerRequestId: cause.requestId }),
+      ...(cause.reason === undefined ? {} : { reason: cause.reason }),
+    }, { cause });
+  }
   const message = cause instanceof Error ? cause.message : String(cause);
   const statusMatch = /Uniswap API (\d{3})/.exec(message);
   const providerStatus = statusMatch === null ? undefined : Number(statusMatch[1]);
@@ -138,6 +164,14 @@ function toCartRoutingError(cause: unknown, paymentCurrency?: Address): CartRout
     ...(paymentCurrency === undefined ? {} : { paymentCurrency }),
     ...(providerStatus === undefined ? {} : { providerStatus }),
   }, { cause });
+}
+
+function classifyProviderFailure(status: number, reason?: string): CartRoutingErrorCode {
+  const lower = reason?.toLowerCase() ?? '';
+  if (status === 404 || lower.includes('no quote') || lower.includes('no route')) return 'no_route';
+  if (lower.includes('liquidity')) return 'insufficient_liquidity';
+  if (status >= 400 && status < 500) return 'invalid_response';
+  return 'quote_unavailable';
 }
 
 function safeRoutingMessage(code: CartRoutingErrorCode): string {
