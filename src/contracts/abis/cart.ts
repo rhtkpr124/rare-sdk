@@ -21,7 +21,10 @@ const root = [
   { name: 'listingsRoot', type: 'bytes32' }, { name: 'nonce', type: 'uint256' },
   { name: 'deadline', type: 'uint256' },
 ] as const;
-const route = [{ name: 'commands', type: 'bytes' }, { name: 'inputs', type: 'bytes[]' }] as const;
+const route = [
+  { name: 'commands', type: 'bytes' }, { name: 'inputs', type: 'bytes[]' },
+  { name: 'routerValue', type: 'uint256' },
+] as const;
 const action = [
   { name: 'lineIndex', type: 'uint256' }, { name: 'quantity', type: 'uint256' },
   { name: 'recipient', type: 'address' },
@@ -33,6 +36,9 @@ export const cartAbi = [
     { name: 'universalRouter_', type: 'address' }, { name: 'permit2_', type: 'address' }, { name: 'weth_', type: 'address' },
   ], outputs: [] },
   { type: 'function', name: 'DOMAIN_SEPARATOR', stateMutability: 'view', inputs: [], outputs: [{ type: 'bytes32' }] },
+  { type: 'function', name: 'owner', stateMutability: 'view', inputs: [], outputs: [{ type: 'address' }] },
+  { type: 'function', name: 'routePolicy', stateMutability: 'view', inputs: [], outputs: [{ type: 'address' }] },
+  { type: 'function', name: 'proxiableUUID', stateMutability: 'view', inputs: [], outputs: [{ type: 'bytes32' }] },
   { type: 'function', name: 'platformSigner', stateMutability: 'view', inputs: [], outputs: [{ type: 'address' }] },
   { type: 'function', name: 'universalRouter', stateMutability: 'view', inputs: [], outputs: [{ type: 'address' }] },
   { type: 'function', name: 'permit2', stateMutability: 'view', inputs: [], outputs: [{ type: 'address' }] },
@@ -50,6 +56,12 @@ export const cartAbi = [
   { type: 'function', name: 'setPlatformSigner', stateMutability: 'nonpayable', inputs: [{ name: 'newSigner', type: 'address' }], outputs: [] },
   { type: 'function', name: 'setPaused', stateMutability: 'nonpayable', inputs: [{ name: 'paused', type: 'bool' }], outputs: [] },
   { type: 'function', name: 'setProtocolRecipient', stateMutability: 'nonpayable', inputs: [{ name: 'recipient', type: 'address' }], outputs: [] },
+  { type: 'function', name: 'transferOwnership', stateMutability: 'nonpayable', inputs: [{ name: 'newOwner', type: 'address' }], outputs: [] },
+  { type: 'function', name: 'renounceOwnership', stateMutability: 'nonpayable', inputs: [], outputs: [] },
+  { type: 'function', name: 'upgradeTo', stateMutability: 'nonpayable', inputs: [{ name: 'newImplementation', type: 'address' }], outputs: [] },
+  { type: 'function', name: 'upgradeToAndCall', stateMutability: 'payable', inputs: [
+    { name: 'newImplementation', type: 'address' }, { name: 'data', type: 'bytes' },
+  ], outputs: [] },
   { type: 'function', name: 'executePurchase', stateMutability: 'payable', inputs: [
     { name: 'order', type: 'tuple', components: order }, { name: 'lines', type: 'tuple[]', components: line },
     { name: 'listings', type: 'tuple[]', components: listing },
@@ -65,6 +77,12 @@ export const cartAbi = [
   { type: 'event', name: 'ContractPausedUpdated', anonymous: false, inputs: [{ name: 'paused', type: 'bool', indexed: false }] },
   { type: 'event', name: 'ProtocolRecipientUpdated', anonymous: false, inputs: [
     { name: 'oldRecipient', type: 'address', indexed: true }, { name: 'newRecipient', type: 'address', indexed: true },
+  ] },
+  { type: 'event', name: 'OwnershipTransferred', anonymous: false, inputs: [
+    { name: 'previousOwner', type: 'address', indexed: true }, { name: 'newOwner', type: 'address', indexed: true },
+  ] },
+  { type: 'event', name: 'Upgraded', anonymous: false, inputs: [
+    { name: 'implementation', type: 'address', indexed: true },
   ] },
   { type: 'event', name: 'ListingRootCancelled', anonymous: false, inputs: [
     { name: 'seller', type: 'address', indexed: true }, { name: 'rootDigest', type: 'bytes32', indexed: true },
@@ -121,16 +139,15 @@ export const cartAbi = [
   { type: 'error', name: 'InvalidOrderLinesHash', inputs: [] },
   { type: 'error', name: 'InvalidPayoutRouteHash', inputs: [] },
   { type: 'error', name: 'AllowanceNotCleared', inputs: [{ name: 'token', type: 'address' }, { name: 'spender', type: 'address' }] },
+  { type: 'error', name: 'PreexistingAllowance', inputs: [{ name: 'token', type: 'address' }, { name: 'spender', type: 'address' }, { name: 'amount', type: 'uint256' }] },
   { type: 'error', name: 'PreexistingBalanceConsumed', inputs: [{ name: 'token', type: 'address' }, { name: 'baseline', type: 'uint256' }, { name: 'current', type: 'uint256' }] },
   { type: 'error', name: 'UnexpectedCartBalance', inputs: [{ name: 'token', type: 'address' }, { name: 'baseline', type: 'uint256' }, { name: 'current', type: 'uint256' }] },
-  { type: 'error', name: 'UnexpectedRouterBalance', inputs: [{ name: 'token', type: 'address' }, { name: 'baseline', type: 'uint256' }, { name: 'current', type: 'uint256' }] },
   { type: 'error', name: 'ListingNotFound', inputs: [{ name: 'listingHash', type: 'bytes32' }] },
   { type: 'error', name: 'ListingQuantityExceeded', inputs: [{ name: 'listingDigest', type: 'bytes32' }, { name: 'available', type: 'uint256' }, { name: 'requested', type: 'uint256' }] },
   { type: 'error', name: 'ListingTermsMismatch', inputs: [{ name: 'lineIndex', type: 'uint256' }] },
   { type: 'error', name: 'MaxFulfillmentOperationsExceeded', inputs: [] },
   { type: 'error', name: 'NativeValueMismatch', inputs: [] },
-  { type: 'error', name: 'RouteRequired', inputs: [{ name: 'lineIndex', type: 'uint256' }] },
-  { type: 'error', name: 'RouteUnexpected', inputs: [{ name: 'lineIndex', type: 'uint256' }] },
+  { type: 'error', name: 'RouteValueWithoutCommands', inputs: [] },
   { type: 'error', name: 'RouteTooManyCommands', inputs: [{ name: 'count', type: 'uint256' }] },
   { type: 'error', name: 'RouteTooManyInputs', inputs: [{ name: 'count', type: 'uint256' }] },
 ] as const;

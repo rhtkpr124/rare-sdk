@@ -22,13 +22,13 @@ export type CartOrderLine = {
   sku: Hex; listingHash: Hex; fulfillmentKind: CartFulfillmentKind; quantity: bigint;
   settlementCurrency: Address; amount: bigint; paymentRecipient: Address;
 };
-export type CartPayoutRoute = { commands: Hex; inputs: Hex[] };
+export type CartPayoutRoute = { commands: Hex; inputs: Hex[]; routerValue: bigint };
 export type CartRouteLeg =
   | { protocol: 'v2'; mode: 'exact-output'; path: Address[]; amountOut: bigint; amountInMaximum: bigint }
   | { protocol: 'v2'; mode: 'exact-input'; path: Address[]; amountIn: bigint; amountOutMinimum: bigint }
   | { protocol: 'v3'; mode: 'exact-output'; path: Address[]; fees: number[]; amountOut: bigint; amountInMaximum: bigint }
   | { protocol: 'v3'; mode: 'exact-input'; path: Address[]; fees: number[]; amountIn: bigint; amountOutMinimum: bigint };
-export type BuildCartRouteParams = { paymentCurrency: Address; legs: CartRouteLeg[] };
+export type BuildCartRouteParams = { paymentCurrency: Address; legs: CartRouteLeg[]; routerValue?: bigint };
 export type CartFulfillmentAction = { lineIndex: bigint; quantity: bigint; recipient: Address };
 export type CartPurchaseOrder = {
   orderId: Hex; paymentCurrency: Address; deadline: bigint; paymentAmount: bigint;

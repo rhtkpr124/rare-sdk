@@ -232,7 +232,7 @@ function normalizePreparedPurchase(value: CartApiPreparedPurchaseWire): CartApiP
         listingRootIndexes: execute.authorization.listingRootIndexes.map(BigInt),
         listingProofs: execute.authorization.listingProofs,
       },
-      route: execute.route,
+      route: { ...execute.route, routerValue: BigInt(execute.route.routerValue) },
       actions: execute.actions.map((action) => ({
         lineIndex: BigInt(action.lineIndex),
         quantity: BigInt(action.quantity),
