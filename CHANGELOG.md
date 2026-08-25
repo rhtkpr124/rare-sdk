@@ -5,6 +5,8 @@ project follows semantic versioning.
 
 ## Unreleased
 
+- Align Cart route hashing, ABIs, Lens deployment, and prepared-purchase wire
+  data with the signed Universal Router `routerValue` settlement boundary.
 - Add the chain-bound Cart SDK with deterministic seller Listing Root artifacts,
   fixed-quote Purchase Orders, policy-compatible route construction, optional
   Lens diagnostics, explicit payment and asset approvals, and verified checkout

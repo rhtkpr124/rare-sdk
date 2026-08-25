@@ -38,7 +38,9 @@ export const cartLensAbi = [
       { name: 'settlementCurrency', type: 'address' }, { name: 'amount', type: 'uint256' },
       { name: 'paymentRecipient', type: 'address' },
     ] },
-    { name: 'route', type: 'tuple', components: [{ name: 'commands', type: 'bytes' }, { name: 'inputs', type: 'bytes[]' }] },
+    { name: 'route', type: 'tuple', components: [
+      { name: 'commands', type: 'bytes' }, { name: 'inputs', type: 'bytes[]' }, { name: 'routerValue', type: 'uint256' },
+    ] },
     { name: 'actions', type: 'tuple[]', components: [{ name: 'lineIndex', type: 'uint256' }, { name: 'quantity', type: 'uint256' }, { name: 'recipient', type: 'address' }] },
     { name: 'platformSignature', type: 'bytes' },
   ], outputs: [{ name: 'result', type: 'tuple', components: validationResult }] },
@@ -48,12 +50,11 @@ export const cartLensAbi = [
     { name: 'proof', type: 'bytes32[]' }, { name: 'requestedQuantity', type: 'uint256' },
   ], outputs: [{ name: 'result', type: 'tuple', components: validationResult }] },
   { type: 'function', name: 'previewRoute', stateMutability: 'view', inputs: [
-    { name: 'cart', type: 'address' }, { name: 'inputCurrency', type: 'address' },
-    { name: 'outputCurrencies', type: 'address[]' },
-    { name: 'route', type: 'tuple', components: [{ name: 'commands', type: 'bytes' }, { name: 'inputs', type: 'bytes[]' }] },
+    { name: 'cart', type: 'address' },
+    { name: 'route', type: 'tuple', components: [
+      { name: 'commands', type: 'bytes' }, { name: 'inputs', type: 'bytes[]' }, { name: 'routerValue', type: 'uint256' },
+    ] },
   ], outputs: [{ name: 'preview', type: 'tuple', components: [
-    { name: 'valid', type: 'bool' }, { name: 'code', type: 'uint8' }, { name: 'direct', type: 'bool' },
-    { name: 'exactInput', type: 'bool' }, { name: 'inputAmount', type: 'uint256' },
-    { name: 'outputAmount', type: 'uint256' }, { name: 'reason', type: 'bytes' },
+    { name: 'valid', type: 'bool' }, { name: 'code', type: 'uint8' }, { name: 'reason', type: 'bytes' },
   ] }] },
 ] as const;

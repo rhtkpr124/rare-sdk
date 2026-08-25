@@ -72,9 +72,9 @@ describe('Cart functional core', () => {
     expect(hashCartListing(listings[0]!, 11_155_111n, cart)).toBe('0x056a20bad3561c36a41a1ed629e7a2021fbc9d2570c1a8692342ef2c1c97023e');
     expect(hashCartListingRoot(root, 11_155_111n, cart)).toBe('0x8922eebeb8150e37b61190a02719cc1d0136cc5aa4a03a17b28a0fee7bdc460a');
     expect(hashCartOrderLines(built.lines)).toBe('0xc02b9f957c0dd381478d59c0534f943355a7d70f36563a47b23b70d4e476f8e9');
-    expect(hashCartPayoutRoute(built.route)).toBe('0x3112387f541288de916e2809d7bf60d3f35729f4f1385c6c0b3385d6100c97ec');
+    expect(hashCartPayoutRoute(built.route)).toBe('0x04b77f7126f5c2a130c79484a3ea1355bf8fb7d35f3773078d4ddd88a6d5d46a');
     expect(hashCartFulfillmentActions(built.actions)).toBe('0xba849680009431518c33bc2af2eb9cdc70aab55365b8e33eac1c35eb3223b1ff');
-    expect(hashCartPurchaseOrder(built.order, 11_155_111n, cart)).toBe('0xdf61113d72ef26b95c9ff6ef424459463e8a6ba23245df259ebe54316cbf8b8c');
+    expect(hashCartPurchaseOrder(built.order, 11_155_111n, cart)).toBe('0xea6f73c04fa11b0924cf39bda50da5cbbc385bce9dc8f9c911455af2d7566cc8');
   });
 
   it('produces identical hashes for equivalent safe number and bigint chain IDs', () => {
@@ -183,7 +183,7 @@ describe('Cart functional core', () => {
       actions: [{ lineIndex: 0n, quantity: 1n, recipient: seller }],
     });
     expect(built.order.orderLinesHash).toBe('0xc02b9f957c0dd381478d59c0534f943355a7d70f36563a47b23b70d4e476f8e9');
-    expect(built.order.payoutRouteHash).toBe('0x3112387f541288de916e2809d7bf60d3f35729f4f1385c6c0b3385d6100c97ec');
+    expect(built.order.payoutRouteHash).toBe('0x04b77f7126f5c2a130c79484a3ea1355bf8fb7d35f3773078d4ddd88a6d5d46a');
     expect(built.order.fulfillmentActionsHash).toBe('0xba849680009431518c33bc2af2eb9cdc70aab55365b8e33eac1c35eb3223b1ff');
   });
 
@@ -204,6 +204,7 @@ describe('Cart functional core', () => {
       { protocol: 'v2', mode: 'exact-output', path: [seller, output], amountOut: 7n, amountInMaximum: 11n },
     ] });
     expect(route.commands).toBe('0x09');
+    expect(route.routerValue).toBe(0n);
     expect(decodeAbiParameters([
       { type: 'address' }, { type: 'uint256' }, { type: 'uint256' }, { type: 'address[]' }, { type: 'bool' },
     ], route.inputs[0]!)).toEqual([
@@ -289,6 +290,10 @@ describe('Cart functional core', () => {
     expect(() => buildCartPayoutRoute({ paymentCurrency: seller, legs: [
       { ...v3, fees: [0x1000000] },
     ] })).toThrow('invalid uint24 fee');
+    expect(() => buildCartPayoutRoute({ paymentCurrency: seller, legs: [], routerValue: 1n }))
+      .toThrow('requires at least one');
+    expect(() => buildCartPayoutRoute({ paymentCurrency: seller, legs: [v3], routerValue: -1n }))
+      .toThrow('cannot be negative');
   });
 
   it('rejects invalid authorization selections and conflicting signatures', () => {

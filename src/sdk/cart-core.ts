@@ -15,7 +15,7 @@ export const cartEip712Version = '1';
 export const cartMerkleMaxProofDepth = 64;
 const zeroHash = `0x${'00'.repeat(32)}` as Hex;
 const lineType = 'OrderLine(bytes32 sku,bytes32 listingHash,uint8 fulfillmentKind,uint256 quantity,address settlementCurrency,uint256 amount,address paymentRecipient)';
-const routeType = 'PayoutRoute(bytes commands,bytes[] inputs)';
+const routeType = 'PayoutRoute(bytes commands,bytes[] inputs,uint256 routerValue)';
 const actionType = 'FulfillmentAction(uint256 lineIndex,uint256 quantity,address recipient)';
 
 export type CartChainId = number | bigint;
@@ -66,8 +66,9 @@ export function hashCartOrderLines(lines: readonly CartOrderLine[]): Hex {
 }
 
 export function hashCartPayoutRoute(route: CartPayoutRoute): Hex {
-  return keccak256(encodeAbiParameters([{ type: 'bytes32' }, { type: 'bytes32' }, { type: 'bytes32' }],
-    [typeHash(routeType), keccak256(route.commands), hashBytesArray(route.inputs)]));
+  return keccak256(encodeAbiParameters([
+    { type: 'bytes32' }, { type: 'bytes32' }, { type: 'bytes32' }, { type: 'uint256' },
+  ], [typeHash(routeType), keccak256(route.commands), hashBytesArray(route.inputs), route.routerValue]));
 }
 
 export function hashCartFulfillmentActions(actions: readonly CartFulfillmentAction[]): Hex {
@@ -199,7 +200,7 @@ function assertBytes32(value: unknown, field: string): asserts value is Hex {
 function isUnsignedIntegerString(value: unknown): value is string { return typeof value === 'string' && /^(0|[1-9][0-9]*)$/.test(value); }
 
 export function buildCartOrder(params: BuildCartOrderParams): Omit<CartSignedOrder, 'platformSignature'> {
-  const route = params.route ?? { commands: '0x', inputs: [] };
+  const route = params.route ?? { commands: '0x', inputs: [], routerValue: 0n };
   const actions = params.actions ?? [];
   const issues = validateCartOrderInputs(params.lines, actions, params);
   if (issues.length > 0) throw new Error(issues.map((issue) => issue.message).join(' '));
@@ -224,12 +225,18 @@ export function applyCartQuoteSpread(estimatedInput: bigint, spreadBps: bigint):
 }
 
 export function buildCartPayoutRoute(params: BuildCartRouteParams): CartPayoutRoute {
-  if (params.legs.length === 0) return { commands: '0x', inputs: [] };
+  const routerValue = params.routerValue ?? 0n;
+  if (routerValue < 0n) throw new Error('routerValue cannot be negative.');
+  if (params.legs.length === 0) {
+    if (routerValue !== 0n) throw new Error('routerValue requires at least one Universal Router command.');
+    return { commands: '0x', inputs: [], routerValue };
+  }
   const mode = params.legs[0]!.mode;
   if (params.legs.some((leg) => leg.mode !== mode)) throw new Error('Every Cart route leg must use the same execution mode.');
   return {
     commands: encodePacked(params.legs.map(() => 'uint8'), params.legs.map(routeCommand)),
     inputs: params.legs.map((leg, index) => encodeCartRouteLeg(leg, params.paymentCurrency, index)),
+    routerValue,
   };
 }
 

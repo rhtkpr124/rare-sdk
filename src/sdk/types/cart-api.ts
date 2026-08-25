@@ -226,7 +226,7 @@ export type CartApiPreparedPurchaseWire = {
       listingRootIndexes: string[];
       listingProofs: Hex[][];
     };
-    route: { commands: Hex; inputs: Hex[] };
+    route: { commands: Hex; inputs: Hex[]; routerValue: string };
     actions: Array<{ lineIndex: string; quantity: string; recipient: Address }>;
     platformSignature: Hex;
   };

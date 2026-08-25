@@ -118,7 +118,9 @@ if (preparation.ready) {
 
 `autoApprove` defaults to `false`. Cart collects the exact platform-signed
 `paymentAmount`; settlement recipients receive their exact signed Order Line
-amounts, while favorable routing variance is protocol spread. Pure portable
+amounts, while favorable routing variance is protocol spread. The signed route
+also carries the exact native `routerValue` forwarded to Universal Router.
+Pure portable
 builders are also available from `@rareprotocol/rare-sdk/utils`.
 Methods return structured results and reject on RPC, API, wallet, or validation
 failure.
