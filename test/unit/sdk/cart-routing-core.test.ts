@@ -6,6 +6,7 @@ import {
   buildCartRoutingQuoteResult,
   CartRoutingCoreError,
   planCartRoutingQuote,
+  protectCartRoutingExactInput,
   resolveCartRoutingMaximumInput,
   type CartRoutingForeignObligation,
   type CartRoutingPlan,
@@ -121,6 +122,7 @@ describe('Cart routing functional core', () => {
     expect(resolveCartRoutingMaximumInput(plan, obligation, response)).toBe(1100n);
     delete response.quote.input.maximumAmount;
     expect(resolveCartRoutingMaximumInput(plan, obligation, response)).toBe(1005n);
+    expect(protectCartRoutingExactInput(1005n)).toBe(1011n);
   });
 
   it('accepts only the Cart command families without interpreting their inputs', () => {
@@ -139,9 +141,15 @@ describe('Cart routing functional core', () => {
     }
   });
 
-  it('fails closed on malformed compiler envelopes and unsupported currencies', () => {
+  it('accepts arbitrary settlement currencies while failing closed on malformed addresses and compiler envelopes', () => {
+    const arbitraryCurrency = '0x00000000000000000000000000000000000000ff' as Address;
+    expect(planCartRoutingQuote(chain, cart, {
+      paymentCurrency: usdc,
+      obligations: [{ settlementCurrency: arbitraryCurrency, amount: 1n }],
+    }).foreignObligations).toEqual([{ settlementCurrency: arbitraryCurrency, amount: 1n }]);
+
     expect(() => planCartRoutingQuote(chain, cart, {
-      paymentCurrency: '0x00000000000000000000000000000000000000ff',
+      paymentCurrency: 'not-an-address' as Address,
       obligations: [{ settlementCurrency: rare, amount: 1n }],
     })).toThrowError(CartRoutingCoreError);
 

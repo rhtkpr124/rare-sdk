@@ -8,7 +8,6 @@ import {
   type Hex,
 } from 'viem';
 import { ETH_ADDRESS, chainIds, type SupportedChain } from '../contracts/addresses.js';
-import { getRareAddress, getUsdcAddress, getWrappedEthAddress } from '../swap/known-pools.js';
 import type { UniswapQuoteResponse, UniswapSwapResponse } from '../swap/uniswap-api.js';
 import { applyCartQuoteSpread } from './cart-core.js';
 import type {
@@ -87,14 +86,14 @@ export function planCartRoutingQuote(
   if (params.obligations.length === 0) {
     throw new CartRoutingCoreError('invalid_response', 'Cart routing requires at least one settlement obligation.');
   }
-  const paymentCurrency = requireSupportedCurrency(chain, params.paymentCurrency);
+  const paymentCurrency = normalizeRoutingCurrency(params.paymentCurrency);
   const mode = params.mode ?? cartRoutingDefaultMode;
   const totals = new Map<Address, bigint>();
   for (const [index, obligation] of params.obligations.entries()) {
     if (obligation.amount <= 0n) {
       throw new CartRoutingCoreError('invalid_response', `obligations[${index}].amount must be positive.`);
     }
-    const currency = requireSupportedCurrency(chain, obligation.settlementCurrency);
+    const currency = normalizeRoutingCurrency(obligation.settlementCurrency);
     totals.set(currency, (totals.get(currency) ?? 0n) + obligation.amount);
   }
 
@@ -124,6 +123,10 @@ export function resolveCartRoutingMaximumInput(
   response: UniswapQuoteResponse,
 ): bigint {
   return validateExactOutputQuote(plan, obligation, response).maximumInput;
+}
+
+export function protectCartRoutingExactInput(maximumInput: bigint): bigint {
+  return applyCartQuoteSpread(maximumInput, BigInt(cartRoutingDefaultSlippageBps));
 }
 
 export function buildCartRoutingQuoteResult(
@@ -258,7 +261,7 @@ function validateExecutionQuote(
   const quote = response.quote;
   const exactInput = positiveInteger(quote.input.amount, 'quote.input.amount', obligation.settlementCurrency);
   const minimumOutput = positiveInteger(quote.output.minimumAmount, 'quote.output.minimumAmount', obligation.settlementCurrency);
-  if (quote.tradeType !== 'EXACT_INPUT' || exactInput !== protectedMaximum || minimumOutput < obligation.amount) {
+  if (quote.tradeType !== 'EXACT_INPUT' || exactInput < protectedMaximum || minimumOutput < obligation.amount) {
     throw new CartRoutingCoreError('invalid_response', 'Exact-input execution does not guarantee the requested settlement within the protected input.', obligation.settlementCurrency);
   }
   return {
@@ -331,12 +334,10 @@ function nonNegativeInteger(value: string | undefined, field: string, settlement
   }
 }
 
-function requireSupportedCurrency(chain: SupportedChain, value: Address): Address {
-  const currency = getAddress(value);
-  const supported = [ETH_ADDRESS, getRareAddress(chain), getUsdcAddress(chain), getWrappedEthAddress(chain)]
-    .filter((candidate): candidate is Address => candidate !== undefined)
-    .map((candidate) => getAddress(candidate));
-  const match = supported.find((candidate) => isAddressEqual(candidate, currency));
-  if (!match) throw new CartRoutingCoreError('unsupported_currency', `Currency ${currency} is not supported for Cart routing.`);
-  return match;
+function normalizeRoutingCurrency(value: Address): Address {
+  try {
+    return getAddress(value);
+  } catch {
+    throw new CartRoutingCoreError('unsupported_currency', `Currency ${String(value)} is not a valid EVM address.`);
+  }
 }

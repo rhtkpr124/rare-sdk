@@ -87,9 +87,24 @@ export type UniswapSwapResponse = {
   gasFee?: string;
 }
 
+export class UniswapApiError extends Error {
+  readonly status: number;
+  readonly requestId?: string;
+  readonly reason?: string;
+
+  constructor(status: number, statusText: string, requestId?: string, reason?: string) {
+    super(`Uniswap API request failed with status ${status}${statusText ? ` ${statusText}` : ''}.`);
+    this.name = 'UniswapApiError';
+    this.status = status;
+    this.requestId = requestId;
+    this.reason = reason;
+  }
+}
+
 type UniswapApiRequestOptions = {
   apiKey?: string;
   baseUrl?: string;
+  permit2Disabled?: boolean;
 }
 
 type QuoteRequestParams = {
@@ -102,6 +117,7 @@ type QuoteRequestParams = {
   swapper: Address;
   slippageBps: number;
   tradeType?: UniswapQuotePayload['tradeType'];
+  permit2Disabled?: boolean;
 }
 
 function getBaseUrl(options?: UniswapApiRequestOptions): string {
@@ -366,9 +382,11 @@ function parseUniswapSwapResponse(value: unknown): UniswapSwapResponse {
   };
 }
 
-function getErrorMessage(parsed: unknown): string | undefined {
-  if (isRecord(parsed) && typeof parsed.message === 'string') {
-    return parsed.message;
+function getSafeErrorField(parsed: unknown, fields: readonly string[]): string | undefined {
+  if (!isRecord(parsed)) return undefined;
+  for (const field of fields) {
+    const value = parsed[field];
+    if (typeof value === 'string' && /^[\w .:/-]{1,160}$/u.test(value)) return value;
   }
   return undefined;
 }
@@ -378,8 +396,10 @@ async function parseJsonResponse<T>(response: Response, parse: (value: unknown) 
   const parsed = parseJsonOrNull(text);
 
   if (!response.ok) {
-    const message = getErrorMessage(parsed) ?? (text.length > 0 ? text : response.statusText);
-    throw new Error(`Uniswap API ${response.status} ${response.statusText}: ${message}`);
+    const requestId = getSafeErrorField(parsed, ['requestId', 'request_id']) ??
+      response.headers.get('x-request-id') ?? undefined;
+    const reason = getSafeErrorField(parsed, ['detail', 'message', 'error', 'errorCode', 'code']);
+    throw new UniswapApiError(response.status, response.statusText, requestId, reason);
   }
 
   return parse(parsed);
@@ -401,7 +421,7 @@ function buildHeaders(options?: UniswapApiRequestOptions): HeadersInit {
     Accept: 'application/json',
     'Content-Type': 'application/json',
     'x-api-key': requireApiKey(options),
-    'x-permit2-disabled': 'true',
+    'x-permit2-disabled': String(options?.permit2Disabled ?? true),
     'x-universal-router-version': '2.0',
   };
 }
@@ -459,6 +479,8 @@ export async function requestUniswapSwap(params: {
   baseUrl?: string;
   quote: UniswapQuotePayload;
   deadline?: number;
+  permit2Disabled?: boolean;
+  simulateTransaction?: boolean;
 }): Promise<UniswapSwapResponse> {
   const response = await fetch(`${getBaseUrl(params)}/swap`, {
     method: 'POST',
@@ -466,7 +488,7 @@ export async function requestUniswapSwap(params: {
     body: JSON.stringify({
       quote: params.quote,
       refreshGasPrice: true,
-      simulateTransaction: true,
+      simulateTransaction: params.simulateTransaction ?? true,
       safetyMode: 'SAFE',
       urgency: 'normal',
       ...(params.deadline !== undefined ? { deadline: params.deadline } : {}),

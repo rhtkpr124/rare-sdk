@@ -1,8 +1,9 @@
-import { describe, expect, it, type TestContext } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { isAddressEqual, zeroAddress, type Address } from 'viem';
 import { cartLensAbi, getCartAddress, getCartLensAddress, resolveCurrency } from '../../../src/sdk/contracts.js';
 import { createRareClient } from '../../../src/sdk/client.js';
 import type { CartRoutingRoute } from '../../../src/sdk/types/cart-routing.js';
+import { getLiquidEditionPoolKey } from '../../../src/swap/liquid-edition.js';
 import { createTestSepoliaPublicClient, hasTestRpcUrl } from '../../helpers/liveViem.js';
 
 const describeLive = hasTestRpcUrl() && process.env.UNISWAP_API_KEY ? describe : describe.skip;
@@ -11,9 +12,24 @@ const currencies = [
   { address: resolveCurrency('usdc', 'sepolia'), amount: 1_000_000n },
   { address: resolveCurrency('rare', 'sepolia'), amount: 1_000_000_000_000_000_000n },
 ] as const;
+const liquidEdition = '0x7AEaB936a2D6217E100b4dcfCFcE14E056B386fA' as Address;
+const liquidEditionHooks = '0xB32eC4b5eC46fBd8E68a39308b8569538d0620CC' as Address;
 
 describeLive('SDK Cart routing integration', () => {
-  it('quotes every Sepolia commerce direction and passes the deployed Cart route policy', async (ctx) => {
+  it('strictly quotes one canonical Sepolia USDC to ETH route', async () => {
+    const publicClient = createTestSepoliaPublicClient();
+    const cart = getCartAddress('sepolia');
+    const lens = getCartLensAddress('sepolia')!;
+    const rare = createRareClient({ publicClient, uniswapApiKey: process.env.UNISWAP_API_KEY });
+    const quote = await rare.cart.routing.quote({
+      paymentCurrency: currencies[1].address,
+      obligations: [{ settlementCurrency: currencies[0].address, amount: currencies[0].amount }],
+    });
+    expect(BigInt(quote.maximumPaymentInput)).toBeGreaterThanOrEqual(BigInt(quote.expectedPaymentInput));
+    await expectRoutePolicy(publicClient, lens, cart, quote.route);
+  }, 60_000);
+
+  it('quotes every Sepolia commerce direction and passes the deployed Cart route policy', async () => {
     const publicClient = createTestSepoliaPublicClient();
     const cart = getCartAddress('sepolia');
     const lens = getCartLensAddress('sepolia')!;
@@ -28,10 +44,10 @@ describeLive('SDK Cart routing integration', () => {
 
       for (const settlement of currencies) {
         if (isAddressEqual(payment.address, settlement.address)) continue;
-        const quote = await quoteOrSkip(ctx, () => rare.cart.routing.quote({
+        const quote = await rare.cart.routing.quote({
           paymentCurrency: payment.address,
           obligations: [{ settlementCurrency: settlement.address, amount: settlement.amount }],
-        }));
+        });
         expect(BigInt(quote.maximumPaymentInput)).toBeGreaterThanOrEqual(BigInt(quote.expectedPaymentInput));
         expect(quote.settlements).toEqual([{ settlementCurrency: settlement.address, amount: settlement.amount.toString(), routed: true }]);
         await expectRoutePolicy(publicClient, lens, cart, quote.route);
@@ -39,22 +55,50 @@ describeLive('SDK Cart routing integration', () => {
     }
   }, 120_000);
 
-  it('composes mixed settlements in either Universal Router execution mode', async (ctx) => {
+  it('composes mixed settlements in either Universal Router execution mode', async () => {
     const publicClient = createTestSepoliaPublicClient();
     const cart = getCartAddress('sepolia');
     const lens = getCartLensAddress('sepolia')!;
     const rare = createRareClient({ publicClient, uniswapApiKey: process.env.UNISWAP_API_KEY });
     for (const mode of ['exact-output', 'exact-input'] as const) {
-      const quote = await quoteOrSkip(ctx, () => rare.cart.routing.quote({
+      const quote = await rare.cart.routing.quote({
         paymentCurrency: currencies[1].address,
         obligations: currencies.map((currency) => ({ settlementCurrency: currency.address, amount: currency.amount })),
         mode,
-      }));
+      });
       expect(quote.mode).toBe(mode);
       expect(quote.route.inputs).toHaveLength(2);
       await expectRoutePolicy(publicClient, lens, cart, quote.route);
     }
   }, 120_000);
+
+  it.each([
+    { name: 'ETH', paymentCurrency: currencies[0].address },
+    { name: 'USDC', paymentCurrency: currencies[1].address },
+  ])('quotes the canonical Sepolia Liquid Edition from $name and passes Cart route policy', async ({ paymentCurrency }) => {
+    const publicClient = createTestSepoliaPublicClient();
+    const cart = getCartAddress('sepolia');
+    const lens = getCartLensAddress('sepolia')!;
+    const rare = createRareClient({ publicClient, uniswapApiKey: process.env.UNISWAP_API_KEY });
+    const poolKey = await getLiquidEditionPoolKey(publicClient, liquidEdition);
+    expect(poolKey).toEqual({
+      currency0: currencies[2].address,
+      currency1: liquidEdition,
+      fee: 0,
+      tickSpacing: 60,
+      hooks: liquidEditionHooks,
+    });
+
+    const amount = 1_000_000_000_000_000_000n;
+    const quote = await rare.cart.routing.quote({
+      paymentCurrency,
+      obligations: [{ settlementCurrency: liquidEdition, amount }],
+    });
+    expect(quote.evidence.source).toBe('known-pool-rpc');
+    expect(quote.settlements).toEqual([{ settlementCurrency: liquidEdition, amount: amount.toString(), routed: true }]);
+    expect(BigInt(quote.maximumPaymentInput)).toBeGreaterThanOrEqual(BigInt(quote.expectedPaymentInput));
+    await expectRoutePolicy(publicClient, lens, cart, quote.route);
+  }, 60_000);
 });
 
 async function expectRoutePolicy(
@@ -70,16 +114,4 @@ async function expectRoutePolicy(
     args: [cart, { ...route, routerValue: BigInt(route.routerValue) }],
   });
   expect(preview.valid, `Cart route policy code ${preview.code}, reason ${preview.reason}`).toBe(true);
-}
-
-async function quoteOrSkip<T>(ctx: TestContext, quote: () => Promise<T>): Promise<T> {
-  try {
-    return await quote();
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    if (message.includes('routing quote') || message.includes('route is currently') || message.includes('liquidity')) {
-      ctx.skip(`Uniswap Cart route unavailable: ${message}`);
-    }
-    throw error;
-  }
 }
