@@ -2,6 +2,8 @@ import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
+import { createPublicClient, http } from 'viem';
+import { sepolia } from 'viem/chains';
 import { describe, expect, it } from 'vitest';
 
 const require = createRequire(import.meta.url);
@@ -54,6 +56,12 @@ describe('package exports', () => {
     expect(typeof dataAccess.createApiClient).toBe('function');
     expect(typeof utils.getCurvePresetDefinition).toBe('function');
     expect(typeof utils.parseCurveConfig).toBe('function');
+
+    const publicClient = createPublicClient({
+      chain: sepolia,
+      transport: http(),
+    });
+    expect(() => root.createRareClient({ publicClient })).not.toThrow();
   });
 
   it('exposes package.json for tooling', () => {
