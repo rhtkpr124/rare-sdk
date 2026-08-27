@@ -6,6 +6,14 @@ export default defineConfig({
   // Package exports, rather than emitted file presence, define accessibility.
   entry: ['src/**/*.ts', '!src/**/*.d.ts'],
   unbundle: true,
+  // openapi-fetch exposes a transpiled CommonJS default export. Keeping it
+  // external makes Rolldown wrap that export twice, so require() consumers
+  // cannot construct createRareClient. Bundle this small transport dependency
+  // to keep the ESM and CommonJS package entry points behaviorally identical.
+  deps: {
+    alwaysBundle: ['openapi-fetch'],
+    onlyBundle: false,
+  },
   // Dual output so both `import` and `require` consumers work: .js/.d.ts for
   // ESM and .cjs/.d.cts for CommonJS, selected via the exports map.
   format: ['esm', 'cjs'],
