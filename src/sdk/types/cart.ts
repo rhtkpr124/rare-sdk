@@ -91,6 +91,11 @@ export type CartValidationResult<T> = { isValid: true; value: T } | { isValid: f
 
 export type CartNamespace = {
   api: CartApiNamespace;
+  approval: {
+    status: (tokenContract: Address, owner: Address) => Promise<boolean>;
+    approve: (tokenContract: Address) => Promise<{ txHash?: Hash; receipt?: TransactionReceipt }>;
+    revoke: (tokenContract: Address) => Promise<{ txHash?: Hash; receipt?: TransactionReceipt }>;
+  };
   listing: {
     createSalt: () => Hex;
     buildRoot: (params: BuildCartListingRootInput) => CartListingRootArtifact;
@@ -102,8 +107,6 @@ export type CartNamespace = {
     cancel: (listingDigest: Hex) => Promise<{ txHash: Hash; receipt: TransactionReceipt }>;
     cancelRoot: (rootDigest: Hex) => Promise<{ txHash: Hash; receipt: TransactionReceipt }>;
     invalidateNonce: () => Promise<{ txHash: Hash; receipt: TransactionReceipt }>;
-    approvalStatus: (tokenContract: Address, owner: Address) => Promise<boolean>;
-    approve: (tokenContract: Address) => Promise<{ txHash?: Hash }>;
   };
   order: {
     build: (params: BuildCartOrderParams) => Omit<CartSignedOrder, 'platformSignature'>;

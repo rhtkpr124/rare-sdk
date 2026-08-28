@@ -50,6 +50,11 @@ describe('public SDK API surface', () => {
     expect(rare.cart.api.catalog.products.create).toBeTypeOf('function');
     expect(rare.cart.api.listing.search).toBeTypeOf('function');
     expect(rare.cart.api.checkout.prepareOrder).toBeTypeOf('function');
+    expect(rare.cart.approval.status).toBeTypeOf('function');
+    expect(rare.cart.approval.approve).toBeTypeOf('function');
+    expect(rare.cart.approval.revoke).toBeTypeOf('function');
+    expect(rare.cart.listing).not.toHaveProperty('approvalStatus');
+    expect(rare.cart.listing).not.toHaveProperty('approve');
   });
 
   it('exposes contract building blocks from the contracts subpath', () => {

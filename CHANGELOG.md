@@ -5,6 +5,9 @@ project follows semantic versioning.
 
 ## Unreleased
 
+- **Breaking:** move Cart collection authorization from Listing methods to
+  `rare.cart.approval.status`, `.approve`, and `.revoke`; Cart resolves its own
+  operator address and approval writes are idempotent.
 - Align Cart Listing and Order Line terminology and EIP-712 hashes with the
   contract's `listingSalt` and `listingDigest` fields, and publish the upgraded
   Sepolia CartLens and optional CartHashes helper deployment.
