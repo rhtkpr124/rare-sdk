@@ -6,13 +6,16 @@ import {
   recoverAddress,
   toBytes,
   zeroAddress,
+  type Address,
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { createRareClient } from '../../../src/sdk/client.js';
+import type { CartFulfillmentKind, CartListing } from '../../../src/sdk/types/cart.js';
 import { cartAbi } from '../../../src/contracts/abis/cart.js';
 import { getCartAddress } from '../../../src/contracts/addresses.js';
 import {
   computeCartListingMerkleRoot,
+  cartDomain,
   deriveCartListingMerkleLeaf,
   hashCartFulfillmentActions,
   hashCartListing,
@@ -27,7 +30,7 @@ import { createTestSepoliaPublicClient, hasTestRpcUrl } from '../../helpers/live
 
 loadDotEnv();
 
-const describeRareApi = process.env.RARE_API_BASE_URL && hasTestRpcUrl()
+const describeRareApi = process.env.RARE_API_BASE_URL && process.env.RARE_API_AUTH_TOKEN && hasTestRpcUrl()
   ? describe.sequential
   : describe.skip;
 
@@ -83,14 +86,14 @@ describeRareApi('SDK Cart rare-api integration', () => {
     expect(ingested.listingCount).toBe(2);
     expect(ingested.root.listingsRoot).toBe(artifact.root.listingsRoot);
     expect(ingested.signature).toBe(signedArtifact.signature);
-    const invalidRoot = rare.cart.listing.buildRoot({
+    const invalidRoot = rare.utils.cart.buildListingRoot({
       listings,
       chainId,
       cart,
       nonce: listingNonce + 1n,
       deadline: BigInt(Math.floor(Date.now() / 1000) + 3600),
     });
-    await expect(rare.cart.api.listing.ingestRoot({
+    await expect(rare.cart.api.listing.publish({
       ...invalidRoot,
       signature: `0x${'00'.repeat(65)}`,
     } as typeof invalidRoot & { signature: `0x${string}` })).rejects.toThrow();
@@ -106,11 +109,11 @@ describeRareApi('SDK Cart rare-api integration', () => {
         recipient,
       })),
     };
-    const preparation = await rare.cart.api.checkout.prepare(draft);
+    const preparation = await rare.cart.api.checkout.preview(draft);
     expect(preparation.intent).toEqual(draft);
     expect(preparation.paymentAmount).toBeGreaterThan(0n);
     expect(Date.parse(preparation.expiresAt)).toBeGreaterThan(Date.now());
-    const prepared = await rare.cart.api.checkout.purchase(preparation);
+    const prepared = await rare.cart.api.checkout.prepare(draft);
     expect(prepared.chainId).toBe(11_155_111n);
     expect(isAddressEqual(prepared.cartAddress, cart)).toBe(true);
     expect(prepared.executePurchase.lines.length).toBeGreaterThanOrEqual(2);
@@ -145,14 +148,18 @@ describeRareApi('SDK Cart rare-api integration', () => {
 
   it('handles off-chain Listings and real API not-found errors', async () => {
     const { rare, runId, skuA } = scenario;
-    const offChainListing = await rare.cart.api.listing.create({
+    const offChainListing = await postCartFixture<{ listing: { fulfillmentKind: number; minimumUnitPrice: string } }>(
+      scenario.apiFetch, scenario.apiBaseUrl, '/v1/cart/listings', {
       seller: seller.address,
       sku: skuA.sku,
       fulfillmentKind: 1,
       settlementCurrency: zeroAddress,
-      availableQuantity: 1n,
       paymentRecipient: seller.address,
-      displayUnitPrice: 500n,
+      displayUnitPrice: '500',
+      availableQuantity: '1',
+      listingSalt: keccak256(toBytes(`offchain:${runId}`)),
+      chainId: '11155111',
+      cartAddress: scenario.cart,
     });
     expect(offChainListing.listing.fulfillmentKind).toBe(1);
     expect(BigInt(offChainListing.listing.minimumUnitPrice)).toBeGreaterThan(0n);
@@ -175,36 +182,58 @@ describeRareApi('SDK Cart rare-api integration', () => {
 });
 
 async function createCartScenario() {
+  const apiBaseUrl = process.env.RARE_API_BASE_URL;
+  const authToken = process.env.RARE_API_AUTH_TOKEN;
+  if (!apiBaseUrl || !authToken) throw new Error('RARE_API_BASE_URL and RARE_API_AUTH_TOKEN are required.');
+  const apiFetch: typeof fetch = (input, init) => {
+    const headers = new Headers(init?.headers);
+    headers.set('authorization', `Bearer ${authToken}`);
+    return fetch(input, { ...init, headers });
+  };
   const publicClient = createTestSepoliaPublicClient();
   const cart = getCartAddress('sepolia');
   const chainId = 11_155_111;
   const tokenContract = getAddress('0x0000000000000000000000000000000000000011');
-  const rare = createRareClient({ publicClient, apiBaseUrl: process.env.RARE_API_BASE_URL });
+  const rare = createRareClient({ publicClient, apiBaseUrl, apiFetch });
   const runId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-  const product = await rare.cart.api.catalog.products.create({
+  const product = await postCartFixture<{ id: string }>(apiFetch, apiBaseUrl, '/v1/cart/products', {
     slug: `sdk-cart-${runId}`,
     metadata: { source: 'rare-sdk', test: 'cart-api', runId },
   });
-  const skuA = await rare.cart.api.catalog.skus.create({ metadata: { chainId, tokenContract, tokenId: '1000' } });
-  const skuB = await rare.cart.api.catalog.skus.create({ metadata: { chainId, tokenContract, tokenId: '2000' } });
-  await rare.cart.api.catalog.skus.attach(product.id, { sku: skuA.sku, position: 0, metadata: { runId } });
-  await rare.cart.api.catalog.skus.attach(product.id, { sku: skuB.sku, position: 1, metadata: { runId } });
+  const skuA = await postCartFixture<{ sku: `0x${string}` }>(apiFetch, apiBaseUrl, '/v1/cart/skus',
+    { metadata: { chainId, tokenContract, tokenId: '1000' } });
+  const skuB = await postCartFixture<{ sku: `0x${string}` }>(apiFetch, apiBaseUrl, '/v1/cart/skus',
+    { metadata: { chainId, tokenContract, tokenId: '2000' } });
+  await postCartFixture(apiFetch, apiBaseUrl, `/v1/cart/products/${product.id}/skus`,
+    { sku: skuA.sku, position: 0, metadata: { runId } });
+  await postCartFixture(apiFetch, apiBaseUrl, `/v1/cart/products/${product.id}/skus`,
+    { sku: skuB.sku, position: 1, metadata: { runId } });
   const listingInputs = [
     { sku: skuA.sku, price: 1000n },
     { sku: skuB.sku, price: 2000n },
   ] as const;
-  const createdListings = await Promise.all(listingInputs.map(async (input) => rare.cart.api.listing.create({
+  const createdListings = await Promise.all(listingInputs.map(async (input) => postCartFixture<{
+    listingDigest: `0x${string}`;
+    listing: {
+      listingSalt: `0x${string}`; seller: Address; sku: `0x${string}`; fulfillmentKind: number;
+      tokenContract: Address; tokenId: string; settlementCurrency: Address; minimumUnitPrice: string;
+      availableQuantity: string; paymentRecipient: Address;
+    };
+  }>(apiFetch, apiBaseUrl, '/v1/cart/listings', {
     seller: seller.address,
     sku: input.sku,
     fulfillmentKind: 2,
     tokenContract,
-    tokenId: input.price,
+    tokenId: input.price.toString(),
     settlementCurrency: zeroAddress,
-    availableQuantity: 1n,
+    availableQuantity: '1',
     paymentRecipient: seller.address,
-    displayUnitPrice: input.price,
+    displayUnitPrice: input.price.toString(),
+    listingSalt: keccak256(toBytes(`${runId}:${input.sku}`)),
+    chainId: chainId.toString(),
+    cartAddress: cart,
   })));
-  const listings = createdListings.map((entry) => ({
+  const listings: CartListing[] = createdListings.map((entry) => ({
     ...entry.listing,
     seller: getAddress(entry.listing.seller),
     tokenContract: getAddress(entry.listing.tokenContract),
@@ -213,6 +242,7 @@ async function createCartScenario() {
     minimumUnitPrice: BigInt(entry.listing.minimumUnitPrice),
     availableQuantity: BigInt(entry.listing.availableQuantity),
     paymentRecipient: getAddress(entry.listing.paymentRecipient),
+    fulfillmentKind: entry.listing.fulfillmentKind as CartFulfillmentKind,
   }));
   const listingNonce = await publicClient.readContract({
     address: cart,
@@ -220,23 +250,38 @@ async function createCartScenario() {
     functionName: 'listingNonces',
     args: [seller.address],
   });
-  const artifact = rare.cart.listing.buildRoot({
+  const artifact = rare.utils.cart.buildListingRoot({
     listings,
     chainId,
     cart,
     nonce: listingNonce,
     deadline: BigInt(Math.floor(Date.now() / 1000) + 3600),
   });
-  const signedArtifact = await rare.cart.listing.signRoot(artifact, {
-    address: seller.address,
-    signTypedData: seller.signTypedData,
-  });
-  if (!signedArtifact.signature) throw new Error('SDK did not produce a Listing Root signature.');
-  const signed = { ...signedArtifact, signature: signedArtifact.signature };
-  const ingested = await rare.cart.api.listing.ingestRoot(signed);
+  const signature = await seller.signTypedData({ domain: cartDomain(chainId, cart), primaryType: 'ListingRoot', types: { ListingRoot: [
+    { name: 'listingsRoot', type: 'bytes32' }, { name: 'nonce', type: 'uint256' }, { name: 'deadline', type: 'uint256' },
+  ] }, message: { listingsRoot: artifact.root.listingsRoot, nonce: BigInt(artifact.root.nonce), deadline: BigInt(artifact.root.deadline) } });
+  const signed = { ...artifact, signature };
+  const ingested = await rare.cart.api.listing.publish(signed);
   await waitForListingSearch(rare, skuA.sku, createdListings[0]!.listingDigest);
-  return { rare, publicClient, cart, chainId, runId, product, skuA, createdListings, listings,
+  return { rare, publicClient, cart, chainId, runId, apiFetch, apiBaseUrl, product, skuA, createdListings, listings,
     listingNonce, artifact, signedArtifact: signed, ingested };
+}
+
+async function postCartFixture<T = unknown>(
+  apiFetch: typeof fetch,
+  apiBaseUrl: string,
+  path: string,
+  body: unknown,
+): Promise<T> {
+  const response = await apiFetch(new URL(path, apiBaseUrl), {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) throw new Error(`Cart fixture request ${path} failed with ${response.status}.`);
+  const payload = await response.json() as { data?: T };
+  if (payload.data === undefined) throw new Error(`Cart fixture request ${path} returned no data.`);
+  return payload.data;
 }
 
 async function waitForListingSearch(

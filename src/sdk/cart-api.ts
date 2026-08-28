@@ -3,6 +3,7 @@ import { createApiClient } from '../data-access/index.js';
 import type { RareApiOptions } from './api.js';
 import type {
   CartFulfillmentKind,
+  CartListing,
   CartListingRoot,
   CartListingRootArtifact,
 } from './types/cart.js';
@@ -11,7 +12,6 @@ import { generateCartListingSalt } from './cart-listing-shell.js';
 import type {
   CartCheckoutIntentItem,
   CartApiListing,
-  CartApiListingCreateParams,
   CartApiListingRoot,
   CartApiListingSearchParams,
   CartApiListingSearchResult,
@@ -20,14 +20,11 @@ import type {
   CartApiPreparedPurchase,
   CartApiPreparedPurchaseWire,
   CartApiProduct,
-  CartApiProductCreateParams,
-  CartApiProductSku,
-  CartApiProductSkuCreateParams,
   CartCheckoutIntent,
   CartCheckoutPreparation,
-  CartCheckoutPreparationWire,
   CartApiSku,
-  CartApiSkuCreateParams,
+  CartListingIntent,
+  CartListingPreviewWire,
   CartListingRootArtifactWire,
 } from './types/cart-api.js';
 
@@ -66,25 +63,25 @@ export function createCartApiNamespace(
   };
 
   const catalog = {
-    products: {
-      create: async (params: CartApiProductCreateParams): Promise<CartApiProduct> => getWrappedData(
-        client.POST('/v1/cart/products', { body: params }),
-        'Rare API did not return the created Cart Product.',
-      ),
-      list: async (params: { page?: number; perPage?: number } = {}): Promise<CartApiPage<CartApiProduct>> => getData(
-        client.GET('/v1/cart/products', { params: { query: params } }),
+    search: async (params: { q?: string; page?: number; perPage?: number } = {}): Promise<CartApiPage<CartApiProduct>> => {
+      const page = await getData<CartApiPage<CartApiProduct>>(
+        client.GET('/v1/cart/products/search', { params: { query: params } }),
         'Rare API did not return Cart Products.',
-      ),
-      get: async (id: string): Promise<CartApiProduct> => getWrappedData(
-        client.GET(`/v1/cart/products/${encodeURIComponent(id)}`, {}),
-        'Rare API did not return the Cart Product.',
-      ),
+      );
+      return { ...page, data: page.data.map(normalizeProduct) };
+    },
+    products: {
+      list: async (params: { page?: number; perPage?: number } = {}): Promise<CartApiPage<CartApiProduct>> => {
+        const page = await getData<CartApiPage<CartApiProduct>>(
+          client.GET('/v1/cart/products', { params: { query: params } }), 'Rare API did not return Cart Products.',
+        );
+        return { ...page, data: page.data.map(normalizeProduct) };
+      },
+      get: async (id: string): Promise<CartApiProduct> => normalizeProduct(await getWrappedData(
+        client.GET(`/v1/cart/products/${encodeURIComponent(id)}`, {}), 'Rare API did not return the Cart Product.',
+      )),
     },
     skus: {
-      create: async (params: CartApiSkuCreateParams): Promise<CartApiSku> => getWrappedData(
-        client.POST('/v1/cart/skus', { body: params }),
-        'Rare API did not return the created Cart SKU.',
-      ),
       list: async (params: { page?: number; perPage?: number } = {}): Promise<CartApiPage<CartApiSku>> => getData(
         client.GET('/v1/cart/skus', { params: { query: params } }),
         'Rare API did not return Cart SKUs.',
@@ -93,26 +90,28 @@ export function createCartApiNamespace(
         client.GET(`/v1/cart/skus/${encodeURIComponent(sku)}`, {}),
         'Rare API did not return the Cart SKU.',
       ),
-      attach: async (productId: string, params: CartApiProductSkuCreateParams): Promise<CartApiProductSku> => getWrappedData(
-        client.POST(`/v1/cart/products/${encodeURIComponent(productId)}/skus`, { body: params }),
-        'Rare API did not return the Cart Product-SKU association.',
-      ),
     },
   };
 
   const listing = {
-    create: async (params: CartApiListingCreateParams): Promise<CartApiListing> => getWrappedData(
-      client.POST('/v1/cart/listings', { body: {
-        ...params,
-        listingSalt: generateCartListingSalt(),
-        chainId,
-        cartAddress: cartAddress(),
-        ...(params.tokenId === undefined ? {} : { tokenId: params.tokenId.toString() }),
-        availableQuantity: params.availableQuantity.toString(),
-        displayUnitPrice: params.displayUnitPrice.toString(),
-      } }),
-      'Rare API did not return the created Cart Listing.',
-    ),
+    preview: async (intent: CartListingIntent): Promise<CartListing[]> => {
+      const wire = await getWrappedData<CartListingPreviewWire>(
+        client.POST('/v1/cart/listings/preview', { params: { query: { chainId, cartAddress: cartAddress() } }, body: {
+          seller: getAddress(intent.seller),
+          deadline: intent.deadline.toString(),
+          listings: intent.listings.map((item) => ({
+            listingSalt: generateCartListingSalt(),
+            sku: item.sku,
+            settlementCurrency: getAddress(item.settlementCurrency),
+            displayUnitPrice: item.unitPrice.toString(),
+            availableQuantity: item.quantity.toString(),
+            ...(item.paymentRecipient === undefined ? {} : { paymentRecipient: getAddress(item.paymentRecipient) }),
+          })),
+        } }),
+        'Rare API did not return the Cart Listing preparation.',
+      );
+      return wire.listings.map(normalizeListing);
+    },
     search: async (params: CartApiListingSearchParams = {}): Promise<CartApiListingSearchResult> => getData(
       client.GET('/v1/cart/listings/search', { params: { query: { ...params, chainId, cartAddress: cartAddress() } } }),
       'Rare API did not return Cart Listing search results.',
@@ -128,16 +127,16 @@ export function createCartApiNamespace(
       }),
       'Rare API did not return the invalidated Cart Listing.',
     ),
-    ingestRoot: async (artifact: CartListingRootArtifact & { signature: Hex }): Promise<CartApiListingRoot> => getWrappedData(
+    publish: async (artifact: CartListingRootArtifact & { signature: Hex }): Promise<CartApiListingRoot> => getWrappedData(
       client.POST('/v1/cart/listing-roots', { body: toCartListingRootArtifactWire(artifact) }),
       'Rare API did not return the ingested Cart Listing Root.',
     ),
   };
 
   const checkout = {
-    prepare: async (intent: CartCheckoutIntent): Promise<CartCheckoutPreparation> => {
-      const wire = await getWrappedData<CartCheckoutPreparationWire>(
-        client.POST('/v1/cart/checkout/prepare', {
+    preview: async (intent: CartCheckoutIntent): Promise<CartCheckoutPreparation> => {
+      const wire = await getWrappedData<CartApiPreparedPurchaseWire>(
+        client.POST('/v1/cart/checkout/preview', {
           params: { query: { chainId, cartAddress: cartAddress() } },
           body: {
             paymentCurrency: intent.paymentCurrency,
@@ -146,13 +145,13 @@ export function createCartApiNamespace(
         }),
         'Rare API did not return the Cart checkout preparation.',
       );
-      return normalizeCheckoutPreparation(wire);
+      return checkoutPreparationFromPreparedPurchase(normalizePreparedPurchase(wire), intent);
     },
-    purchase: async (preparation: CartCheckoutPreparation): Promise<CartApiPreparedPurchase> => {
+    prepare: async (intent: CartCheckoutIntent): Promise<CartApiPreparedPurchase> => {
       const wire = await getWrappedData<CartApiPreparedPurchaseWire>(
-        client.POST('/v1/cart/checkout/purchase', {
+        client.POST('/v1/cart/checkout/prepare', {
           params: { query: { chainId, cartAddress: cartAddress() } },
-          body: toCheckoutPreparationWire(preparation),
+          body: { paymentCurrency: intent.paymentCurrency, items: intent.items.map(toWireDraftItem) },
         }),
         'Rare API did not return the signed Cart Purchase.',
       );
@@ -197,62 +196,28 @@ function toWireDraftItem(item: CartCheckoutIntentItem): { listingDigest: Hex; qu
   };
 }
 
-function toCheckoutPreparationWire(value: CartCheckoutPreparation): CartCheckoutPreparationWire {
+function checkoutPreparationFromPreparedPurchase(
+  value: CartApiPreparedPurchase,
+  intent: CartCheckoutIntent,
+): CartCheckoutPreparation {
+  const settlements = value.executePurchase.lines.reduce((totals, line) => {
+    const currency = getAddress(line.settlementCurrency);
+    return new Map([...totals, [currency, (totals.get(currency) ?? 0n) + line.amount]]);
+  }, new Map<Address, bigint>());
   return {
     schemaVersion: 1,
-    chainId: value.chainId.toString(),
-    cartAddress: getAddress(value.cartAddress),
+    chainId: value.chainId,
+    cartAddress: value.cartAddress,
     preparedAt: value.preparedAt,
-    expiresAt: value.expiresAt,
-    intent: {
-      paymentCurrency: getAddress(value.intent.paymentCurrency),
-      items: value.intent.items.map(toWireDraftItem),
-    },
-    paymentAmount: value.paymentAmount.toString(),
-    fees: value.fees.map((fee) => ({ ...fee, currency: getAddress(fee.currency), amount: fee.amount.toString() })),
-    settlements: value.settlements.map((settlement) => ({
-      currency: getAddress(settlement.currency),
-      amount: settlement.amount.toString(),
-    })),
-    ...(value.quoteEvidence === undefined ? {} : {
-      quoteEvidence: {
-        ...value.quoteEvidence,
-        quotedInput: value.quoteEvidence.quotedInput.toString(),
-        maximumInput: value.quoteEvidence.maximumInput.toString(),
-      },
-    }),
-  };
-}
-
-function normalizeCheckoutPreparation(value: CartCheckoutPreparationWire): CartCheckoutPreparation {
-  if (value.schemaVersion !== 1) throw new Error(`Unsupported Cart checkout preparation schema version: ${String(value.schemaVersion)}`);
-  if (!isAddress(value.cartAddress)) throw new Error('Rare API returned an invalid Cart address.');
-  const quoteEvidence = value.quoteEvidence === undefined ? undefined : {
-    ...value.quoteEvidence,
-    quotedInput: BigInt(value.quoteEvidence.quotedInput),
-    maximumInput: BigInt(value.quoteEvidence.maximumInput),
-  };
-  return {
-    schemaVersion: 1,
-    chainId: BigInt(value.chainId),
-    cartAddress: getAddress(value.cartAddress),
-    preparedAt: value.preparedAt,
-    expiresAt: value.expiresAt,
-    intent: {
-      paymentCurrency: getAddress(value.intent.paymentCurrency),
-      items: value.intent.items.map((item) => ({
-        listingDigest: item.listingDigest,
-        quantity: BigInt(item.quantity),
-        ...(item.recipient === undefined ? {} : { recipient: getAddress(item.recipient) }),
-      })),
-    },
-    paymentAmount: BigInt(value.paymentAmount),
-    fees: value.fees.map((fee) => ({ ...fee, currency: getAddress(fee.currency), amount: BigInt(fee.amount) })),
-    settlements: value.settlements.map((settlement) => ({
-      currency: getAddress(settlement.currency),
-      amount: BigInt(settlement.amount),
-    })),
-    ...(quoteEvidence === undefined ? {} : { quoteEvidence }),
+    expiresAt: new Date(Number(value.executePurchase.order.deadline) * 1000).toISOString(),
+    intent,
+    paymentAmount: value.executePurchase.order.paymentAmount,
+    fees: value.executePurchase.lines
+      .filter((line) => line.fulfillmentKind === 0)
+      .map((line) => ({ label: line.sku, currency: line.settlementCurrency, amount: line.amount })),
+    settlements: [...settlements].map(([currency, amount]) => ({ currency, amount })),
+    lines: value.executePurchase.lines,
+    route: value.executePurchase.route,
   };
 }
 
@@ -327,6 +292,24 @@ function normalizeFulfillmentKind(value: number): CartFulfillmentKind {
     throw new Error(`Rare API returned an invalid Cart fulfillment kind: ${String(value)}`);
   }
   return value as CartFulfillmentKind;
+}
+
+function normalizeListing(value: CartListingPreviewWire['listings'][number]): CartListing {
+  return {
+    ...value,
+    seller: getAddress(value.seller),
+    fulfillmentKind: normalizeFulfillmentKind(value.fulfillmentKind),
+    tokenContract: getAddress(value.tokenContract),
+    tokenId: BigInt(value.tokenId),
+    settlementCurrency: getAddress(value.settlementCurrency),
+    minimumUnitPrice: BigInt(value.minimumUnitPrice),
+    availableQuantity: BigInt(value.availableQuantity),
+    paymentRecipient: getAddress(value.paymentRecipient),
+  };
+}
+
+function normalizeProduct(value: CartApiProduct): CartApiProduct {
+  return { ...value, variants: (value.variants ?? []).map((variant) => ({ ...variant })) };
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

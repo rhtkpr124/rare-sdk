@@ -62,50 +62,30 @@ Batch listings and release configuration are available through
 `rare.listing.batch` and `rare.listing.release`; ERC-1155 collection,
 listing, and offer behavior is nested under its corresponding intent namespace.
 
-Cart commerce is grouped under `rare.cart.listing`, `rare.cart.order`, and
-`rare.cart.checkout`. Sellers build and sign portable Listing Root artifacts;
-the platform builds and signs a fixed customer quote; the payer prepares and
-executes the resulting atomic purchase. The payer is always the transaction
-sender and may be a collector, processor, or another third party.
+Cart commerce is grouped under `rare.cart.catalog`, `rare.cart.listing`, and
+`rare.cart.checkout`. Sellers select a Rare API-generated SKU from the public
+catalogue, prepare and publish Listings, and buyers prepare and purchase a
+fixed quote. The payer is always the transaction sender and may be a collector,
+processor, or another third party.
 Each Listing carries a client-generated `listingSalt`; its complete EIP-712
 `listingDigest` is the immutable public identity referenced by Order Lines,
 Merkle artifacts, cancellation, fill state, and order-book APIs.
 
 ```ts
-const artifact = rare.cart.listing.buildRoot({
-  listings,
-  chainId: rare.chainId,
-  cart: rare.contracts.cart!,
-  nonce,
+const products = await rare.cart.catalog.search({ page: 1, perPage: 20 });
+const sku = products.data[0]!.variants[0]!.sku;
+
+// Listing preparation resolves SKU fulfillment through Rare API, reads the
+// current seller nonce, and builds an unsigned, non-durable batch artifact.
+const listingPreparation = await rare.cart.listing.prepare({
+  seller: sellerAddress,
+  listings: [{ sku, unitPrice, settlementCurrency, quantity }],
   deadline,
 });
-const signedListings = await rare.cart.listing.signRoot(artifact, sellerSigner);
-
-// Signed artifacts are JSON-safe for order-book storage. At checkout, select
-// leaves from one or more roots and assemble the contract witnesses.
-const storedArtifact = rare.cart.listing.parseArtifact(JSON.stringify(signedListings));
-const { listings: selectedListings, authorization } = rare.cart.listing.buildAuthorization([
-  { artifact: storedArtifact, listingDigest: storedArtifact.entries[0].listingDigest },
-  { artifact: storedArtifact, listingDigest: storedArtifact.entries[1].listingDigest },
-]);
-
-const route = rare.utils.cart.buildRoute({ paymentCurrency, legs });
-const unsigned = rare.cart.order.build({
-  orderId,
-  paymentCurrency,
-  paymentAmount,
-  deadline,
-  lines,
-  route,
-  actions,
+const published = await rare.cart.listing.publish({
+  preparation: listingPreparation,
+  autoApprove: true,
 });
-const signedOrder = await rare.cart.order.sign(unsigned, platformSigner);
-
-// Seller approval is collection-wide. Cart's operator address is resolved by
-// the SDK, and approve/revoke are no-ops when already in the requested state.
-if (!await rare.cart.approval.status(collectionAddress, sellerAddress)) {
-  await rare.cart.approval.approve(collectionAddress);
-}
 
 // Preparation is wallet-independent and creates no signature, approval,
 // persistence, or transaction.
@@ -123,8 +103,8 @@ const purchase = await rare.cart.checkout.purchase({ preparation, autoApprove: t
 `paymentAmount`; settlement recipients receive their exact signed Order Line
 amounts, while favorable routing variance is protocol spread. The signed route
 also carries the exact native `routerValue` forwarded to Universal Router.
-Pure portable
-builders are also available from `@rareprotocol/rare-sdk/utils`.
+Pure portable Listing Root, authorization, order, route, hashing, and Merkle
+builders are available from `@rareprotocol/rare-sdk/utils` for advanced use.
 Methods return structured results and reject on RPC, API, wallet, or validation
 failure.
 

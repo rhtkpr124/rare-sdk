@@ -12,6 +12,7 @@ import {
   validateCartListings,
   validateCartCheckoutIntent,
   validateCartCheckoutPreparationForPurchase,
+  validateCartListingIntent,
   validateCartListingRootArtifact,
 } from '../../../src/sdk/cart-core.js';
 import { cartFulfillmentKinds, type CartFulfillmentAction, type CartListing, type CartOrderLine } from '../../../src/sdk/types/cart.js';
@@ -70,6 +71,8 @@ describe('Cart functional core', () => {
       paymentAmount: 100n,
       fees: [],
       settlements: [{ currency: zeroAddress, amount: 100n }],
+      lines: [],
+      route: { commands: '0x' as Hex, inputs: [], routerValue: 0n },
     };
     expect(validateCartCheckoutPreparationForPurchase(preparation, {
       chainId: 11_155_111n,
@@ -82,6 +85,20 @@ describe('Cart functional core', () => {
     );
     expect(invalid.isValid).toBe(false);
     if (!invalid.isValid) expect(invalid.issues.map((issue) => issue.code)).toEqual(['chain_mismatch', 'expired', 'non_positive']);
+  });
+
+  it('validates seller-facing Listing intent without contract fulfillment fields', () => {
+    expect(validateCartListingIntent({ seller, deadline: 2_000_000_000n, listings: [{
+      sku: bytes32('a'), settlementCurrency: zeroAddress, unitPrice: 100n, quantity: 1n,
+    }] }).isValid).toBe(true);
+    const invalid = validateCartListingIntent({ seller: 'invalid' as Address, deadline: 0n, listings: [{
+      sku: '0x12', settlementCurrency: 'invalid' as Address, unitPrice: 0n, quantity: 0n,
+      paymentRecipient: 'invalid' as Address,
+    }] });
+    expect(invalid.isValid).toBe(false);
+    if (!invalid.isValid) expect(invalid.issues.map((issue) => issue.code)).toEqual([
+      'invalid_address', 'non_positive', 'invalid_sku', 'invalid_address', 'non_positive', 'non_positive', 'invalid_address',
+    ]);
   });
 
   it('builds a portable deterministic Listing Root artifact', () => {

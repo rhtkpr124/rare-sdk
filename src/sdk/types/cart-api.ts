@@ -3,6 +3,8 @@ import type {
   CartFulfillmentKind,
   CartListing,
   CartListingAuthorizationBundle,
+  CartOrderLine,
+  CartPayoutRoute,
   CartSignedOrder,
   CartListingRootArtifact,
 } from './cart.js';
@@ -11,27 +13,30 @@ export type CartApiCatalogMetadata = Record<string, unknown>;
 
 export type CartApiProduct = {
   id: string;
+  userId?: string;
+  status?: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
   slug: string | null;
   metadata: CartApiCatalogMetadata;
+  variants: CartCatalogVariant[];
   createdAt: string;
   updatedAt: string;
 };
+
+export type CartCatalogVariant = {
+  sku: Hex;
+  universalTokenId: string | null;
+  position: number;
+  isHidden: boolean;
+  metadata: CartApiCatalogMetadata;
+};
+
+export type CartCatalogSearchParams = { q?: string; page?: number; perPage?: number };
+export type CartCatalogSearchResult = CartApiPage<CartApiProduct>;
 
 export type CartApiSku = {
   id: string;
   sku: Hex;
-  identityFingerprint: Hex;
-  metadata: CartApiCatalogMetadata;
-  createdAt: string;
-  updatedAt: string;
-};
-
-export type CartApiProductSku = {
-  id: string;
-  productId: string;
-  sku: Hex;
-  position: number;
-  isHidden: boolean;
+  universalTokenId: string | null;
   metadata: CartApiCatalogMetadata;
   createdAt: string;
   updatedAt: string;
@@ -142,32 +147,33 @@ export type CartApiListingSearchResult = {
   };
 };
 
-export type CartApiListingCreateParams = {
-  seller: Address;
+export type CartListingIntentItem = {
   sku: Hex;
-  fulfillmentKind: CartFulfillmentKind;
-  tokenContract?: Address;
-  tokenId?: bigint;
   settlementCurrency: Address;
-  availableQuantity: bigint;
+  unitPrice: bigint;
+  quantity: bigint;
   paymentRecipient?: Address;
-  displayUnitPrice: bigint;
 };
 
-export type CartApiProductCreateParams = {
-  slug?: string | null;
-  metadata: CartApiCatalogMetadata;
+export type CartListingIntent = {
+  seller: Address;
+  listings: readonly CartListingIntentItem[];
+  deadline: bigint;
 };
 
-export type CartApiSkuCreateParams = {
-  metadata: CartApiCatalogMetadata;
-};
-
-export type CartApiProductSkuCreateParams = {
-  sku: Hex;
-  position: number;
-  isHidden?: boolean;
-  metadata: CartApiCatalogMetadata;
+export type CartListingPreviewWire = {
+  listings: Array<{
+    listingSalt: Hex;
+    seller: Address;
+    sku: Hex;
+    fulfillmentKind: number;
+    tokenContract: Address;
+    tokenId: string;
+    settlementCurrency: Address;
+    minimumUnitPrice: string;
+    availableQuantity: string;
+    paymentRecipient: Address;
+  }>;
 };
 
 export type CartCheckoutIntentItem = {
@@ -192,26 +198,6 @@ export type CartCheckoutQuoteEvidence = {
   summary: string;
 };
 
-export type CartCheckoutPreparationWire = {
-  schemaVersion: 1;
-  chainId: string;
-  cartAddress: Address;
-  preparedAt: string;
-  expiresAt: string;
-  intent: { paymentCurrency: Address; items: Array<{ listingDigest: Hex; quantity: string; recipient?: Address }> };
-  paymentAmount: string;
-  fees: Array<{ label: string; currency: Address; amount: string }>;
-  settlements: Array<{ currency: Address; amount: string }>;
-  quoteEvidence?: {
-    source: string;
-    quotedInput: string;
-    maximumInput: string;
-    quotedAt: string;
-    expiresAt: string;
-    summary: string;
-  };
-};
-
 export type CartCheckoutPreparation = {
   schemaVersion: 1;
   chainId: bigint;
@@ -222,6 +208,8 @@ export type CartCheckoutPreparation = {
   paymentAmount: bigint;
   fees: CartCheckoutFee[];
   settlements: CartCheckoutSettlement[];
+  lines: CartOrderLine[];
+  route: CartPayoutRoute;
   quoteEvidence?: CartCheckoutQuoteEvidence;
 };
 
@@ -286,28 +274,26 @@ export type CartApiPreparedPurchase = {
 
 export type CartApiNamespace = {
   catalog: {
+    search: (params?: CartCatalogSearchParams) => Promise<CartCatalogSearchResult>;
     products: {
-      create: (params: CartApiProductCreateParams) => Promise<CartApiProduct>;
       list: (params?: { page?: number; perPage?: number }) => Promise<CartApiPage<CartApiProduct>>;
       get: (id: string) => Promise<CartApiProduct>;
     };
     skus: {
-      create: (params: CartApiSkuCreateParams) => Promise<CartApiSku>;
       list: (params?: { page?: number; perPage?: number }) => Promise<CartApiPage<CartApiSku>>;
       get: (sku: Hex) => Promise<CartApiSku>;
-      attach: (productId: string, params: CartApiProductSkuCreateParams) => Promise<CartApiProductSku>;
     };
   };
   listing: {
-    create: (params: CartApiListingCreateParams) => Promise<CartApiListing>;
+    preview: (intent: CartListingIntent) => Promise<CartListing[]>;
     search: (params?: CartApiListingSearchParams) => Promise<CartApiListingSearchResult>;
     get: (listingDigest: Hex) => Promise<CartApiListing>;
     invalidate: (listingDigest: Hex, invalidatedAt?: string | null) => Promise<CartApiListing>;
-    ingestRoot: (artifact: CartListingRootArtifact & { signature: Hex }) => Promise<CartApiListingRoot>;
+    publish: (artifact: CartListingRootArtifact & { signature: Hex }) => Promise<CartApiListingRoot>;
   };
   checkout: {
-    prepare: (intent: CartCheckoutIntent) => Promise<CartCheckoutPreparation>;
-    purchase: (preparation: CartCheckoutPreparation) => Promise<CartApiPreparedPurchase>;
+    preview: (intent: CartCheckoutIntent) => Promise<CartCheckoutPreparation>;
+    prepare: (intent: CartCheckoutIntent) => Promise<CartApiPreparedPurchase>;
   };
 };
 

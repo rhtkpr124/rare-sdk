@@ -5,6 +5,13 @@ project follows semantic versioning.
 
 ## Unreleased
 
+- **Breaking:** replace implementation-shaped Cart Listing Root methods with
+  public catalogue search and `rare.cart.listing.prepare` / `.publish`; keep
+  advanced artifact, authorization, order, route, hashing, and Merkle builders
+  under `utils`.
+- **Breaking:** remove authenticated Product creation, SKU creation, and
+  Product-SKU attachment from the high-level Cart SDK. Connect-authenticated
+  applications should call those Rare API account-management routes directly.
 - **Breaking:** replace Cart's signed-order `checkout.prepare` / `checkout.execute`
   split with wallet-independent `checkout.prepare(intent)` and one-stop
   `checkout.purchase({ preparation, autoApprove })` orchestration.
