@@ -49,7 +49,11 @@ describe('public SDK API surface', () => {
     expect(rare.chainId).toBe(1);
     expect(rare.cart.api.catalog.products.create).toBeTypeOf('function');
     expect(rare.cart.api.listing.search).toBeTypeOf('function');
-    expect(rare.cart.api.checkout.prepareOrder).toBeTypeOf('function');
+    expect(rare.cart.api.checkout.prepare).toBeTypeOf('function');
+    expect(rare.cart.api.checkout.purchase).toBeTypeOf('function');
+    expect(rare.cart.checkout.prepare).toBeTypeOf('function');
+    expect(rare.cart.checkout.purchase).toBeTypeOf('function');
+    expect(rare.cart.checkout).not.toHaveProperty('execute');
     expect(rare.cart.approval.status).toBeTypeOf('function');
     expect(rare.cart.approval.approve).toBeTypeOf('function');
     expect(rare.cart.approval.revoke).toBeTypeOf('function');

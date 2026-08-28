@@ -10,6 +10,8 @@ import {
   getCartListingArtifactEntry,
   parseCartListingRootArtifact,
   validateCartListings,
+  validateCartCheckoutIntent,
+  validateCartCheckoutPreparationForPurchase,
   validateCartListingRootArtifact,
 } from '../../../src/sdk/cart-core.js';
 import { cartFulfillmentKinds, type CartFulfillmentAction, type CartListing, type CartOrderLine } from '../../../src/sdk/types/cart.js';
@@ -44,6 +46,44 @@ const listings: CartListing[] = [
 ];
 
 describe('Cart functional core', () => {
+  it('rejects invalid checkout intent before calling Rare API', () => {
+    expect(validateCartCheckoutIntent({ paymentCurrency: zeroAddress, items: [
+      { listingDigest: bytes32('1'), quantity: 1n, recipient: seller },
+    ] }).isValid).toBe(true);
+    const invalid = validateCartCheckoutIntent({ paymentCurrency: 'invalid' as Address, items: [
+      { listingDigest: '0x12', quantity: 0n, recipient: 'invalid' as Address },
+    ] });
+    expect(invalid.isValid).toBe(false);
+    if (!invalid.isValid) expect(invalid.issues.map((issue) => issue.code)).toEqual([
+      'invalid_address', 'invalid_digest', 'non_positive', 'invalid_address',
+    ]);
+  });
+
+  it('rejects stale or client-mismatched checkout preparations before side effects', () => {
+    const preparation = {
+      schemaVersion: 1 as const,
+      chainId: 11_155_111n,
+      cartAddress: cart,
+      preparedAt: '2026-08-28T12:00:00.000Z',
+      expiresAt: '2026-08-28T12:05:00.000Z',
+      intent: { paymentCurrency: zeroAddress, items: [{ listingDigest: bytes32('1'), quantity: 1n }] },
+      paymentAmount: 100n,
+      fees: [],
+      settlements: [{ currency: zeroAddress, amount: 100n }],
+    };
+    expect(validateCartCheckoutPreparationForPurchase(preparation, {
+      chainId: 11_155_111n,
+      cart,
+      nowMs: Date.parse('2026-08-28T12:04:00.000Z'),
+    }).isValid).toBe(true);
+    const invalid = validateCartCheckoutPreparationForPurchase(
+      { ...preparation, chainId: 1n, paymentAmount: 0n },
+      { chainId: 11_155_111n, cart, nowMs: Date.parse('2026-08-28T12:06:00.000Z') },
+    );
+    expect(invalid.isValid).toBe(false);
+    if (!invalid.isValid) expect(invalid.issues.map((issue) => issue.code)).toEqual(['chain_mismatch', 'expired', 'non_positive']);
+  });
+
   it('builds a portable deterministic Listing Root artifact', () => {
     const artifact = buildCartListingRootArtifact({ listings, chainId: 11_155_111, cart, nonce: 3n, deadline: 2_000_000_000n });
     expect(artifact.root.listingsRoot).toBe('0xe7ab7ad2e552ad627517bb3634d3b3e495d80ec4de7ceb8e71a8ff62ace98407');

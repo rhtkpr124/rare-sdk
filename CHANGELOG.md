@@ -5,6 +5,9 @@ project follows semantic versioning.
 
 ## Unreleased
 
+- **Breaking:** replace Cart's signed-order `checkout.prepare` / `checkout.execute`
+  split with wallet-independent `checkout.prepare(intent)` and one-stop
+  `checkout.purchase({ preparation, autoApprove })` orchestration.
 - **Breaking:** move Cart collection authorization from Listing methods to
   `rare.cart.approval.status`, `.approve`, and `.revoke`; Cart resolves its own
   operator address and approval writes are idempotent.

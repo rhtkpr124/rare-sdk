@@ -1,5 +1,5 @@
 import type { Account, Address, Hash, Hex, TransactionReceipt } from 'viem';
-import type { CartApiNamespace } from './cart-api.js';
+import type { CartApiNamespace, CartApiPreparedPurchase, CartCheckoutIntent, CartCheckoutPreparation } from './cart-api.js';
 
 export const cartFulfillmentKinds = {
   none: 0,
@@ -78,13 +78,13 @@ export type CartCheckoutParams = CartSignedOrder & {
   listings: CartListing[]; authorization: CartListingPurchaseAuthorization; autoApprove?: boolean;
 };
 export type CartCheckoutResult = {
-  txHash: Hash; receipt: TransactionReceipt; orderId: Hex; payer: Address;
+  txHash: Hash; receipt: TransactionReceipt; approvalTxHash?: Hash; orderId: Hex; payer: Address;
   paymentCurrency: Address; paymentAmount: bigint; lineCount: number; actionCount: number;
 };
-export type CartCheckoutPreparation = {
-  ready: boolean; cart: Address; lens?: Address; lensResult?: { valid: boolean; code: number; index: bigint; subject: Hex; reason: Hex };
-  listingLensResults?: readonly { valid: boolean; code: number; index: bigint; subject: Hex; reason: Hex }[];
-  requiredPayment: bigint; currentAllowance: bigint | null; approvalRequired: boolean; simulation: 'passed' | 'blocked-by-approval';
+export type CartPurchaseParams = { preparation: CartCheckoutPreparation; autoApprove?: boolean };
+export type CartPurchaseResult = CartCheckoutResult & {
+  preparation: CartCheckoutPreparation;
+  preparedPurchase: CartApiPreparedPurchase;
 };
 export type CartValidationIssue = { code: string; field: string; message: string };
 export type CartValidationResult<T> = { isValid: true; value: T } | { isValid: false; issues: CartValidationIssue[] };
@@ -113,7 +113,7 @@ export type CartNamespace = {
     sign: (params: Omit<CartSignedOrder, 'platformSignature'>, signer: CartTypedDataSigner) => Promise<CartSignedOrder>;
   };
   checkout: {
-    prepare: (params: CartCheckoutParams) => Promise<CartCheckoutPreparation>;
-    execute: (params: CartCheckoutParams) => Promise<CartCheckoutResult>;
+    prepare: (intent: CartCheckoutIntent) => Promise<CartCheckoutPreparation>;
+    purchase: (params: CartPurchaseParams) => Promise<CartPurchaseResult>;
   };
 };

@@ -9,6 +9,7 @@ import type {
   CartPurchaseOrder, CartSignedOrder, CartValidationIssue, CartValidationResult, CartListingRootArtifactEntry,
   CartListingSelection, CartListingAuthorizationBundle,
 } from './types/cart.js';
+import type { CartCheckoutIntent, CartCheckoutPreparation } from './types/cart-api.js';
 
 export const cartEip712Name = 'SuperRare Cart';
 export const cartEip712Version = '1';
@@ -19,6 +20,36 @@ const routeType = 'PayoutRoute(bytes commands,bytes[] inputs,uint256 routerValue
 const actionType = 'FulfillmentAction(uint256 lineIndex,uint256 quantity,address recipient)';
 
 export type CartChainId = number | bigint;
+
+export function validateCartCheckoutIntent(intent: CartCheckoutIntent): CartValidationResult<CartCheckoutIntent> {
+  const issues: CartValidationIssue[] = [];
+  if (!isAddress(intent.paymentCurrency)) issues.push(issue('invalid_address', 'paymentCurrency', 'Checkout payment currency must be an address.'));
+  if (intent.items.length === 0 || intent.items.length > 20) issues.push(issue('invalid_length', 'items', 'Checkout must contain between 1 and 20 items.'));
+  intent.items.forEach((item, index) => {
+    if (!isHex(item.listingDigest) || item.listingDigest.length !== 66) issues.push(issue('invalid_digest', `items[${index}].listingDigest`, 'Checkout listing digest must be bytes32.'));
+    if (item.quantity <= 0n) issues.push(issue('non_positive', `items[${index}].quantity`, 'Checkout item quantity must be positive.'));
+    if (item.recipient !== undefined && !isAddress(item.recipient)) issues.push(issue('invalid_address', `items[${index}].recipient`, 'Checkout recipient must be an address.'));
+  });
+  return issues.length === 0 ? { isValid: true, value: intent } : { isValid: false, issues };
+}
+
+export function validateCartCheckoutPreparationForPurchase(
+  preparation: CartCheckoutPreparation,
+  expected: { chainId: bigint; cart: Address; nowMs?: number },
+): CartValidationResult<CartCheckoutPreparation> {
+  const issues: CartValidationIssue[] = [];
+  const expiresAt = Date.parse(preparation.expiresAt);
+  if (preparation.chainId !== expected.chainId) issues.push(issue('chain_mismatch', 'chainId', 'Checkout preparation chain does not match the SDK client.'));
+  if (getAddress(preparation.cartAddress) !== getAddress(expected.cart)) issues.push(issue('cart_mismatch', 'cartAddress', 'Checkout preparation Cart does not match the SDK client.'));
+  if (!Number.isFinite(expiresAt)) issues.push(issue('invalid_expiration', 'expiresAt', 'Checkout preparation expiration is invalid.'));
+  else if (expiresAt <= (expected.nowMs ?? Date.now())) issues.push(issue('expired', 'expiresAt', 'Checkout preparation has expired.'));
+  if (preparation.intent.items.length === 0) issues.push(issue('empty', 'intent.items', 'Checkout preparation must contain at least one item.'));
+  if (preparation.paymentAmount <= 0n) issues.push(issue('non_positive', 'paymentAmount', 'Checkout payment amount must be positive.'));
+  preparation.intent.items.forEach((item, index) => {
+    if (item.quantity <= 0n) issues.push(issue('non_positive', `intent.items[${index}].quantity`, 'Checkout item quantity must be positive.'));
+  });
+  return issues.length === 0 ? { isValid: true, value: preparation } : { isValid: false, issues };
+}
 
 export function cartDomain(chainId: CartChainId, cart: Address) {
   if ((typeof chainId === 'number' && (!Number.isSafeInteger(chainId) || chainId <= 0)) ||

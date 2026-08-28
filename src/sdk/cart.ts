@@ -3,11 +3,11 @@ import { cartAbi } from '../contracts/abis/cart.js';
 import { cartLensAbi } from '../contracts/abis/cart-lens.js';
 import { ETH_ADDRESS, type SupportedChain } from '../contracts/addresses.js';
 import { approvalAbi, runWithApprovalSideEffectAlert, waitForApprovalState } from './approvals-shell.js';
-import { buildCartListingAuthorization, buildCartListingRootArtifact, buildCartOrder, cartDomain, getCartListingArtifactEntry, hashCartListing, hashCartListingRoot, hashCartOrder, parseCartListingRootArtifact, validateCartListingRootArtifact } from './cart-core.js';
-import { preparePaymentAmountForSpender } from './payments-shell.js';
+import { buildCartListingAuthorization, buildCartListingRootArtifact, buildCartOrder, cartDomain, getCartListingArtifactEntry, hashCartListing, hashCartListingRoot, hashCartOrder, parseCartListingRootArtifact, validateCartCheckoutIntent, validateCartCheckoutPreparationForPurchase, validateCartListingRootArtifact } from './cart-core.js';
+import { PaymentApprovalRequiredError, preparePaymentAmountForSpender } from './payments-shell.js';
 import { waitForSuccessfulTransactionReceipt } from './transaction-receipt.js';
 import type { RareClientConfig } from './types/client.js';
-import type { CartCheckoutParams, CartCheckoutPreparation, CartNamespace, CartSignedOrder, CartTypedDataSigner } from './types/cart.js';
+import type { CartCheckoutParams, CartNamespace, CartPurchaseParams, CartPurchaseResult, CartSignedOrder, CartTypedDataSigner } from './types/cart.js';
 import { requireWallet } from './wallet-shell.js';
 import { createCartApiNamespace } from './cart-api.js';
 import { addCartListingSalt, generateCartListingSalt } from './cart-listing-shell.js';
@@ -43,6 +43,7 @@ export function createCartNamespace(
   chainId: number,
   addresses: { cart?: Address; cartLens?: Address },
 ): CartNamespace {
+  const api = createCartApiNamespace({ baseUrl: config.apiBaseUrl, fetch: config.apiFetch }, { chainId, cartAddress: addresses.cart });
   const requireCart = (): Address => {
     if (!addresses.cart) throw new Error(`Cart is not deployed on "${chain}". Available on: sepolia.`);
     return addresses.cart;
@@ -82,7 +83,7 @@ export function createCartNamespace(
   };
 
   return {
-    api: createCartApiNamespace({ baseUrl: config.apiBaseUrl, fetch: config.apiFetch }, { chainId, cartAddress: addresses.cart }),
+    api,
     approval: {
       status(tokenContract, owner) {
         return publicClient.readContract({
@@ -124,10 +125,50 @@ export function createCartNamespace(
       async sign(order, signer) { return signCartOrder(order, signer, chainId, requireCart()); },
     },
     checkout: {
-      prepare(params) { return prepareCartCheckout(publicClient, config, chainId, requireCart(), addresses.cartLens, params); },
-      execute(params) { return executeCartCheckout(publicClient, config, chainId, requireCart(), addresses.cartLens, params); },
+      prepare(intent) {
+        const validation = validateCartCheckoutIntent(intent);
+        if (!validation.isValid) throw new CartPreparationError('invalid_intent', 'Cart checkout intent is invalid.', validation.issues);
+        return api.checkout.prepare(validation.value);
+      },
+      purchase(params) { return purchaseCartCheckout(publicClient, config, api, chainId, requireCart(), addresses.cartLens, params); },
     },
   };
+}
+
+async function purchaseCartCheckout(
+  publicClient: PublicClient,
+  config: RareClientConfig,
+  api: ReturnType<typeof createCartApiNamespace>,
+  chainId: number,
+  cart: Address,
+  lens: Address | undefined,
+  params: CartPurchaseParams,
+): Promise<CartPurchaseResult> {
+  const validation = validateCartCheckoutPreparationForPurchase(params.preparation, { chainId: BigInt(chainId), cart });
+  if (!validation.isValid) {
+    throw new CartPreparationError('invalid_preparation', 'Cart checkout preparation cannot be purchased.', validation.issues);
+  }
+
+  const { accountAddress } = requireWallet(config);
+  const paymentCurrency = params.preparation.intent.paymentCurrency;
+  if (!isAddressEqual(paymentCurrency, ETH_ADDRESS)) {
+    const allowance = await publicClient.readContract({
+      address: paymentCurrency,
+      abi: erc20Abi,
+      functionName: 'allowance',
+      args: [accountAddress, cart],
+    });
+    if (allowance < params.preparation.paymentAmount && params.autoApprove !== true) {
+      throw new PaymentApprovalRequiredError({ requiredAmount: params.preparation.paymentAmount, spenderAddress: cart });
+    }
+  }
+
+  const preparedPurchase = await api.checkout.purchase(params.preparation);
+  const execution = await executeCartCheckout(publicClient, config, chainId, cart, lens, {
+    ...preparedPurchase.executePurchase,
+    autoApprove: params.autoApprove,
+  });
+  return { ...execution, preparation: params.preparation, preparedPurchase };
 }
 
 async function signCartOrder(value: Omit<CartSignedOrder, 'platformSignature'>, signer: CartTypedDataSigner, chainId: number, cart: Address): Promise<CartSignedOrder> {
@@ -167,39 +208,11 @@ async function executeCartCheckout(publicClient: PublicClient, config: RareClien
       if (!isAddressEqual(purchase.args.payer, accountAddress) || !isAddressEqual(purchase.args.paymentCurrency, params.order.paymentCurrency) || purchase.args.paymentAmount !== params.order.paymentAmount) {
         throw new CartVerificationError('PurchaseExecuted values did not match the checkout plan.', { txHash, orderId: params.order.orderId, cart });
       }
-      return { txHash, receipt, orderId: params.order.orderId, payer: accountAddress,
+      return { txHash, receipt, ...(payment.approvalTxHash === undefined ? {} : { approvalTxHash: payment.approvalTxHash }),
+        orderId: params.order.orderId, payer: accountAddress,
         paymentCurrency: params.order.paymentCurrency, paymentAmount: params.order.paymentAmount,
         lineCount: lineLogs.length, actionCount: actionLogs.length };
     } });
-}
-
-async function prepareCartCheckout(publicClient: PublicClient, config: RareClientConfig, chainId: number, cart: Address, lens: Address | undefined, params: CartCheckoutParams): Promise<CartCheckoutPreparation> {
-  const accountAddress = config.account ?? config.walletClient?.account?.address;
-  if (!accountAddress) throw new CartPreparationError('missing_account', 'An account is required to prepare Cart checkout.');
-  const lensPreflight = lens === undefined ? undefined : await readCartLensPreflight(publicClient, lens, chainId, cart, params);
-  const lensResult = lensPreflight?.envelope;
-  const listingLensResults = lensPreflight?.listings;
-  const native = isAddressEqual(params.order.paymentCurrency, ETH_ADDRESS);
-  const currentAllowance = native ? null : await publicClient.readContract({ address: params.order.paymentCurrency, abi: erc20Abi,
-    functionName: 'allowance', args: [accountAddress, cart] });
-  const approvalRequired = currentAllowance !== null && currentAllowance < params.order.paymentAmount;
-  const listingsValid = listingLensResults?.every((result) => result.valid) ?? true;
-  if ((lensResult && !lensResult.valid) || !listingsValid) return { ready: false, cart, lens, lensResult, listingLensResults,
-    requiredPayment: params.order.paymentAmount,
-    currentAllowance, approvalRequired, simulation: approvalRequired ? 'blocked-by-approval' : 'passed' };
-  if (!approvalRequired) {
-    try {
-      await simulateCartCheckout(publicClient, cart, accountAddress, native ? params.order.paymentAmount : 0n, params,
-        'Cart checkout preparation simulation failed.');
-    } catch (cause) {
-      if (cause instanceof CartExecutionError) throw cause;
-      throw new CartExecutionError('Cart checkout preparation simulation failed.', { orderId: params.order.orderId, cart, cause });
-    }
-  }
-  return { ready: (lensResult?.valid ?? true) && listingsValid, cart, ...(lens === undefined ? {} : { lens }), ...(lensResult === undefined ? {} : { lensResult }),
-    ...(listingLensResults === undefined ? {} : { listingLensResults }),
-    requiredPayment: params.order.paymentAmount, currentAllowance, approvalRequired,
-    simulation: approvalRequired ? 'blocked-by-approval' : 'passed' };
 }
 
 async function readCartLensPreflight(publicClient: PublicClient, lens: Address, chainId: number, cart: Address, params: CartCheckoutParams) {

@@ -107,22 +107,16 @@ if (!await rare.cart.approval.status(collectionAddress, sellerAddress)) {
   await rare.cart.approval.approve(collectionAddress);
 }
 
-// The chain-bound Cart API namespace manages catalog/order-book persistence and
-// asks rare-api to validate and platform-sign a buyer draft.
-const prepared = await rare.cart.api.checkout.prepareOrder({
+// Preparation is wallet-independent and creates no signature, approval,
+// persistence, or transaction.
+const preparation = await rare.cart.checkout.prepare({
   paymentCurrency,
   items: [{ listingDigest, quantity: 1n, recipient: buyerAddress }],
 });
 
-const preparation = await rare.cart.checkout.prepare({
-  ...prepared.executePurchase,
-});
-if (preparation.ready) {
-  await rare.cart.checkout.execute({
-    ...prepared.executePurchase,
-    autoApprove: true,
-  });
-}
+// Purchase revalidates, obtains the platform-signed immutable order, performs
+// preflight, optionally approves, executes, and verifies the receipt.
+const purchase = await rare.cart.checkout.purchase({ preparation, autoApprove: true });
 ```
 
 `autoApprove` defaults to `false`. Cart collects the exact platform-signed

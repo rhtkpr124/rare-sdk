@@ -9,7 +9,7 @@ import type {
 import type { CartChainId } from './cart-core.js';
 import { generateCartListingSalt } from './cart-listing-shell.js';
 import type {
-  CartApiCartDraftItem,
+  CartCheckoutIntentItem,
   CartApiListing,
   CartApiListingCreateParams,
   CartApiListingRoot,
@@ -23,7 +23,9 @@ import type {
   CartApiProductCreateParams,
   CartApiProductSku,
   CartApiProductSkuCreateParams,
-  CartApiPrepareOrderParams,
+  CartCheckoutIntent,
+  CartCheckoutPreparation,
+  CartCheckoutPreparationWire,
   CartApiSku,
   CartApiSkuCreateParams,
   CartListingRootArtifactWire,
@@ -133,18 +135,26 @@ export function createCartApiNamespace(
   };
 
   const checkout = {
-    prepareOrder: async (params: CartApiPrepareOrderParams): Promise<CartApiPreparedPurchase> => {
-      const idempotencyKey = params.idempotencyKey ?? crypto.randomUUID();
-      const wire = await getWrappedData<CartApiPreparedPurchaseWire>(
+    prepare: async (intent: CartCheckoutIntent): Promise<CartCheckoutPreparation> => {
+      const wire = await getWrappedData<CartCheckoutPreparationWire>(
         client.POST('/v1/cart/checkout/prepare', {
           params: { query: { chainId, cartAddress: cartAddress() } },
-          headers: { 'idempotency-key': idempotencyKey },
           body: {
-            paymentCurrency: params.paymentCurrency,
-            items: params.items.map(toWireDraftItem),
+            paymentCurrency: intent.paymentCurrency,
+            items: intent.items.map(toWireDraftItem),
           },
         }),
-        'Rare API did not return the prepared Cart Purchase.',
+        'Rare API did not return the Cart checkout preparation.',
+      );
+      return normalizeCheckoutPreparation(wire);
+    },
+    purchase: async (preparation: CartCheckoutPreparation): Promise<CartApiPreparedPurchase> => {
+      const wire = await getWrappedData<CartApiPreparedPurchaseWire>(
+        client.POST('/v1/cart/checkout/purchase', {
+          params: { query: { chainId, cartAddress: cartAddress() } },
+          body: toCheckoutPreparationWire(preparation),
+        }),
+        'Rare API did not return the signed Cart Purchase.',
       );
       return normalizePreparedPurchase(wire);
     },
@@ -179,11 +189,70 @@ export function toCartListingRootArtifactWire(
   };
 }
 
-function toWireDraftItem(item: CartApiCartDraftItem): { listingDigest: Hex; quantity: string; recipient?: Address } {
+function toWireDraftItem(item: CartCheckoutIntentItem): { listingDigest: Hex; quantity: string; recipient?: Address } {
   return {
     listingDigest: item.listingDigest,
     quantity: item.quantity.toString(),
     ...(item.recipient === undefined ? {} : { recipient: getAddress(item.recipient) }),
+  };
+}
+
+function toCheckoutPreparationWire(value: CartCheckoutPreparation): CartCheckoutPreparationWire {
+  return {
+    schemaVersion: 1,
+    chainId: value.chainId.toString(),
+    cartAddress: getAddress(value.cartAddress),
+    preparedAt: value.preparedAt,
+    expiresAt: value.expiresAt,
+    intent: {
+      paymentCurrency: getAddress(value.intent.paymentCurrency),
+      items: value.intent.items.map(toWireDraftItem),
+    },
+    paymentAmount: value.paymentAmount.toString(),
+    fees: value.fees.map((fee) => ({ ...fee, currency: getAddress(fee.currency), amount: fee.amount.toString() })),
+    settlements: value.settlements.map((settlement) => ({
+      currency: getAddress(settlement.currency),
+      amount: settlement.amount.toString(),
+    })),
+    ...(value.quoteEvidence === undefined ? {} : {
+      quoteEvidence: {
+        ...value.quoteEvidence,
+        quotedInput: value.quoteEvidence.quotedInput.toString(),
+        maximumInput: value.quoteEvidence.maximumInput.toString(),
+      },
+    }),
+  };
+}
+
+function normalizeCheckoutPreparation(value: CartCheckoutPreparationWire): CartCheckoutPreparation {
+  if (value.schemaVersion !== 1) throw new Error(`Unsupported Cart checkout preparation schema version: ${String(value.schemaVersion)}`);
+  if (!isAddress(value.cartAddress)) throw new Error('Rare API returned an invalid Cart address.');
+  const quoteEvidence = value.quoteEvidence === undefined ? undefined : {
+    ...value.quoteEvidence,
+    quotedInput: BigInt(value.quoteEvidence.quotedInput),
+    maximumInput: BigInt(value.quoteEvidence.maximumInput),
+  };
+  return {
+    schemaVersion: 1,
+    chainId: BigInt(value.chainId),
+    cartAddress: getAddress(value.cartAddress),
+    preparedAt: value.preparedAt,
+    expiresAt: value.expiresAt,
+    intent: {
+      paymentCurrency: getAddress(value.intent.paymentCurrency),
+      items: value.intent.items.map((item) => ({
+        listingDigest: item.listingDigest,
+        quantity: BigInt(item.quantity),
+        ...(item.recipient === undefined ? {} : { recipient: getAddress(item.recipient) }),
+      })),
+    },
+    paymentAmount: BigInt(value.paymentAmount),
+    fees: value.fees.map((fee) => ({ ...fee, currency: getAddress(fee.currency), amount: BigInt(fee.amount) })),
+    settlements: value.settlements.map((settlement) => ({
+      currency: getAddress(settlement.currency),
+      amount: BigInt(settlement.amount),
+    })),
+    ...(quoteEvidence === undefined ? {} : { quoteEvidence }),
   };
 }
 
@@ -196,7 +265,6 @@ function normalizePreparedPurchase(value: CartApiPreparedPurchaseWire): CartApiP
     schemaVersion: 1,
     chainId: BigInt(value.chainId),
     cartAddress: getAddress(value.cartAddress),
-    idempotencyKey: value.idempotencyKey,
     preparedAt: value.preparedAt,
     executePurchase: {
       order: {

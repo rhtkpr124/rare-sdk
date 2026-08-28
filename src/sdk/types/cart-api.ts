@@ -170,23 +170,65 @@ export type CartApiProductSkuCreateParams = {
   metadata: CartApiCatalogMetadata;
 };
 
-export type CartApiCartDraftItem = {
+export type CartCheckoutIntentItem = {
   listingDigest: Hex;
   quantity: bigint;
   recipient?: Address;
 };
 
-export type CartApiPrepareOrderParams = {
+export type CartCheckoutIntent = {
   paymentCurrency: Address;
-  items: readonly CartApiCartDraftItem[];
-  idempotencyKey?: string;
+  items: readonly CartCheckoutIntentItem[];
+};
+
+export type CartCheckoutFee = { label: string; currency: Address; amount: bigint };
+export type CartCheckoutSettlement = { currency: Address; amount: bigint };
+export type CartCheckoutQuoteEvidence = {
+  source: string;
+  quotedInput: bigint;
+  maximumInput: bigint;
+  quotedAt: string;
+  expiresAt: string;
+  summary: string;
+};
+
+export type CartCheckoutPreparationWire = {
+  schemaVersion: 1;
+  chainId: string;
+  cartAddress: Address;
+  preparedAt: string;
+  expiresAt: string;
+  intent: { paymentCurrency: Address; items: Array<{ listingDigest: Hex; quantity: string; recipient?: Address }> };
+  paymentAmount: string;
+  fees: Array<{ label: string; currency: Address; amount: string }>;
+  settlements: Array<{ currency: Address; amount: string }>;
+  quoteEvidence?: {
+    source: string;
+    quotedInput: string;
+    maximumInput: string;
+    quotedAt: string;
+    expiresAt: string;
+    summary: string;
+  };
+};
+
+export type CartCheckoutPreparation = {
+  schemaVersion: 1;
+  chainId: bigint;
+  cartAddress: Address;
+  preparedAt: string;
+  expiresAt: string;
+  intent: CartCheckoutIntent;
+  paymentAmount: bigint;
+  fees: CartCheckoutFee[];
+  settlements: CartCheckoutSettlement[];
+  quoteEvidence?: CartCheckoutQuoteEvidence;
 };
 
 export type CartApiPreparedPurchaseWire = {
   schemaVersion: 1;
   chainId: string;
   cartAddress: Address;
-  idempotencyKey: string;
   preparedAt: string;
   executePurchase: {
     order: {
@@ -235,7 +277,6 @@ export type CartApiPreparedPurchase = {
   schemaVersion: 1;
   chainId: bigint;
   cartAddress: Address;
-  idempotencyKey: string;
   preparedAt: string;
   executePurchase: CartSignedOrder & {
     listings: CartListing[];
@@ -265,7 +306,8 @@ export type CartApiNamespace = {
     ingestRoot: (artifact: CartListingRootArtifact & { signature: Hex }) => Promise<CartApiListingRoot>;
   };
   checkout: {
-    prepareOrder: (params: CartApiPrepareOrderParams) => Promise<CartApiPreparedPurchase>;
+    prepare: (intent: CartCheckoutIntent) => Promise<CartCheckoutPreparation>;
+    purchase: (preparation: CartCheckoutPreparation) => Promise<CartApiPreparedPurchase>;
   };
 };
 
