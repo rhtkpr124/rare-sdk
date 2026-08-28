@@ -7,6 +7,7 @@ import type {
   CartListingRootArtifact,
 } from './types/cart.js';
 import type { CartChainId } from './cart-core.js';
+import { generateCartListingSalt } from './cart-listing-shell.js';
 import type {
   CartApiCartDraftItem,
   CartApiListing,
@@ -101,6 +102,7 @@ export function createCartApiNamespace(
     create: async (params: CartApiListingCreateParams): Promise<CartApiListing> => getWrappedData(
       client.POST('/v1/cart/listings', { body: {
         ...params,
+        listingSalt: generateCartListingSalt(),
         chainId,
         cartAddress: cartAddress(),
         ...(params.tokenId === undefined ? {} : { tokenId: params.tokenId.toString() }),

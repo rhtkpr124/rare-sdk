@@ -144,7 +144,6 @@ export type CartApiListingSearchResult = {
 
 export type CartApiListingCreateParams = {
   seller: Address;
-  listingSalt: Hex;
   sku: Hex;
   fulfillmentKind: CartFulfillmentKind;
   tokenContract?: Address;
