@@ -6,9 +6,16 @@
 A platform-catalogue definition that gives a stable SKU its commercial and
 fulfillment meaning. Product management and persistence belong to the Rare API.
 
+**Product Variant**:
+A selectable Product option returned by public catalogue search. A Product
+Variant carries a Rare API-generated SKU and presentation metadata; callers
+select its SKU when preparing a Listing.
+
 **SKU**:
-An immutable, versioned platform-catalogue identifier shared by a seller
-Listing and a platform Order Line.
+An immutable, versioned, public-but-opaque platform-catalogue identifier shared
+by a Product Variant, seller Listing, and platform Order Line. Rare API creates
+and deduplicates SKUs; SDK callers select them from catalogue results rather
+than authoring them.
 _Avoid_: Mutable product identifier
 
 **Listing**:
@@ -19,6 +26,20 @@ _Avoid_: Order
 **Listing Root**:
 A seller-signed Merkle commitment to one or more Listings, governed by a seller
 nonce and deadline.
+
+**Listing Intent**:
+A seller's editable selection of catalogue SKUs, prices, quantities,
+settlement currencies, recipients, and deadline. It contains seller decisions,
+not fulfillment configuration or Merkle mechanics.
+
+**Listing Preparation**:
+A non-durable, unsigned Listing Root artifact produced from a Listing Intent,
+Rare API-resolved SKU configuration, and current Cart state.
+
+**Publish**:
+The seller workflow that checks collection authorization, optionally approves
+Cart, signs a Listing Preparation, and stores the resulting Listing Root in the
+public order book.
 
 **Purchase Order**:
 A platform-authorized, immutable fixed quote containing ordered settlement and

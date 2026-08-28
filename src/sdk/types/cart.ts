@@ -1,5 +1,8 @@
 import type { Account, Address, Hash, Hex, TransactionReceipt } from 'viem';
-import type { CartApiNamespace, CartApiPreparedPurchase, CartCheckoutIntent, CartCheckoutPreparation } from './cart-api.js';
+import type {
+  CartApiListingRoot, CartApiNamespace, CartApiPreparedPurchase, CartCatalogSearchParams,
+  CartCatalogSearchResult, CartCheckoutIntent, CartCheckoutPreparation, CartListingIntent,
+} from './cart-api.js';
 
 export const cartFulfillmentKinds = {
   none: 0,
@@ -86,31 +89,40 @@ export type CartPurchaseResult = CartCheckoutResult & {
   preparation: CartCheckoutPreparation;
   preparedPurchase: CartApiPreparedPurchase;
 };
+export type CartListingPreparation = {
+  intent: CartListingIntent;
+  artifact: CartListingRootArtifact;
+  requiredApprovals: Address[];
+};
+export type CartListingPublishParams = { preparation: CartListingPreparation; autoApprove?: boolean };
+export type CartListingPublishResult = {
+  preparation: CartListingPreparation;
+  signedArtifact: CartListingRootArtifact & { signature: Hex };
+  publishedRoot: CartApiListingRoot;
+  approvalTxHashes: Hash[];
+  approvalReceipts: TransactionReceipt[];
+};
 export type CartValidationIssue = { code: string; field: string; message: string };
 export type CartValidationResult<T> = { isValid: true; value: T } | { isValid: false; issues: CartValidationIssue[] };
 
 export type CartNamespace = {
   api: CartApiNamespace;
+  catalog: {
+    search: (params?: CartCatalogSearchParams) => Promise<CartCatalogSearchResult>;
+  };
   approval: {
     status: (tokenContract: Address, owner: Address) => Promise<boolean>;
     approve: (tokenContract: Address) => Promise<{ txHash?: Hash; receipt?: TransactionReceipt }>;
     revoke: (tokenContract: Address) => Promise<{ txHash?: Hash; receipt?: TransactionReceipt }>;
   };
   listing: {
-    createSalt: () => Hex;
-    buildRoot: (params: BuildCartListingRootInput) => CartListingRootArtifact;
-    signRoot: (artifact: CartListingRootArtifact, signer: CartTypedDataSigner) => Promise<CartListingRootArtifact>;
-    parseArtifact: (content: string) => CartListingRootArtifact;
-    validateArtifact: (artifact: unknown) => asserts artifact is CartListingRootArtifact;
-    getEntry: (artifact: CartListingRootArtifact, listingDigest: Hex) => CartListingRootArtifactEntry | undefined;
-    buildAuthorization: (selections: readonly CartListingSelection[]) => CartListingAuthorizationBundle;
+    prepare: (intent: CartListingIntent) => Promise<CartListingPreparation>;
+    publish: (params: CartListingPublishParams) => Promise<CartListingPublishResult>;
+    search: CartApiNamespace['listing']['search'];
+    get: CartApiNamespace['listing']['get'];
     cancel: (listingDigest: Hex) => Promise<{ txHash: Hash; receipt: TransactionReceipt }>;
     cancelRoot: (rootDigest: Hex) => Promise<{ txHash: Hash; receipt: TransactionReceipt }>;
     invalidateNonce: () => Promise<{ txHash: Hash; receipt: TransactionReceipt }>;
-  };
-  order: {
-    build: (params: BuildCartOrderParams) => Omit<CartSignedOrder, 'platformSignature'>;
-    sign: (params: Omit<CartSignedOrder, 'platformSignature'>, signer: CartTypedDataSigner) => Promise<CartSignedOrder>;
   };
   checkout: {
     prepare: (intent: CartCheckoutIntent) => Promise<CartCheckoutPreparation>;

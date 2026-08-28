@@ -1,16 +1,15 @@
-import { erc20Abi, isAddressEqual, parseEventLogs, type Address, type Hex, type PublicClient } from 'viem';
+import { erc20Abi, getAddress, isAddressEqual, parseEventLogs, type Address, type Hash, type Hex, type PublicClient, type TransactionReceipt } from 'viem';
 import { cartAbi } from '../contracts/abis/cart.js';
 import { cartLensAbi } from '../contracts/abis/cart-lens.js';
 import { ETH_ADDRESS, type SupportedChain } from '../contracts/addresses.js';
-import { approvalAbi, runWithApprovalSideEffectAlert, waitForApprovalState } from './approvals-shell.js';
-import { buildCartListingAuthorization, buildCartListingRootArtifact, buildCartOrder, cartDomain, getCartListingArtifactEntry, hashCartListing, hashCartListingRoot, hashCartOrder, parseCartListingRootArtifact, validateCartCheckoutIntent, validateCartCheckoutPreparationForPurchase, validateCartListingRootArtifact } from './cart-core.js';
+import { approvalAbi, NftApprovalRequiredError, runWithApprovalSideEffectAlert, waitForApprovalState } from './approvals-shell.js';
+import { buildCartListingRootArtifact, cartDomain, hashCartListing, hashCartListingRoot, hashCartOrder, validateCartCheckoutIntent, validateCartCheckoutPreparationForPurchase, validateCartListingIntent, validateCartListingRootArtifact } from './cart-core.js';
 import { PaymentApprovalRequiredError, preparePaymentAmountForSpender } from './payments-shell.js';
 import { waitForSuccessfulTransactionReceipt } from './transaction-receipt.js';
 import type { RareClientConfig } from './types/client.js';
-import type { CartCheckoutParams, CartNamespace, CartPurchaseParams, CartPurchaseResult, CartSignedOrder, CartTypedDataSigner } from './types/cart.js';
+import { cartFulfillmentKinds, type CartCheckoutParams, type CartListing, type CartNamespace, type CartPurchaseParams, type CartPurchaseResult } from './types/cart.js';
 import { requireWallet } from './wallet-shell.js';
 import { createCartApiNamespace } from './cart-api.js';
-import { addCartListingSalt, generateCartListingSalt } from './cart-listing-shell.js';
 
 export type * from './types/cart.js';
 export type * from './types/cart-api.js';
@@ -84,6 +83,7 @@ export function createCartNamespace(
 
   return {
     api,
+    catalog: { search: api.catalog.search },
     approval: {
       status(tokenContract, owner) {
         return publicClient.readContract({
@@ -97,42 +97,76 @@ export function createCartNamespace(
       revoke(tokenContract) { return setApproval(tokenContract, false); },
     },
     listing: {
-      createSalt: generateCartListingSalt,
-      buildRoot(params) {
-        return buildCartListingRootArtifact({
-          ...params,
-          listings: params.listings.map(addCartListingSalt),
-        });
+      async prepare(intent) {
+        const validation = validateCartListingIntent(intent);
+        if (!validation.isValid) throw new CartPreparationError('invalid_listing_intent', 'Cart Listing intent is invalid.', validation.issues);
+        const cart = requireCart();
+        const listings = await api.listing.preview(validation.value);
+        const nonce = await publicClient.readContract({ address: cart, abi: cartAbi, functionName: 'listingNonces', args: [intent.seller] });
+        const artifact = buildCartListingRootArtifact({ listings, chainId, cart, nonce, deadline: intent.deadline });
+        return { intent, artifact, requiredApprovals: requiredCartApprovals(listings) };
       },
-      parseArtifact: parseCartListingRootArtifact,
-      validateArtifact: validateCartListingRootArtifact,
-      getEntry: getCartListingArtifactEntry,
-      buildAuthorization: buildCartListingAuthorization,
-      async signRoot(artifact, signer) {
-        if (!isAddressEqual(artifact.seller, signer.address)) throw new Error('Listing Root signer does not match artifact seller.');
+      async publish(params) {
+        validateCartListingRootArtifact(params.preparation.artifact);
+        const { walletClient, account, accountAddress } = requireWallet(config);
+        const artifact = params.preparation.artifact;
+        if (!isAddressEqual(artifact.seller, accountAddress)) throw new Error('Listing Root signer does not match the connected seller.');
+        const requiredApprovals = requiredCartApprovals(artifact.entries.map((entry) => ({
+          ...entry.listing,
+          tokenId: BigInt(entry.listing.tokenId),
+          minimumUnitPrice: BigInt(entry.listing.minimumUnitPrice),
+          availableQuantity: BigInt(entry.listing.availableQuantity),
+        })));
+        const approvalStates = await Promise.all(requiredApprovals.map(async (tokenContract) => ({
+          tokenContract,
+          approved: await publicClient.readContract({ address: tokenContract, abi: approvalAbi,
+            functionName: 'isApprovedForAll', args: [accountAddress, requireCart()] }),
+        })));
+        const missingApprovals = approvalStates.filter(({ approved }) => !approved).map(({ tokenContract }) => tokenContract);
+        if (missingApprovals.length > 0 && params.autoApprove !== true) {
+          throw new NftApprovalRequiredError({ nftAddress: missingApprovals[0]!, operator: requireCart() });
+        }
+        const approvals = await missingApprovals.reduce(async (pending, tokenContract) => {
+          const previous = await pending;
+          const approval = await setApproval(tokenContract, true);
+          return approval.txHash === undefined || approval.receipt === undefined
+            ? previous
+            : [...previous, { txHash: approval.txHash, receipt: approval.receipt }];
+        }, Promise.resolve([] as Array<{ txHash: Hash; receipt: TransactionReceipt }>));
         const root = { listingsRoot: artifact.root.listingsRoot, nonce: BigInt(artifact.root.nonce), deadline: BigInt(artifact.root.deadline) };
-        const signature = await signer.signTypedData({ domain: cartDomain(artifact.chainId, artifact.cart), primaryType: 'ListingRoot', types: { ListingRoot: [
+        const signature = await walletClient.signTypedData({ account, domain: cartDomain(artifact.chainId, artifact.cart), primaryType: 'ListingRoot', types: { ListingRoot: [
           { name: 'listingsRoot', type: 'bytes32' }, { name: 'nonce', type: 'uint256' }, { name: 'deadline', type: 'uint256' },
         ] }, message: root });
-        return { ...artifact, signature };
+        const signedArtifact = { ...artifact, signature };
+        const publishedRoot = await api.listing.publish(signedArtifact);
+        return { preparation: params.preparation, signedArtifact, publishedRoot,
+          approvalTxHashes: approvals.map(({ txHash }) => txHash),
+          approvalReceipts: approvals.map(({ receipt }) => receipt) };
       },
+      search: api.listing.search,
+      get: api.listing.get,
       cancel(listingDigest) { return writeSimple('cancelListing', [listingDigest]); },
       cancelRoot(rootDigest) { return writeSimple('cancelListingRoot', [rootDigest]); },
       invalidateNonce() { return writeSimple('invalidateListingNonce'); },
-    },
-    order: {
-      build(params) { return buildCartOrder(params); },
-      async sign(order, signer) { return signCartOrder(order, signer, chainId, requireCart()); },
     },
     checkout: {
       prepare(intent) {
         const validation = validateCartCheckoutIntent(intent);
         if (!validation.isValid) throw new CartPreparationError('invalid_intent', 'Cart checkout intent is invalid.', validation.issues);
-        return api.checkout.prepare(validation.value);
+        return api.checkout.preview(validation.value);
       },
       purchase(params) { return purchaseCartCheckout(publicClient, config, api, chainId, requireCart(), addresses.cartLens, params); },
     },
   };
+}
+
+function requiredCartApprovals(listings: readonly CartListing[]): Address[] {
+  return listings.reduce<Address[]>((contracts, listing) => {
+    if (listing.fulfillmentKind !== cartFulfillmentKinds.erc721Transfer &&
+      listing.fulfillmentKind !== cartFulfillmentKinds.erc1155Transfer) return contracts;
+    const tokenContract = getAddress(listing.tokenContract);
+    return contracts.some((contract) => isAddressEqual(contract, tokenContract)) ? contracts : [...contracts, tokenContract];
+  }, []);
 }
 
 async function purchaseCartCheckout(
@@ -163,21 +197,12 @@ async function purchaseCartCheckout(
     }
   }
 
-  const preparedPurchase = await api.checkout.purchase(params.preparation);
+  const preparedPurchase = await api.checkout.prepare(params.preparation.intent);
   const execution = await executeCartCheckout(publicClient, config, chainId, cart, lens, {
     ...preparedPurchase.executePurchase,
     autoApprove: params.autoApprove,
   });
   return { ...execution, preparation: params.preparation, preparedPurchase };
-}
-
-async function signCartOrder(value: Omit<CartSignedOrder, 'platformSignature'>, signer: CartTypedDataSigner, chainId: number, cart: Address): Promise<CartSignedOrder> {
-  const platformSignature = await signer.signTypedData({ domain: cartDomain(chainId, cart), primaryType: 'PurchaseOrder', types: { PurchaseOrder: [
-    { name: 'orderId', type: 'bytes32' }, { name: 'paymentCurrency', type: 'address' }, { name: 'deadline', type: 'uint256' },
-    { name: 'paymentAmount', type: 'uint256' }, { name: 'orderLinesHash', type: 'bytes32' },
-    { name: 'payoutRouteHash', type: 'bytes32' }, { name: 'fulfillmentActionsHash', type: 'bytes32' },
-  ] }, message: value.order });
-  return { ...value, platformSignature };
 }
 
 async function executeCartCheckout(publicClient: PublicClient, config: RareClientConfig, chainId: number, cart: Address, lens: Address | undefined, params: CartCheckoutParams) {

@@ -26,8 +26,9 @@ describeRpc('SDK Cart integration', () => {
     expect(typeof paused).toBe('boolean');
     expect(isAddressEqual(rare.contracts.cart!, cart)).toBe(true);
     expect(isAddressEqual(rare.contracts.cartLens!, getCartLensAddress('sepolia')!)).toBe(true);
+    expect(rare.cart.catalog).toBeDefined();
     expect(rare.cart.listing).toBeDefined();
-    expect(rare.cart.order).toBeDefined();
+    expect(rare.cart).not.toHaveProperty('order');
     expect(rare.cart.checkout).toBeDefined();
   }, 30_000);
 });

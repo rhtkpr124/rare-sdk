@@ -9,7 +9,7 @@ import type {
   CartPurchaseOrder, CartSignedOrder, CartValidationIssue, CartValidationResult, CartListingRootArtifactEntry,
   CartListingSelection, CartListingAuthorizationBundle,
 } from './types/cart.js';
-import type { CartCheckoutIntent, CartCheckoutPreparation } from './types/cart-api.js';
+import type { CartCheckoutIntent, CartCheckoutPreparation, CartListingIntent } from './types/cart-api.js';
 
 export const cartEip712Name = 'SuperRare Cart';
 export const cartEip712Version = '1';
@@ -29,6 +29,23 @@ export function validateCartCheckoutIntent(intent: CartCheckoutIntent): CartVali
     if (!isHex(item.listingDigest) || item.listingDigest.length !== 66) issues.push(issue('invalid_digest', `items[${index}].listingDigest`, 'Checkout listing digest must be bytes32.'));
     if (item.quantity <= 0n) issues.push(issue('non_positive', `items[${index}].quantity`, 'Checkout item quantity must be positive.'));
     if (item.recipient !== undefined && !isAddress(item.recipient)) issues.push(issue('invalid_address', `items[${index}].recipient`, 'Checkout recipient must be an address.'));
+  });
+  return issues.length === 0 ? { isValid: true, value: intent } : { isValid: false, issues };
+}
+
+export function validateCartListingIntent(intent: CartListingIntent): CartValidationResult<CartListingIntent> {
+  const issues: CartValidationIssue[] = [];
+  if (!isAddress(intent.seller)) issues.push(issue('invalid_address', 'seller', 'Listing seller must be an address.'));
+  if (intent.deadline <= 0n) issues.push(issue('non_positive', 'deadline', 'Listing deadline must be positive.'));
+  if (intent.listings.length === 0) issues.push(issue('invalid_length', 'listings', 'At least one Listing is required.'));
+  intent.listings.forEach((listing, index) => {
+    if (!isBytes32(listing.sku)) issues.push(issue('invalid_sku', `listings[${index}].sku`, 'Listing SKU must be bytes32.'));
+    if (!isAddress(listing.settlementCurrency)) issues.push(issue('invalid_address', `listings[${index}].settlementCurrency`, 'Settlement currency must be an address.'));
+    if (listing.unitPrice <= 0n) issues.push(issue('non_positive', `listings[${index}].unitPrice`, 'Listing unit price must be positive.'));
+    if (listing.quantity <= 0n) issues.push(issue('non_positive', `listings[${index}].quantity`, 'Listing quantity must be positive.'));
+    if (listing.paymentRecipient !== undefined && !isAddress(listing.paymentRecipient)) {
+      issues.push(issue('invalid_address', `listings[${index}].paymentRecipient`, 'Payment recipient must be an address.'));
+    }
   });
   return issues.length === 0 ? { isValid: true, value: intent } : { isValid: false, issues };
 }
