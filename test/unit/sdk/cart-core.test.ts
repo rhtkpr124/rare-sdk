@@ -125,6 +125,7 @@ describe('Cart functional core', () => {
       cartAddress: cart,
       preparedAt: '2026-08-28T12:00:00.000Z',
       expiresAt: '2026-08-28T12:05:00.000Z',
+      preparationReference: 'preview-reference',
       intent: { paymentCurrency: zeroAddress, items: [{ kind: 'listing' as const, listingDigest: bytes32('1'), quantity: 1n }] },
       paymentAmount: 100n,
       fees: [],
