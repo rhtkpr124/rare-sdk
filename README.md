@@ -101,6 +101,12 @@ const unsigned = rare.cart.order.build({
 });
 const signedOrder = await rare.cart.order.sign(unsigned, platformSigner);
 
+// Seller approval is collection-wide. Cart's operator address is resolved by
+// the SDK, and approve/revoke are no-ops when already in the requested state.
+if (!await rare.cart.approval.status(collectionAddress, sellerAddress)) {
+  await rare.cart.approval.approve(collectionAddress);
+}
+
 // The chain-bound Cart API namespace manages catalog/order-book persistence and
 // asks rare-api to validate and platform-sign a buyer draft.
 const prepared = await rare.cart.api.checkout.prepareOrder({
@@ -127,6 +133,9 @@ Pure portable
 builders are also available from `@rareprotocol/rare-sdk/utils`.
 Methods return structured results and reject on RPC, API, wallet, or validation
 failure.
+
+Sellers can later remove the collection-wide authorization with
+`rare.cart.approval.revoke(collectionAddress)`.
 
 Backend integrations can use the same `utils` entry point for Cart protocol
 hashing and verification: `buildCartEip712Domain`, `hashCartListing`,

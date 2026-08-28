@@ -2,7 +2,7 @@ import { erc20Abi, isAddressEqual, parseEventLogs, type Address, type Hex, type 
 import { cartAbi } from '../contracts/abis/cart.js';
 import { cartLensAbi } from '../contracts/abis/cart-lens.js';
 import { ETH_ADDRESS, type SupportedChain } from '../contracts/addresses.js';
-import { approvalAbi, approveNftContractIfNeeded, runWithApprovalSideEffectAlert } from './approvals-shell.js';
+import { approvalAbi, runWithApprovalSideEffectAlert, waitForApprovalState } from './approvals-shell.js';
 import { buildCartListingAuthorization, buildCartListingRootArtifact, buildCartOrder, cartDomain, getCartListingArtifactEntry, hashCartListing, hashCartListingRoot, hashCartOrder, parseCartListingRootArtifact, validateCartListingRootArtifact } from './cart-core.js';
 import { preparePaymentAmountForSpender } from './payments-shell.js';
 import { waitForSuccessfulTransactionReceipt } from './transaction-receipt.js';
@@ -53,9 +53,48 @@ export function createCartNamespace(
     const receipt = await waitForSuccessfulTransactionReceipt(publicClient, { txHash, operation: `cart ${functionName}`, marketplace: cart });
     return { txHash, receipt };
   };
+  const setApproval = async (tokenContract: Address, approved: boolean) => {
+    const cart = requireCart();
+    const { walletClient, account, accountAddress } = requireWallet(config);
+    const currentApproval = await publicClient.readContract({
+      address: tokenContract,
+      abi: approvalAbi,
+      functionName: 'isApprovedForAll',
+      args: [accountAddress, cart],
+    });
+    if (currentApproval === approved) return { txHash: undefined };
+
+    const txHash = await walletClient.writeContract({
+      address: tokenContract,
+      abi: approvalAbi,
+      functionName: 'setApprovalForAll',
+      args: [cart, approved],
+      account,
+      chain: undefined,
+    });
+    const receipt = await waitForSuccessfulTransactionReceipt(publicClient, {
+      txHash,
+      operation: approved ? 'approve collection for Cart' : 'revoke collection approval for Cart',
+      marketplace: tokenContract,
+    });
+    await waitForApprovalState(publicClient, tokenContract, accountAddress, cart, approved);
+    return { txHash, receipt };
+  };
 
   return {
     api: createCartApiNamespace({ baseUrl: config.apiBaseUrl, fetch: config.apiFetch }, { chainId, cartAddress: addresses.cart }),
+    approval: {
+      status(tokenContract, owner) {
+        return publicClient.readContract({
+          address: tokenContract,
+          abi: approvalAbi,
+          functionName: 'isApprovedForAll',
+          args: [owner, requireCart()],
+        });
+      },
+      approve(tokenContract) { return setApproval(tokenContract, true); },
+      revoke(tokenContract) { return setApproval(tokenContract, false); },
+    },
     listing: {
       createSalt: generateCartListingSalt,
       buildRoot(params) {
@@ -79,15 +118,6 @@ export function createCartNamespace(
       cancel(listingDigest) { return writeSimple('cancelListing', [listingDigest]); },
       cancelRoot(rootDigest) { return writeSimple('cancelListingRoot', [rootDigest]); },
       invalidateNonce() { return writeSimple('invalidateListingNonce'); },
-      approvalStatus(tokenContract, owner) {
-        return publicClient.readContract({ address: tokenContract, abi: approvalAbi, functionName: 'isApprovedForAll', args: [owner, requireCart()] });
-      },
-      async approve(tokenContract) {
-        const { walletClient, account, accountAddress } = requireWallet(config);
-        const txHash = await approveNftContractIfNeeded({ publicClient, walletClient, account, accountAddress,
-          nftAddress: tokenContract, operator: requireCart(), autoApprove: true });
-        return { txHash };
-      },
     },
     order: {
       build(params) { return buildCartOrder(params); },

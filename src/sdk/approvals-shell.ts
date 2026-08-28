@@ -117,14 +117,15 @@ export const approvalAbi = [
 /**
  * After a setApprovalForAll tx is mined, some RPCs (notably on fast chains
  * like base-sepolia) can still read the pre-approval state for a short window,
- * causing the next contract call to revert with "owner must have approved
- * contract". Poll isApprovedForAll until it reflects true, or time out.
+ * causing the next contract call to observe stale approval state. Poll
+ * isApprovedForAll until it reflects the requested state, or time out.
  */
-export async function waitForApproval(
+export async function waitForApprovalState(
   publicClient: NftApprovalReadClient,
   nftAddress: Address,
   owner: Address,
   operator: Address,
+  desiredApproval: boolean,
   opts: { timeoutMs?: number; intervalMs?: number } = {},
 ): Promise<void> {
   const timeoutMs = opts.timeoutMs ?? 15_000;
@@ -132,20 +133,30 @@ export async function waitForApproval(
   const deadline = Date.now() + timeoutMs;
 
   while (Date.now() < deadline) {
-    const approved = await publicClient.readContract({
+    const currentApproval = await publicClient.readContract({
       address: nftAddress,
       abi: approvalAbi,
       functionName: 'isApprovedForAll',
       args: [owner, operator],
     });
-    if (approved) return;
+    if (currentApproval === desiredApproval) return;
     await new Promise((resolve) => setTimeout(resolve, intervalMs));
   }
 
   throw new Error(
-    `setApprovalForAll did not propagate to readable state within ${timeoutMs}ms. ` +
+    `setApprovalForAll(${desiredApproval}) did not propagate to readable state within ${timeoutMs}ms. ` +
       `The approval tx was mined but the marketplace still sees the old state. Retry the operation.`,
   );
+}
+
+export async function waitForApproval(
+  publicClient: NftApprovalReadClient,
+  nftAddress: Address,
+  owner: Address,
+  operator: Address,
+  opts: { timeoutMs?: number; intervalMs?: number } = {},
+): Promise<void> {
+  return waitForApprovalState(publicClient, nftAddress, owner, operator, true, opts);
 }
 
 export class NftApprovalRequiredError extends Error {
