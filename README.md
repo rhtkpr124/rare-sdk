@@ -67,6 +67,9 @@ Cart commerce is grouped under `rare.cart.listing`, `rare.cart.order`, and
 the platform builds and signs a fixed customer quote; the payer prepares and
 executes the resulting atomic purchase. The payer is always the transaction
 sender and may be a collector, processor, or another third party.
+Each Listing carries a client-generated `listingSalt`; its complete EIP-712
+`listingDigest` is the immutable public identity referenced by Order Lines,
+Merkle artifacts, cancellation, fill state, and order-book APIs.
 
 ```ts
 const artifact = rare.cart.listing.buildRoot({

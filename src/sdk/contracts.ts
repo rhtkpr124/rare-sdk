@@ -8,6 +8,7 @@ export {
   ETH_ADDRESS,
   getBatchListingAddress,
   getCartAddress,
+  getCartHashesAddress,
   getCartLensAddress,
   getCanonicalRareEthPool,
   getCanonicalUsdcEthPool,
@@ -48,6 +49,7 @@ export type {
 export { auctionAbi } from '../contracts/abis/auction.js';
 export { batchAuctionHouseAbi } from '../contracts/abis/batch-auctionhouse.js';
 export { cartAbi } from '../contracts/abis/cart.js';
+export { cartHashesAbi } from '../contracts/abis/cart-hashes.js';
 export { cartLensAbi } from '../contracts/abis/cart-lens.js';
 export { batchListingAbi } from '../contracts/abis/batch-listing.js';
 export { batchOfferAbi } from '../contracts/abis/batch-offer.js';

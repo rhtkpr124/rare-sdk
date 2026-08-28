@@ -176,7 +176,7 @@ async function readCartLensPreflight(publicClient: PublicClient, lens: Address, 
     if (!root || !rootSignature || !proof) throw new CartPreparationError('invalid_listing_authorization',
       `Listing authorization at index ${listingIndex} is incomplete.`);
     const digest = hashCartListing(listing, chainId, cart);
-    const requestedQuantity = params.lines.find((line) => line.listingHash === digest)?.quantity ?? 0n;
+    const requestedQuantity = params.lines.find((line) => line.listingDigest === digest)?.quantity ?? 0n;
     return publicClient.readContract({ address: lens, abi: cartLensAbi, functionName: 'validateListing',
       args: [cart, listing, root, rootSignature, proof, requestedQuantity] });
   }));

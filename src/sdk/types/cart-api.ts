@@ -47,7 +47,7 @@ export type CartApiListing = {
   cartAddress: Address;
   listingDigest: Hex;
   listing: {
-    listingId: Hex;
+    listingSalt: Hex;
     seller: Address;
     sku: Hex;
     fulfillmentKind: CartFulfillmentKind;
@@ -96,7 +96,7 @@ export type CartApiListingSearchResult = {
     chainId: string;
     cartAddress: Address;
     seller: Address;
-    listingId: Hex;
+    listingSalt: Hex;
     sku: Hex;
     fulfillmentKind: string;
     tokenContract?: Address | null;
@@ -144,7 +144,7 @@ export type CartApiListingSearchResult = {
 
 export type CartApiListingCreateParams = {
   seller: Address;
-  listingId: Hex;
+  listingSalt: Hex;
   sku: Hex;
   fulfillmentKind: CartFulfillmentKind;
   tokenContract?: Address;
@@ -201,7 +201,7 @@ export type CartApiPreparedPurchaseWire = {
     };
     lines: Array<{
       sku: Hex;
-      listingHash: Hex;
+      listingDigest: Hex;
       fulfillmentKind: number;
       quantity: string;
       settlementCurrency: Address;
@@ -209,7 +209,7 @@ export type CartApiPreparedPurchaseWire = {
       paymentRecipient: Address;
     }>;
     listings: Array<{
-      listingId: Hex;
+      listingSalt: Hex;
       seller: Address;
       sku: Hex;
       fulfillmentKind: number;
@@ -279,7 +279,7 @@ export type CartListingRootArtifactWire = {
   root: { listingsRoot: Hex; nonce: string; deadline: string };
   entries: Array<{
     listing: {
-      listingId: Hex;
+      listingSalt: Hex;
       seller: Address;
       sku: Hex;
       fulfillmentKind: number;

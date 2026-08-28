@@ -57,10 +57,12 @@ describe('public SDK API surface', () => {
     expect(contracts).toHaveProperty('contractAddresses');
     expect(contracts).toHaveProperty('getCcipChainSelector');
     expect(contracts).toHaveProperty('getContractAddresses');
+    expect(contracts).toHaveProperty('getCartHashesAddress');
     expect(contracts).toHaveProperty('getRareBridgeAddress');
     expect(contracts).toHaveProperty('isSupportedChain');
     expect(contracts).toHaveProperty('rareBridgeAbi');
     expect(contracts).toHaveProperty('cartAbi');
+    expect(contracts).toHaveProperty('cartHashesAbi');
     expect(contracts).toHaveProperty('cartLensAbi');
   });
 

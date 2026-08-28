@@ -62,6 +62,7 @@ export type ContractAddresses = {
   v4Quoter?: Address;
   cart?: Address;
   cartLens?: Address;
+  cartHashes?: Address;
 };
 
 export type CanonicalV4Pools = {
@@ -91,7 +92,8 @@ export const contractAddresses: Partial<Record<SupportedChain, ContractAddresses
     swapRouter: getAddress('0x429c3Ee66E7f6CDA12C5BadE4104aF3277aA2305'),
     v4Quoter: getAddress('0x61B3f2011A92d183C7dbaDBdA940a7555Ccf9227'),
     cart: getAddress('0x1EBF35b3A76caEf60a009d2786A66A91D42A38Bc'),
-    cartLens: getAddress('0x27dE8e7Ef6d8a24451F512eAa0c2D73A8dB90993'),
+    cartLens: getAddress('0xF8780bA2627F4431D69EaA4B948a433c73183e1B'),
+    cartHashes: getAddress('0x7cF7626AA1881FFeb2004705886DA42605Ec9A0F'),
   },
   mainnet: {
     factory: getAddress('0xAe8E375a268Ed6442bEaC66C6254d6De5AeD4aB1'),
@@ -481,6 +483,10 @@ export function getCartAddress(chain: SupportedChain): Address {
 
 export function getCartLensAddress(chain: SupportedChain): Address | undefined {
   return getContractAddresses(chain).cartLens;
+}
+
+export function getCartHashesAddress(chain: SupportedChain): Address | undefined {
+  return getContractAddresses(chain).cartHashes;
 }
 
 export function getCanonicalRareEthPool(chain: SupportedChain): CanonicalV4Pool {
