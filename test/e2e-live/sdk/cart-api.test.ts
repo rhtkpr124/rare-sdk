@@ -96,9 +96,8 @@ describeRareApi('SDK Cart rare-api integration', () => {
     } as typeof invalidRoot & { signature: `0x${string}` })).rejects.toThrow();
   }, 30_000);
 
-  it('prepares an idempotent Purchase and verifies its protocol envelope', async () => {
+  it('prepares checkout without a wallet, then creates and verifies its signed Purchase', async () => {
     const { rare, publicClient, cart, createdListings } = scenario;
-    const idempotencyKey = crypto.randomUUID();
     const draft = {
       paymentCurrency: zeroAddress,
       items: createdListings.map((listing) => ({
@@ -106,11 +105,12 @@ describeRareApi('SDK Cart rare-api integration', () => {
         quantity: 1n,
         recipient,
       })),
-      idempotencyKey,
     };
-    const prepared = await rare.cart.api.checkout.prepareOrder(draft);
-    const replayed = await rare.cart.api.checkout.prepareOrder(draft);
-    expect(replayed).toEqual(prepared);
+    const preparation = await rare.cart.api.checkout.prepare(draft);
+    expect(preparation.intent).toEqual(draft);
+    expect(preparation.paymentAmount).toBeGreaterThan(0n);
+    expect(Date.parse(preparation.expiresAt)).toBeGreaterThan(Date.now());
+    const prepared = await rare.cart.api.checkout.purchase(preparation);
     expect(prepared.chainId).toBe(11_155_111n);
     expect(isAddressEqual(prepared.cartAddress, cart)).toBe(true);
     expect(prepared.executePurchase.lines.length).toBeGreaterThanOrEqual(2);

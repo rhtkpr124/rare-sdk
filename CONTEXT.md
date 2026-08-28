@@ -36,9 +36,20 @@ The transaction sender whose assets fund the Purchase Order. The Payer may be a
 collector or a third-party processor and is independent from fulfillment
 recipients.
 
+**Cart Intent**:
+An editable selection of Listings, quantities, recipients, and payment
+currency that a buyer asks the platform to price. It is not authorized or
+executable.
+
+**Checkout Preparation**:
+A non-durable, unsigned presentation of the items, fees, settlement
+obligations, payment amount, currency conversion, and validity period for a
+Cart Intent. It requires no Payer or wallet.
+
 **Checkout**:
-The client workflow that prepares, submits, and verifies execution of a signed
-Purchase Order. Checkout is not a distinct on-chain domain object.
+The client workflow that prepares commercial terms and purchases them by
+obtaining, submitting, and verifying a signed Purchase Order. Checkout is not
+a distinct on-chain domain object.
 
 **Protocol Spread**:
 Favorable execution variance retained by the protocol under a fixed quote,
