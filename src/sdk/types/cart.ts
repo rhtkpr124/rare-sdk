@@ -17,6 +17,7 @@ export type CartListing = {
   tokenContract: Address; tokenId: bigint; settlementCurrency: Address;
   minimumUnitPrice: bigint; availableQuantity: bigint; paymentRecipient: Address;
 };
+export type CartListingInput = Omit<CartListing, 'listingSalt'> & { listingSalt?: Hex };
 export type CartListingRoot = { listingsRoot: Hex; nonce: bigint; deadline: bigint };
 export type CartOrderLine = {
   sku: Hex; listingDigest: Hex; fulfillmentKind: CartFulfillmentKind; quantity: bigint;
@@ -66,6 +67,9 @@ export type CartTypedDataSigner = {
 export type BuildCartListingRootParams = {
   listings: CartListing[]; chainId: number; cart: Address; nonce: bigint; deadline: bigint;
 };
+export type BuildCartListingRootInput = Omit<BuildCartListingRootParams, 'listings'> & {
+  listings: CartListingInput[];
+};
 export type BuildCartOrderParams = {
   orderId: Hex; paymentCurrency: Address; deadline: bigint; paymentAmount: bigint;
   lines: CartOrderLine[]; route?: CartPayoutRoute; actions?: CartFulfillmentAction[];
@@ -88,7 +92,8 @@ export type CartValidationResult<T> = { isValid: true; value: T } | { isValid: f
 export type CartNamespace = {
   api: CartApiNamespace;
   listing: {
-    buildRoot: (params: BuildCartListingRootParams) => CartListingRootArtifact;
+    createSalt: () => Hex;
+    buildRoot: (params: BuildCartListingRootInput) => CartListingRootArtifact;
     signRoot: (artifact: CartListingRootArtifact, signer: CartTypedDataSigner) => Promise<CartListingRootArtifact>;
     parseArtifact: (content: string) => CartListingRootArtifact;
     validateArtifact: (artifact: unknown) => asserts artifact is CartListingRootArtifact;

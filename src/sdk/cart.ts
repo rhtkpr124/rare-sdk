@@ -10,6 +10,7 @@ import type { RareClientConfig } from './types/client.js';
 import type { CartCheckoutParams, CartCheckoutPreparation, CartNamespace, CartSignedOrder, CartTypedDataSigner } from './types/cart.js';
 import { requireWallet } from './wallet-shell.js';
 import { createCartApiNamespace } from './cart-api.js';
+import { addCartListingSalt, generateCartListingSalt } from './cart-listing-shell.js';
 
 export type * from './types/cart.js';
 export type * from './types/cart-api.js';
@@ -56,7 +57,13 @@ export function createCartNamespace(
   return {
     api: createCartApiNamespace({ baseUrl: config.apiBaseUrl, fetch: config.apiFetch }, { chainId, cartAddress: addresses.cart }),
     listing: {
-      buildRoot(params) { return buildCartListingRootArtifact(params); },
+      createSalt: generateCartListingSalt,
+      buildRoot(params) {
+        return buildCartListingRootArtifact({
+          ...params,
+          listings: params.listings.map(addCartListingSalt),
+        });
+      },
       parseArtifact: parseCartListingRootArtifact,
       validateArtifact: validateCartListingRootArtifact,
       getEntry: getCartListingArtifactEntry,

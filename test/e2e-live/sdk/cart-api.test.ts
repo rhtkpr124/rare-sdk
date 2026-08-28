@@ -147,7 +147,6 @@ describeRareApi('SDK Cart rare-api integration', () => {
     const { rare, runId, skuA } = scenario;
     const offChainListing = await rare.cart.api.listing.create({
       seller: seller.address,
-      listingSalt: keccak256(toBytes(`off-chain:${runId}`)),
       sku: skuA.sku,
       fulfillmentKind: 1,
       settlementCurrency: zeroAddress,
@@ -191,12 +190,11 @@ async function createCartScenario() {
   await rare.cart.api.catalog.skus.attach(product.id, { sku: skuA.sku, position: 0, metadata: { runId } });
   await rare.cart.api.catalog.skus.attach(product.id, { sku: skuB.sku, position: 1, metadata: { runId } });
   const listingInputs = [
-    { sku: skuA.sku, listingSalt: `a:${runId}`, price: 1000n },
-    { sku: skuB.sku, listingSalt: `b:${runId}`, price: 2000n },
+    { sku: skuA.sku, price: 1000n },
+    { sku: skuB.sku, price: 2000n },
   ] as const;
   const createdListings = await Promise.all(listingInputs.map(async (input) => rare.cart.api.listing.create({
     seller: seller.address,
-    listingSalt: keccak256(toBytes(input.listingSalt)),
     sku: input.sku,
     fulfillmentKind: 2,
     tokenContract,
