@@ -165,6 +165,7 @@ export function createCartNamespace(
         return api.checkout.preview({ ...validation.value, items });
       },
       purchase(params) { return purchaseCartCheckout(publicClient, config, api, chainId, requireCart(), addresses.cartLens, params); },
+      execute(params) { return executeCartCheckout(publicClient, config, chainId, requireCart(), addresses.cartLens, params); },
     },
   };
 }

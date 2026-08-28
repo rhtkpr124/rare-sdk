@@ -72,8 +72,8 @@ describe('public SDK API surface', () => {
     expect(rare.cart.listing.prepare).toBeTypeOf('function');
     expect(rare.cart.listing.publish).toBeTypeOf('function');
     expect(rare.cart.checkout.prepare).toBeTypeOf('function');
+    expect(rare.cart.checkout.execute).toBeTypeOf('function');
     expect(rare.cart.checkout.purchase).toBeTypeOf('function');
-    expect(rare.cart.checkout).not.toHaveProperty('execute');
     expect(rare.cart).not.toHaveProperty('order');
     expect(rare.cart.approval.status).toBeTypeOf('function');
     expect(rare.cart.approval.approve).toBeTypeOf('function');
