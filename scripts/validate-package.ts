@@ -71,6 +71,7 @@ const requiredFiles = [
   'dist/sdk/contracts.js',
   'dist/sdk/public-utils.js',
   'dist/data-access/index.js',
+  'dist/node_modules/openapi-fetch/package.json',
 ];
 
 const isPatternTarget = (path: string): boolean => path.includes('*');
