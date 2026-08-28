@@ -254,13 +254,18 @@ export type CartCheckoutPreparation = {
   cartAddress: Address;
   preparedAt: string;
   expiresAt: string;
+  preparationReference: string;
   intent: CartCheckoutIntent;
   paymentAmount: bigint;
   fees: CartCheckoutFee[];
   settlements: CartCheckoutSettlement[];
   lines: CartOrderLine[];
   route: CartPayoutRoute;
-  quoteEvidence?: CartCheckoutQuoteEvidence;
+};
+
+export type CartCheckoutPreviewWire = {
+  preparationReference: string;
+  preparation: CartApiPreparedPurchaseWire;
 };
 
 export type CartApiPreparedPurchaseWire = {
@@ -337,11 +342,11 @@ export type CartApiNamespace = {
     search: (params?: CartApiListingSearchParams) => Promise<CartApiListingSearchResult>;
     get: (listingDigest: Hex) => Promise<CartApiListing>;
     invalidate: (listingDigest: Hex, invalidatedAt?: string | null) => Promise<CartApiListing>;
-    publish: (artifact: CartListingRootArtifact & { signature: Hex }) => Promise<CartApiListingRoot>;
+    publish: (intent: CartListingIntent, artifact: CartListingRootArtifact & { signature: Hex }) => Promise<CartApiListingRoot>;
   };
   checkout: {
     preview: (intent: CartCheckoutIntent) => Promise<CartCheckoutPreparation>;
-    prepare: (intent: CartCheckoutIntent) => Promise<CartApiPreparedPurchase>;
+    prepare: (preparationReference: string) => Promise<CartApiPreparedPurchase>;
   };
 };
 

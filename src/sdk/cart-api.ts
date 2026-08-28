@@ -25,6 +25,7 @@ import type {
   CartCatalogVariant,
   CartProductSearchParams,
   CartVariantSearchParams,
+  CartCheckoutPreviewWire,
   CartListingIntent,
   CartListingPreviewWire,
   CartListingRootArtifactWire,
@@ -129,8 +130,22 @@ export function createCartApiNamespace(
       }),
       'Rare API did not return the invalidated Cart Listing.',
     ),
-    publish: async (artifact: CartListingRootArtifact & { signature: Hex }): Promise<CartApiListingRoot> => getWrappedData(
-      protectedClient.POST('/v1/cart/listing-roots', { body: toCartListingRootArtifactWire(artifact) }),
+    publish: async (intent: CartListingIntent, artifact: CartListingRootArtifact & { signature: Hex }): Promise<CartApiListingRoot> => getWrappedData(
+      protectedClient.POST('/v1/cart/listing-roots', { body: {
+        artifact: toCartListingRootArtifactWire(artifact),
+        intent: {
+          seller: intent.seller,
+          deadline: intent.deadline.toString(),
+          listings: intent.listings.map((item, index) => ({
+            listingSalt: artifact.entries[index]?.listing.listingSalt,
+            sku: item.sku,
+            settlementCurrency: item.settlementCurrency,
+            displayUnitPrice: item.unitPrice.toString(),
+            availableQuantity: item.quantity.toString(),
+            ...(item.paymentRecipient === undefined ? {} : { paymentRecipient: item.paymentRecipient }),
+          })),
+        },
+      } }),
       'Rare API did not return the ingested Cart Listing Root.',
     ),
   };
@@ -139,7 +154,7 @@ export function createCartApiNamespace(
     preview: async (intent: CartCheckoutIntent): Promise<CartCheckoutPreparation> => {
       const validation = validateCartCheckoutIntent(intent);
       if (!validation.isValid) throw new Error(`Invalid Cart checkout intent: ${validation.issues.map((issue) => issue.message).join(' ')}`);
-      const wire = await getWrappedData<CartApiPreparedPurchaseWire>(
+      const wire = await getWrappedData<CartCheckoutPreviewWire>(
         client.POST('/v1/cart/checkout/preview', {
           params: { query: { chainId, cartAddress: cartAddress() } },
           body: {
@@ -149,15 +164,17 @@ export function createCartApiNamespace(
         }),
         'Rare API did not return the Cart checkout preparation.',
       );
-      return checkoutPreparationFromPreparedPurchase(normalizePreparedPurchase(wire), intent);
+      return checkoutPreparationFromPreparedPurchase(
+        normalizePreparedPurchase(wire.preparation),
+        intent,
+        wire.preparationReference,
+      );
     },
-    prepare: async (intent: CartCheckoutIntent): Promise<CartApiPreparedPurchase> => {
-      const validation = validateCartCheckoutIntent(intent);
-      if (!validation.isValid) throw new Error(`Invalid Cart checkout intent: ${validation.issues.map((issue) => issue.message).join(' ')}`);
+    prepare: async (preparationReference: string): Promise<CartApiPreparedPurchase> => {
       const wire = await getWrappedData<CartApiPreparedPurchaseWire>(
         protectedClient.POST('/v1/cart/checkout/prepare', {
           params: { query: { chainId, cartAddress: cartAddress() } },
-          body: { paymentCurrency: intent.paymentCurrency, items: intent.items.map(toWireDraftItem) },
+          body: { preparationReference },
         }),
         'Rare API did not return the signed Cart Purchase.',
       );
@@ -214,6 +231,7 @@ function toWireDraftItem(item: CartCheckoutIntentItem) {
 function checkoutPreparationFromPreparedPurchase(
   value: CartApiPreparedPurchase,
   intent: CartCheckoutIntent,
+  preparationReference: string,
 ): CartCheckoutPreparation {
   const settlements = value.executePurchase.lines.reduce((totals, line) => {
     const currency = getAddress(line.settlementCurrency);
@@ -225,6 +243,7 @@ function checkoutPreparationFromPreparedPurchase(
     cartAddress: value.cartAddress,
     preparedAt: value.preparedAt,
     expiresAt: new Date(Number(value.executePurchase.order.deadline) * 1000).toISOString(),
+    preparationReference,
     intent,
     paymentAmount: value.executePurchase.order.paymentAmount,
     fees: value.executePurchase.lines

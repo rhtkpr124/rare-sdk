@@ -92,7 +92,7 @@ describeRareApi('SDK Cart rare-api integration', () => {
       nonce: listingNonce + 1n,
       deadline: BigInt(Math.floor(Date.now() / 1000) + 3600),
     });
-    await expect(rare.cart.api.listing.publish({
+    await expect(rare.cart.api.listing.publish(scenario.listingIntent, {
       ...invalidRoot,
       signature: `0x${'00'.repeat(65)}`,
     } as typeof invalidRoot & { signature: `0x${string}` })).rejects.toThrow();
@@ -113,7 +113,7 @@ describeRareApi('SDK Cart rare-api integration', () => {
     expect(preparation.intent).toEqual(draft);
     expect(preparation.paymentAmount).toBeGreaterThan(0n);
     expect(Date.parse(preparation.expiresAt)).toBeGreaterThan(Date.now());
-    const prepared = await rare.cart.api.checkout.prepare(draft);
+    const prepared = await rare.cart.api.checkout.prepare(preparation.preparationReference);
     expect(prepared.chainId).toBe(11_155_111n);
     expect(isAddressEqual(prepared.cartAddress, cart)).toBe(true);
     expect(prepared.executePurchase.lines.length).toBeGreaterThanOrEqual(2);
@@ -261,10 +261,21 @@ async function createCartScenario() {
     { name: 'listingsRoot', type: 'bytes32' }, { name: 'nonce', type: 'uint256' }, { name: 'deadline', type: 'uint256' },
   ] }, message: { listingsRoot: artifact.root.listingsRoot, nonce: BigInt(artifact.root.nonce), deadline: BigInt(artifact.root.deadline) } });
   const signed = { ...artifact, signature };
-  const ingested = await rare.cart.api.listing.publish(signed);
+  const listingIntent = {
+    seller: seller.address,
+    deadline: BigInt(artifact.root.deadline),
+    listings: listings.map((listing) => ({
+      sku: listing.sku,
+      settlementCurrency: listing.settlementCurrency,
+      unitPrice: listing.minimumUnitPrice,
+      quantity: listing.availableQuantity,
+      paymentRecipient: listing.paymentRecipient,
+    })),
+  };
+  const ingested = await rare.cart.api.listing.publish(listingIntent, signed);
   await waitForListingSearch(rare, skuA.sku, createdListings[0]!.listingDigest);
   return { rare, publicClient, cart, chainId, runId, apiFetch, apiBaseUrl, product, skuA, createdListings, listings,
-    listingNonce, artifact, signedArtifact: signed, ingested };
+    listingNonce, artifact, signedArtifact: signed, ingested, listingIntent };
 }
 
 async function postCartFixture<T = unknown>(
