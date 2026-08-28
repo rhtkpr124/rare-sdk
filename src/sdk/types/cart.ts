@@ -13,13 +13,13 @@ export const cartFulfillmentKinds = {
 export type CartFulfillmentKind = (typeof cartFulfillmentKinds)[keyof typeof cartFulfillmentKinds];
 
 export type CartListing = {
-  listingId: Hex; seller: Address; sku: Hex; fulfillmentKind: CartFulfillmentKind;
+  listingSalt: Hex; seller: Address; sku: Hex; fulfillmentKind: CartFulfillmentKind;
   tokenContract: Address; tokenId: bigint; settlementCurrency: Address;
   minimumUnitPrice: bigint; availableQuantity: bigint; paymentRecipient: Address;
 };
 export type CartListingRoot = { listingsRoot: Hex; nonce: bigint; deadline: bigint };
 export type CartOrderLine = {
-  sku: Hex; listingHash: Hex; fulfillmentKind: CartFulfillmentKind; quantity: bigint;
+  sku: Hex; listingDigest: Hex; fulfillmentKind: CartFulfillmentKind; quantity: bigint;
   settlementCurrency: Address; amount: bigint; paymentRecipient: Address;
 };
 export type CartPayoutRoute = { commands: Hex; inputs: Hex[]; routerValue: bigint };

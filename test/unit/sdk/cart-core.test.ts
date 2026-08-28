@@ -32,12 +32,12 @@ const bytes32 = (character: string): Hex => `0x${character.repeat(64)}` as Hex;
 
 const listings: CartListing[] = [
   {
-    listingId: bytes32('1'), seller, sku: bytes32('a'), fulfillmentKind: cartFulfillmentKinds.erc721Transfer,
+    listingSalt: bytes32('1'), seller, sku: bytes32('a'), fulfillmentKind: cartFulfillmentKinds.erc721Transfer,
     tokenContract: cart, tokenId: 1n, settlementCurrency: zeroAddress, minimumUnitPrice: 100n,
     availableQuantity: 1n, paymentRecipient: seller,
   },
   {
-    listingId: bytes32('2'), seller, sku: bytes32('b'), fulfillmentKind: cartFulfillmentKinds.erc1155Transfer,
+    listingSalt: bytes32('2'), seller, sku: bytes32('b'), fulfillmentKind: cartFulfillmentKinds.erc1155Transfer,
     tokenContract: cart, tokenId: 2n, settlementCurrency: zeroAddress, minimumUnitPrice: 200n,
     availableQuantity: 5n, paymentRecipient: seller,
   },
@@ -46,10 +46,10 @@ const listings: CartListing[] = [
 describe('Cart functional core', () => {
   it('builds a portable deterministic Listing Root artifact', () => {
     const artifact = buildCartListingRootArtifact({ listings, chainId: 11_155_111, cart, nonce: 3n, deadline: 2_000_000_000n });
-    expect(artifact.root.listingsRoot).toBe('0xb2e29f917ba4d63da25bff0f13a46a02caa94b1c081b66ec51b93761a8ec3bc2');
+    expect(artifact.root.listingsRoot).toBe('0xe7ab7ad2e552ad627517bb3634d3b3e495d80ec4de7ceb8e71a8ff62ace98407');
     expect(artifact.entries.map((entry) => entry.listingDigest)).toEqual([
-      '0x056a20bad3561c36a41a1ed629e7a2021fbc9d2570c1a8692342ef2c1c97023e',
-      '0x39805ad1aa6fa18731378769f4f3558d791294fbb489b8745855b300be97965b',
+      '0x5b1fcc50cfdf1c82f125cdc711571ae25c2760caf4c8d4deb044bd00ecec573b',
+      '0xac69cee5bdae6f6665059d753b76c42767398ba4f023885588cb039e250d3fe2',
     ]);
     expect(() => JSON.stringify(artifact)).not.toThrow();
   });
@@ -60,7 +60,7 @@ describe('Cart functional core', () => {
     const root = { listingsRoot: artifact.root.listingsRoot, nonce: 3n, deadline: 2_000_000_000n };
     const built = buildCartOrder({
       orderId: bytes32('c'), paymentCurrency: zeroAddress, deadline: 2_000_000_000n, paymentAmount: 500n,
-      lines: [{ sku: bytes32('a'), listingHash: artifact.entries[0]!.listingDigest,
+      lines: [{ sku: bytes32('a'), listingDigest: artifact.entries[0]!.listingDigest,
         fulfillmentKind: cartFulfillmentKinds.erc721Transfer, quantity: 1n, settlementCurrency: zeroAddress,
         amount: 100n, paymentRecipient: seller }],
       actions: [{ lineIndex: 0n, quantity: 1n, recipient: seller }],
@@ -69,12 +69,12 @@ describe('Cart functional core', () => {
     expect(buildCartEip712Domain(11_155_111n, cart)).toEqual({
       name: 'SuperRare Cart', version: '1', chainId: 11_155_111n, verifyingContract: cart,
     });
-    expect(hashCartListing(listings[0]!, 11_155_111n, cart)).toBe('0x056a20bad3561c36a41a1ed629e7a2021fbc9d2570c1a8692342ef2c1c97023e');
-    expect(hashCartListingRoot(root, 11_155_111n, cart)).toBe('0x8922eebeb8150e37b61190a02719cc1d0136cc5aa4a03a17b28a0fee7bdc460a');
-    expect(hashCartOrderLines(built.lines)).toBe('0xc02b9f957c0dd381478d59c0534f943355a7d70f36563a47b23b70d4e476f8e9');
+    expect(hashCartListing(listings[0]!, 11_155_111n, cart)).toBe('0x5b1fcc50cfdf1c82f125cdc711571ae25c2760caf4c8d4deb044bd00ecec573b');
+    expect(hashCartListingRoot(root, 11_155_111n, cart)).toBe('0x0356c7e93ad05e14d3bf8ca115268a3c7c76195c6222ad645f59db9a62241c1a');
+    expect(hashCartOrderLines(built.lines)).toBe('0x3fd44e1685e62ae0ef5c62474446f14e4cee25f5b644db9be4d9d9900c4c49bc');
     expect(hashCartPayoutRoute(built.route)).toBe('0x04b77f7126f5c2a130c79484a3ea1355bf8fb7d35f3773078d4ddd88a6d5d46a');
     expect(hashCartFulfillmentActions(built.actions)).toBe('0xba849680009431518c33bc2af2eb9cdc70aab55365b8e33eac1c35eb3223b1ff');
-    expect(hashCartPurchaseOrder(built.order, 11_155_111n, cart)).toBe('0xea6f73c04fa11b0924cf39bda50da5cbbc385bce9dc8f9c911455af2d7566cc8');
+    expect(hashCartPurchaseOrder(built.order, 11_155_111n, cart)).toBe('0x73cb0031f87092f39d3bf3cc33fb713d50adc8136f724ef06ebd0ad6d2cec166');
   });
 
   it('produces identical hashes for equivalent safe number and bigint chain IDs', () => {
@@ -82,7 +82,7 @@ describe('Cart functional core', () => {
       deadline: 2_000_000_000n });
     const root = { listingsRoot: artifact.root.listingsRoot, nonce: 3n, deadline: 2_000_000_000n };
     const built = buildCartOrder({ orderId: bytes32('c'), paymentCurrency: zeroAddress, deadline: 2_000_000_000n,
-      paymentAmount: 1n, lines: [{ sku: bytes32('a'), listingHash: artifact.entries[0]!.listingDigest,
+      paymentAmount: 1n, lines: [{ sku: bytes32('a'), listingDigest: artifact.entries[0]!.listingDigest,
         fulfillmentKind: cartFulfillmentKinds.erc721Transfer, quantity: 1n, settlementCurrency: zeroAddress,
         amount: 1n, paymentRecipient: seller }] });
     expect(hashCartListing(listings[0]!, 11_155_111, cart)).toBe(hashCartListing(listings[0]!, 11_155_111n, cart));
@@ -109,7 +109,7 @@ describe('Cart functional core', () => {
 
   it('carries an unpaired node and verifies proofs for odd-sized roots', () => {
     const oddArtifact = buildCartListingRootArtifact({
-      listings: [...listings, { ...listings[1]!, listingId: bytes32('3'), sku: bytes32('c'), tokenId: 3n }],
+      listings: [...listings, { ...listings[1]!, listingSalt: bytes32('3'), sku: bytes32('c'), tokenId: 3n }],
       chainId: 11_155_111, cart, nonce: 3n, deadline: 2_000_000_000n,
     });
 
@@ -177,21 +177,21 @@ describe('Cart functional core', () => {
     const artifact = buildCartListingRootArtifact({ listings, chainId: 11_155_111, cart, nonce: 3n, deadline: 2_000_000_000n });
     const built = buildCartOrder({
       orderId: bytes32('c'), paymentCurrency: zeroAddress, deadline: 2_000_000_000n, paymentAmount: 500n,
-      lines: [{ sku: bytes32('a'), listingHash: artifact.entries[0]!.listingDigest,
+      lines: [{ sku: bytes32('a'), listingDigest: artifact.entries[0]!.listingDigest,
         fulfillmentKind: cartFulfillmentKinds.erc721Transfer, quantity: 1n, settlementCurrency: zeroAddress,
         amount: 100n, paymentRecipient: seller }],
       actions: [{ lineIndex: 0n, quantity: 1n, recipient: seller }],
     });
-    expect(built.order.orderLinesHash).toBe('0xc02b9f957c0dd381478d59c0534f943355a7d70f36563a47b23b70d4e476f8e9');
+    expect(built.order.orderLinesHash).toBe('0x3fd44e1685e62ae0ef5c62474446f14e4cee25f5b644db9be4d9d9900c4c49bc');
     expect(built.order.payoutRouteHash).toBe('0x04b77f7126f5c2a130c79484a3ea1355bf8fb7d35f3773078d4ddd88a6d5d46a');
     expect(built.order.fulfillmentActionsHash).toBe('0xba849680009431518c33bc2af2eb9cdc70aab55365b8e33eac1c35eb3223b1ff');
   });
 
   it('aggregates settlement obligations and rounds fixed quote spread upward', () => {
     const lines = [
-      { sku: bytes32('a'), listingHash: bytes32('0'), fulfillmentKind: cartFulfillmentKinds.none,
+      { sku: bytes32('a'), listingDigest: bytes32('0'), fulfillmentKind: cartFulfillmentKinds.none,
         quantity: 1n, settlementCurrency: zeroAddress, amount: 100n, paymentRecipient: seller },
-      { sku: bytes32('b'), listingHash: bytes32('0'), fulfillmentKind: cartFulfillmentKinds.none,
+      { sku: bytes32('b'), listingDigest: bytes32('0'), fulfillmentKind: cartFulfillmentKinds.none,
         quantity: 1n, settlementCurrency: zeroAddress, amount: 25n, paymentRecipient: seller },
     ];
     expect(aggregateCartSettlementObligations(lines).get(zeroAddress)).toBe(125n);
@@ -320,7 +320,7 @@ describe('Cart functional core', () => {
     expect(validateCartListings([{ ...listings[0]!, fulfillmentKind: cartFulfillmentKinds.offChain,
       tokenContract: cart, tokenId: 1n }]).isValid).toBe(false);
 
-    const line = { sku: bytes32('a'), listingHash: bytes32('1'), fulfillmentKind: cartFulfillmentKinds.erc721Transfer,
+    const line = { sku: bytes32('a'), listingDigest: bytes32('1'), fulfillmentKind: cartFulfillmentKinds.erc721Transfer,
       quantity: 1n, settlementCurrency: zeroAddress, amount: 1n, paymentRecipient: seller };
     const build = (lines: CartOrderLine[] = [line], actions: CartFulfillmentAction[] = []) => buildCartOrder({
       orderId: bytes32('c'), paymentCurrency: zeroAddress, deadline: 2_000_000_000n, paymentAmount: 1n, lines, actions,

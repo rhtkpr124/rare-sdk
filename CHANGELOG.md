@@ -5,6 +5,9 @@ project follows semantic versioning.
 
 ## Unreleased
 
+- Align Cart Listing and Order Line terminology and EIP-712 hashes with the
+  contract's `listingSalt` and `listingDigest` fields, and publish the upgraded
+  Sepolia CartLens and optional CartHashes helper deployment.
 - Align Cart route hashing, ABIs, Lens deployment, and prepared-purchase wire
   data with the signed Universal Router `routerValue` settlement boundary.
 - Add the chain-bound Cart SDK with deterministic seller Listing Root artifacts,

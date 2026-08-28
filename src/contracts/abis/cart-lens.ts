@@ -3,7 +3,7 @@ const validationResult = [
   { name: 'subject', type: 'bytes32' }, { name: 'reason', type: 'bytes' },
 ] as const;
 const listing = [
-  { name: 'listingId', type: 'bytes32' }, { name: 'seller', type: 'address' },
+  { name: 'listingSalt', type: 'bytes32' }, { name: 'seller', type: 'address' },
   { name: 'sku', type: 'bytes32' }, { name: 'fulfillmentKind', type: 'uint8' },
   { name: 'tokenContract', type: 'address' }, { name: 'tokenId', type: 'uint256' },
   { name: 'settlementCurrency', type: 'address' }, { name: 'minimumUnitPrice', type: 'uint256' },
@@ -33,7 +33,7 @@ export const cartLensAbi = [
       { name: 'fulfillmentActionsHash', type: 'bytes32' },
     ] },
     { name: 'lines', type: 'tuple[]', components: [
-      { name: 'sku', type: 'bytes32' }, { name: 'listingHash', type: 'bytes32' },
+      { name: 'sku', type: 'bytes32' }, { name: 'listingDigest', type: 'bytes32' },
       { name: 'fulfillmentKind', type: 'uint8' }, { name: 'quantity', type: 'uint256' },
       { name: 'settlementCurrency', type: 'address' }, { name: 'amount', type: 'uint256' },
       { name: 'paymentRecipient', type: 'address' },

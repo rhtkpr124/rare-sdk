@@ -14,7 +14,7 @@ export const cartEip712Name = 'SuperRare Cart';
 export const cartEip712Version = '1';
 export const cartMerkleMaxProofDepth = 64;
 const zeroHash = `0x${'00'.repeat(32)}` as Hex;
-const lineType = 'OrderLine(bytes32 sku,bytes32 listingHash,uint8 fulfillmentKind,uint256 quantity,address settlementCurrency,uint256 amount,address paymentRecipient)';
+const lineType = 'OrderLine(bytes32 sku,bytes32 listingDigest,uint8 fulfillmentKind,uint256 quantity,address settlementCurrency,uint256 amount,address paymentRecipient)';
 const routeType = 'PayoutRoute(bytes commands,bytes[] inputs,uint256 routerValue)';
 const actionType = 'FulfillmentAction(uint256 lineIndex,uint256 quantity,address recipient)';
 
@@ -30,7 +30,7 @@ export function cartDomain(chainId: CartChainId, cart: Address) {
 
 export function hashCartListing(listing: CartListing, chainId: CartChainId, cart: Address): Hex {
   return hashTypedData({ domain: cartDomain(chainId, cart), primaryType: 'Listing', types: { Listing: [
-    { name: 'listingId', type: 'bytes32' }, { name: 'seller', type: 'address' }, { name: 'sku', type: 'bytes32' },
+    { name: 'listingSalt', type: 'bytes32' }, { name: 'seller', type: 'address' }, { name: 'sku', type: 'bytes32' },
     { name: 'fulfillmentKind', type: 'uint8' }, { name: 'tokenContract', type: 'address' }, { name: 'tokenId', type: 'uint256' },
     { name: 'settlementCurrency', type: 'address' }, { name: 'minimumUnitPrice', type: 'uint256' },
     { name: 'availableQuantity', type: 'uint256' }, { name: 'paymentRecipient', type: 'address' },
@@ -61,7 +61,7 @@ export function hashCartOrderLines(lines: readonly CartOrderLine[]): Hex {
   return hashArray(lines.map((line) => keccak256(encodeAbiParameters([
     { type: 'bytes32' }, { type: 'bytes32' }, { type: 'bytes32' }, { type: 'uint8' }, { type: 'uint256' },
     { type: 'address' }, { type: 'uint256' }, { type: 'address' },
-  ], [typeHash(lineType), line.sku, line.listingHash, line.fulfillmentKind, line.quantity,
+  ], [typeHash(lineType), line.sku, line.listingDigest, line.fulfillmentKind, line.quantity,
     line.settlementCurrency, line.amount, line.paymentRecipient]))));
 }
 
@@ -281,9 +281,9 @@ export function validateCartListings(listings: readonly CartListing[]): CartVali
     for (const [field, value] of [['seller', listing.seller], ['tokenContract', listing.tokenContract], ['settlementCurrency', listing.settlementCurrency], ['paymentRecipient', listing.paymentRecipient]] as const) {
       if (!isAddress(value)) issues.push(issue('invalid_address', `${prefix}.${field}`, `${prefix}.${field} must be an address.`));
     }
-    if (!isHex(listing.listingId, { strict: true }) || listing.listingId.length !== 66) issues.push(issue('invalid_bytes32', `${prefix}.listingId`, `${prefix}.listingId must be bytes32.`));
+    if (!isHex(listing.listingSalt, { strict: true }) || listing.listingSalt.length !== 66) issues.push(issue('invalid_bytes32', `${prefix}.listingSalt`, `${prefix}.listingSalt must be bytes32.`));
     if (!isHex(listing.sku, { strict: true }) || listing.sku.length !== 66) issues.push(issue('invalid_bytes32', `${prefix}.sku`, `${prefix}.sku must be bytes32.`));
-    if (listing.listingId === zeroHash) issues.push(issue('zero', `${prefix}.listingId`, `${prefix}.listingId must be nonzero.`));
+    if (listing.listingSalt === zeroHash) issues.push(issue('zero', `${prefix}.listingSalt`, `${prefix}.listingSalt must be nonzero.`));
     if (listing.sku === zeroHash) issues.push(issue('zero', `${prefix}.sku`, `${prefix}.sku must be nonzero.`));
     if (listing.seller === zeroAddress) issues.push(issue('zero_address', `${prefix}.seller`, `${prefix}.seller must be nonzero.`));
     if (listing.paymentRecipient === zeroAddress) issues.push(issue('zero_address', `${prefix}.paymentRecipient`, `${prefix}.paymentRecipient must be nonzero.`));

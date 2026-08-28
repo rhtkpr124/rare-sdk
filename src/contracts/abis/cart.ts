@@ -1,12 +1,12 @@
 const listing = [
-  { name: 'listingId', type: 'bytes32' }, { name: 'seller', type: 'address' },
+  { name: 'listingSalt', type: 'bytes32' }, { name: 'seller', type: 'address' },
   { name: 'sku', type: 'bytes32' }, { name: 'fulfillmentKind', type: 'uint8' },
   { name: 'tokenContract', type: 'address' }, { name: 'tokenId', type: 'uint256' },
   { name: 'settlementCurrency', type: 'address' }, { name: 'minimumUnitPrice', type: 'uint256' },
   { name: 'availableQuantity', type: 'uint256' }, { name: 'paymentRecipient', type: 'address' },
 ] as const;
 const line = [
-  { name: 'sku', type: 'bytes32' }, { name: 'listingHash', type: 'bytes32' },
+  { name: 'sku', type: 'bytes32' }, { name: 'listingDigest', type: 'bytes32' },
   { name: 'fulfillmentKind', type: 'uint8' }, { name: 'quantity', type: 'uint256' },
   { name: 'settlementCurrency', type: 'address' }, { name: 'amount', type: 'uint256' },
   { name: 'paymentRecipient', type: 'address' },
@@ -103,7 +103,7 @@ export const cartAbi = [
   ] },
   { type: 'event', name: 'OrderLineSettled', anonymous: false, inputs: [
     { name: 'orderId', type: 'bytes32', indexed: true }, { name: 'lineIndex', type: 'uint256', indexed: true },
-    { name: 'sku', type: 'bytes32', indexed: true }, { name: 'listingHash', type: 'bytes32', indexed: false },
+    { name: 'sku', type: 'bytes32', indexed: true }, { name: 'listingDigest', type: 'bytes32', indexed: false },
     { name: 'quantity', type: 'uint256', indexed: false }, { name: 'settlementCurrency', type: 'address', indexed: false },
     { name: 'amount', type: 'uint256', indexed: false }, { name: 'paymentRecipient', type: 'address', indexed: false },
     { name: 'fulfillmentKind', type: 'uint8', indexed: false },
@@ -121,7 +121,7 @@ export const cartAbi = [
   { type: 'error', name: 'InvalidSignature', inputs: [{ name: 'signer', type: 'address' }, { name: 'digest', type: 'bytes32' }] },
   { type: 'error', name: 'ContractPaused', inputs: [] },
   { type: 'error', name: 'DeadlineExpired', inputs: [{ name: 'deadline', type: 'uint256' }, { name: 'timestamp', type: 'uint256' }] },
-  { type: 'error', name: 'DuplicateListingHash', inputs: [{ name: 'listingHash', type: 'bytes32' }] },
+  { type: 'error', name: 'DuplicateListingDigest', inputs: [{ name: 'listingDigest', type: 'bytes32' }] },
   { type: 'error', name: 'ExtraListing', inputs: [{ name: 'listingIndex', type: 'uint256' }] },
   { type: 'error', name: 'InvalidArrayLength', inputs: [] },
   { type: 'error', name: 'InvalidFulfillmentAction', inputs: [{ name: 'actionIndex', type: 'uint256' }] },
@@ -142,7 +142,7 @@ export const cartAbi = [
   { type: 'error', name: 'PreexistingAllowance', inputs: [{ name: 'token', type: 'address' }, { name: 'spender', type: 'address' }, { name: 'amount', type: 'uint256' }] },
   { type: 'error', name: 'PreexistingBalanceConsumed', inputs: [{ name: 'token', type: 'address' }, { name: 'baseline', type: 'uint256' }, { name: 'current', type: 'uint256' }] },
   { type: 'error', name: 'UnexpectedCartBalance', inputs: [{ name: 'token', type: 'address' }, { name: 'baseline', type: 'uint256' }, { name: 'current', type: 'uint256' }] },
-  { type: 'error', name: 'ListingNotFound', inputs: [{ name: 'listingHash', type: 'bytes32' }] },
+  { type: 'error', name: 'ListingNotFound', inputs: [{ name: 'listingDigest', type: 'bytes32' }] },
   { type: 'error', name: 'ListingQuantityExceeded', inputs: [{ name: 'listingDigest', type: 'bytes32' }, { name: 'available', type: 'uint256' }, { name: 'requested', type: 'uint256' }] },
   { type: 'error', name: 'ListingTermsMismatch', inputs: [{ name: 'lineIndex', type: 'uint256' }] },
   { type: 'error', name: 'MaxFulfillmentOperationsExceeded', inputs: [] },
