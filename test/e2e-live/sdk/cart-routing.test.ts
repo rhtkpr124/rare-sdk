@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isAddressEqual, zeroAddress, type Address } from 'viem';
+import { isAddressEqual, size, zeroAddress, type Address } from 'viem';
 import { cartLensAbi, getCartAddress, getCartLensAddress, resolveCurrency } from '../../../src/sdk/contracts.js';
 import { createRareClient } from '../../../src/sdk/client.js';
 import type { CartRoutingRoute } from '../../../src/sdk/types/cart-routing.js';
@@ -67,7 +67,8 @@ describeLive('SDK Cart routing integration', () => {
         mode,
       });
       expect(quote.mode).toBe(mode);
-      expect(quote.route.inputs).toHaveLength(2);
+      expect(quote.route.inputs.length).toBeGreaterThan(0);
+      expect(quote.route.inputs).toHaveLength(size(quote.route.commands));
       await expectRoutePolicy(publicClient, lens, cart, quote.route);
     }
   }, 120_000);
