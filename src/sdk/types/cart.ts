@@ -14,6 +14,11 @@ export const cartFulfillmentKinds = {
   currencySwap: 6,
 } as const;
 export type CartFulfillmentKind = (typeof cartFulfillmentKinds)[keyof typeof cartFulfillmentKinds];
+export type CartSellerFulfillmentKind =
+  | typeof cartFulfillmentKinds.erc721Transfer
+  | typeof cartFulfillmentKinds.erc1155Transfer
+  | typeof cartFulfillmentKinds.erc721MintTo
+  | typeof cartFulfillmentKinds.erc1155MintTo;
 
 export type CartListing = {
   listingSalt: Hex; seller: Address; sku: Hex; fulfillmentKind: CartFulfillmentKind;
