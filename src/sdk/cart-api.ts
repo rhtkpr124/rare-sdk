@@ -93,6 +93,7 @@ export function createCartApiNamespace(
           listings: intent.listings.map((item) => ({
             listingSalt: generateCartListingSalt(),
             sku: item.sku,
+            ...(item.fulfillmentKind === undefined ? {} : { fulfillmentKind: item.fulfillmentKind }),
             settlementCurrency: getAddress(item.settlementCurrency),
             displayUnitPrice: item.unitPrice.toString(),
             availableQuantity: item.quantity.toString(),

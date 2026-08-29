@@ -2,6 +2,7 @@ import type { Address, Hex } from 'viem';
 import type { IntegerInput } from './common.js';
 import type {
   CartFulfillmentKind,
+  CartSellerFulfillmentKind,
   CartListing,
   CartListingAuthorizationBundle,
   CartOrderLine,
@@ -178,6 +179,7 @@ export type CartApiListingSearchResult = {
 
 export type CartListingIntentItem = {
   sku: Hex;
+  fulfillmentKind?: CartSellerFulfillmentKind;
   settlementCurrency: Address;
   unitPrice: bigint;
   quantity: bigint;
