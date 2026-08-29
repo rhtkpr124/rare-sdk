@@ -6,7 +6,8 @@ project follows semantic versioning.
 ## Unreleased
 
 - **Breaking:** replace implementation-shaped Cart Listing Root methods with
-  public catalogue search and `rare.cart.listing.prepare` / `.publish`; keep
+  separate `rare.cart.catalog.products.search` and `.variants.search` resources
+  plus `rare.cart.listing.prepare` / `.publish`; keep
   advanced artifact, authorization, order, route, hashing, and Merkle builders
   under `utils`.
 - **Breaking:** remove authenticated Product creation, SKU creation, and

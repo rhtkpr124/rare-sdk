@@ -7,9 +7,10 @@ A platform-catalogue definition that gives a stable SKU its commercial and
 fulfillment meaning. Product management and persistence belong to the Rare API.
 
 **Product Variant**:
-A selectable Product option returned by public catalogue search. A Product
+A selectable Product option returned as its own public catalogue search result. A Product
 Variant carries a Rare API-generated SKU and presentation metadata; callers
-select its SKU when preparing a Listing.
+select its SKU when preparing a Listing. Variants may represent NFTs or
+off-chain fulfillment; NFT identity is optional.
 
 **SKU**:
 An immutable, versioned, public-but-opaque platform-catalogue identifier shared

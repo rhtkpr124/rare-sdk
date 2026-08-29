@@ -3,13 +3,14 @@ import {
   concatHex, encodeAbiParameters, encodePacked, getAddress, hashTypedData, isAddress, isHex, keccak256,
   toBytes, zeroAddress, type Address, type Hex,
 } from 'viem';
+import { toInteger } from './amounts-core.js';
 import type {
   BuildCartListingRootParams, BuildCartOrderParams, CartFulfillmentAction, CartListing,
   BuildCartRouteParams, CartListingRootArtifact, CartOrderLine, CartPayoutRoute, CartRouteLeg,
   CartPurchaseOrder, CartSignedOrder, CartValidationIssue, CartValidationResult, CartListingRootArtifactEntry,
   CartListingSelection, CartListingAuthorizationBundle,
 } from './types/cart.js';
-import type { CartCheckoutIntent, CartCheckoutPreparation, CartListingIntent } from './types/cart-api.js';
+import type { CartCheckoutIntent, CartCheckoutPreparation, CartListingIntent, CartVariantSearchParams } from './types/cart-api.js';
 
 export const cartEip712Name = 'SuperRare Cart';
 export const cartEip712Version = '1';
@@ -20,6 +21,36 @@ const routeType = 'PayoutRoute(bytes commands,bytes[] inputs,uint256 routerValue
 const actionType = 'FulfillmentAction(uint256 lineIndex,uint256 quantity,address recipient)';
 
 export type CartChainId = number | bigint;
+
+export function buildCartVariantSearchQuery(params: CartVariantSearchParams, chainId: CartChainId): {
+  query?: string;
+  sku?: Hex;
+  chainId?: string;
+  nftContract?: Address;
+  nftTokenId?: string;
+  productId?: string;
+  creatorUserId?: string;
+  ownerUserId?: string;
+  page?: number;
+  perPage?: number;
+} {
+  if (params.sku !== undefined && params.nft !== undefined) {
+    throw new Error('Pass either sku or nft when searching Cart variants, not both.');
+  }
+  if (params.sku !== undefined && !isBytes32(params.sku)) {
+    throw new Error('Cart variant SKU must be bytes32.');
+  }
+  if (params.nft === undefined) return { ...params };
+  const tokenId = toInteger(params.nft.tokenId, 'nft.tokenId');
+  if (tokenId < 0n) throw new Error('nft.tokenId must be greater than or equal to 0.');
+  const { nft: _nft, ...filters } = params;
+  return {
+    ...filters,
+    chainId: chainIdString(chainId),
+    nftContract: getAddress(params.nft.contract),
+    nftTokenId: tokenId.toString(),
+  };
+}
 
 export function validateCartCheckoutIntent(intent: CartCheckoutIntent): CartValidationResult<CartCheckoutIntent> {
   const issues: CartValidationIssue[] = [];
@@ -364,6 +395,15 @@ function validateCartOrderInputs(lines: readonly CartOrderLine[], actions: reado
   return issues;
 }
 function issue(code: string, field: string, message: string): CartValidationIssue { return { code, field, message }; }
+
+function chainIdString(chainId: CartChainId): string {
+  if (typeof chainId === 'number') {
+    if (!Number.isSafeInteger(chainId) || chainId <= 0) throw new Error('Cart chainId must be a positive safe integer.');
+    return chainId.toString();
+  }
+  if (chainId <= 0n) throw new Error('Cart chainId must be positive.');
+  return chainId.toString();
+}
 
 function buildMerkleLevels(leaves: readonly Hex[]): Hex[][] {
   const levels: Hex[][] = [[...leaves]];

@@ -7,7 +7,7 @@ import type {
   CartListingRoot,
   CartListingRootArtifact,
 } from './types/cart.js';
-import type { CartChainId } from './cart-core.js';
+import { buildCartVariantSearchQuery, type CartChainId } from './cart-core.js';
 import { generateCartListingSalt } from './cart-listing-shell.js';
 import type {
   CartCheckoutIntentItem,
@@ -22,7 +22,9 @@ import type {
   CartApiProduct,
   CartCheckoutIntent,
   CartCheckoutPreparation,
-  CartApiSku,
+  CartCatalogVariant,
+  CartProductSearchParams,
+  CartVariantSearchParams,
   CartListingIntent,
   CartListingPreviewWire,
   CartListingRootArtifactWire,
@@ -63,15 +65,8 @@ export function createCartApiNamespace(
   };
 
   const catalog = {
-    search: async (params: { q?: string; page?: number; perPage?: number } = {}): Promise<CartApiPage<CartApiProduct>> => {
-      const page = await getData<CartApiPage<CartApiProduct>>(
-        client.GET('/v1/cart/products/search', { params: { query: params } }),
-        'Rare API did not return Cart Products.',
-      );
-      return { ...page, data: page.data.map(normalizeProduct) };
-    },
     products: {
-      list: async (params: { page?: number; perPage?: number } = {}): Promise<CartApiPage<CartApiProduct>> => {
+      search: async (params: CartProductSearchParams = {}): Promise<CartApiPage<CartApiProduct>> => {
         const page = await getData<CartApiPage<CartApiProduct>>(
           client.GET('/v1/cart/products', { params: { query: params } }), 'Rare API did not return Cart Products.',
         );
@@ -81,14 +76,10 @@ export function createCartApiNamespace(
         client.GET(`/v1/cart/products/${encodeURIComponent(id)}`, {}), 'Rare API did not return the Cart Product.',
       )),
     },
-    skus: {
-      list: async (params: { page?: number; perPage?: number } = {}): Promise<CartApiPage<CartApiSku>> => getData(
-        client.GET('/v1/cart/skus', { params: { query: params } }),
-        'Rare API did not return Cart SKUs.',
-      ),
-      get: async (sku: Hex): Promise<CartApiSku> => getWrappedData(
-        client.GET(`/v1/cart/skus/${encodeURIComponent(sku)}`, {}),
-        'Rare API did not return the Cart SKU.',
+    variants: {
+      search: async (params: CartVariantSearchParams = {}): Promise<CartApiPage<CartCatalogVariant>> => getData(
+        client.GET('/v1/cart/variants', { params: { query: buildCartVariantSearchQuery(params, scope.chainId) } }),
+        'Rare API did not return Cart Variants.',
       ),
     },
   };
@@ -309,7 +300,7 @@ function normalizeListing(value: CartListingPreviewWire['listings'][number]): Ca
 }
 
 function normalizeProduct(value: CartApiProduct): CartApiProduct {
-  return { ...value, variants: (value.variants ?? []).map((variant) => ({ ...variant })) };
+  return { ...value, variants: value.variants.map((variant) => ({ ...variant })) };
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

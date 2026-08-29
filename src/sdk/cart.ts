@@ -83,7 +83,7 @@ export function createCartNamespace(
 
   return {
     api,
-    catalog: { search: api.catalog.search },
+    catalog: { products: api.catalog.products, variants: api.catalog.variants },
     approval: {
       status(tokenContract, owner) {
         return publicClient.readContract({
