@@ -36,17 +36,21 @@ export type CartApiProductVariant = {
 
 export type CartCatalogVariant = {
   id: string;
-  productId: string;
   sku: Hex;
   universalTokenId: string | null;
-  position: number;
   metadata: CartApiCatalogMetadata;
-  product: {
-    id: string;
-    creatorUserId: string;
-    slug: string | null;
+  products: Array<{
+    associationId: string;
+    productId: string;
+    position: number;
     metadata: CartApiCatalogMetadata;
-  };
+    product: {
+      id: string;
+      creatorUserId: string;
+      slug: string | null;
+      metadata: CartApiCatalogMetadata;
+    };
+  }>;
 };
 
 export type CartProductSearchParams = {
