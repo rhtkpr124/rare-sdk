@@ -17,6 +17,7 @@ export type * from './types/swap.js';
 export type * from './types/collection.js';
 export type * from './types/utils.js';
 export type * from './types/cart.js';
+export { cartFulfillmentKinds } from './types/cart.js';
 export type * from './types/cart-api.js';
 export type { CurvePresetKey, LiquidCurvePreview, LiquidCurveSegment } from '../liquid/curve-config.js';
 export type { LiquidFactoryConfig } from '../liquid/factory-config.js';
