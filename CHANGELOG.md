@@ -5,6 +5,8 @@ project follows semantic versioning.
 
 ## Unreleased
 
+- Check Cart payer balances before allowance approval, preventing durable ERC-20
+  approvals for purchases the connected wallet cannot fund.
 - **Breaking:** replace implementation-shaped Cart Listing Root methods with
   separate `rare.cart.catalog.products.search` and `.variants.search` resources
   plus `rare.cart.listing.prepare` / `.publish`; keep

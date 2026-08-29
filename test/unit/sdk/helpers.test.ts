@@ -8,6 +8,7 @@ import {
   getKnownCurrencyDecimals,
   NftApprovalRequiredError,
   PaymentApprovalRequiredError,
+  validatePaymentBalance,
   preparePaymentAmountForSpender,
   requireWallet,
   resolveCurrencyDecimals,
@@ -36,6 +37,11 @@ const buyerAddress = privateKeyToAccount(
 ).address;
 
 describe('SDK helper normalization', () => {
+  it('classifies insufficient payment balances without I/O', () => {
+    expect(validatePaymentBalance(10n, 10n)).toEqual({ sufficient: true });
+    expect(validatePaymentBalance(4n, 10n)).toEqual({ sufficient: false, deficit: 6n });
+  });
+
   it('normalizes integer inputs to bigint', () => {
     expect(toInteger(12n, 'tokenId')).toBe(12n);
     expect(toInteger(12, 'tokenId')).toBe(12n);
