@@ -82,11 +82,11 @@ describe('Cart functional core', () => {
       nowMs: Date.parse('2026-08-28T12:04:00.000Z'),
     }).isValid).toBe(true);
     const invalid = validateCartCheckoutPreparationForPurchase(
-      { ...preparation, chainId: 1n, paymentAmount: 0n },
+      { ...preparation, chainId: 1n, paymentAmount: -1n },
       { chainId: 11_155_111n, cart, nowMs: Date.parse('2026-08-28T12:06:00.000Z') },
     );
     expect(invalid.isValid).toBe(false);
-    if (!invalid.isValid) expect(invalid.issues.map((issue) => issue.code)).toEqual(['chain_mismatch', 'expired', 'non_positive']);
+    if (!invalid.isValid) expect(invalid.issues.map((issue) => issue.code)).toEqual(['chain_mismatch', 'expired', 'negative']);
   });
 
   it('validates seller-facing Listing intent without contract fulfillment fields', () => {
@@ -94,13 +94,16 @@ describe('Cart functional core', () => {
       sku: bytes32('a'), settlementCurrency: zeroAddress, unitPrice: 100n, quantity: 1n,
     }] }).isValid).toBe(true);
     const invalid = validateCartListingIntent({ seller: 'invalid' as Address, deadline: 0n, listings: [{
-      sku: '0x12', settlementCurrency: 'invalid' as Address, unitPrice: 0n, quantity: 0n,
+      sku: '0x12', settlementCurrency: 'invalid' as Address, unitPrice: -1n, quantity: 0n,
       paymentRecipient: 'invalid' as Address,
     }] });
     expect(invalid.isValid).toBe(false);
     if (!invalid.isValid) expect(invalid.issues.map((issue) => issue.code)).toEqual([
-      'invalid_address', 'non_positive', 'invalid_sku', 'invalid_address', 'non_positive', 'non_positive', 'invalid_address',
+      'invalid_address', 'non_positive', 'invalid_sku', 'invalid_address', 'negative', 'non_positive', 'invalid_address',
     ]);
+    expect(validateCartListingIntent({ seller, deadline: 2_000_000_000n, listings: [{
+      sku: bytes32('a'), settlementCurrency: zeroAddress, unitPrice: 0n, quantity: 1n,
+    }] }).isValid).toBe(true);
   });
 
   it('builds a portable deterministic Listing Root artifact', () => {
@@ -422,7 +425,12 @@ describe('Cart functional core', () => {
     expect(() => build(Array.from({ length: 21 }, () => line))).toThrow('between 1 and 20');
     expect(() => build([line], Array.from({ length: 21 }, () => ({ lineIndex: 0n, quantity: 1n, recipient: seller }))))
       .toThrow('more than 20');
-    expect(() => build([{ ...line, amount: 0n }])).toThrow('quantity and amount must be positive');
+    expect(build([{ ...line, amount: 0n }]).lines[0]?.amount).toBe(0n);
+    expect(() => build([{ ...line, amount: -1n }])).toThrow('amount cannot be negative');
+    expect(buildCartOrder({
+      orderId: bytes32('c'), paymentCurrency: zeroAddress, deadline: 2_000_000_000n,
+      paymentAmount: 0n, lines: [{ ...line, amount: 0n }], actions: [],
+    }).order.paymentAmount).toBe(0n);
     expect(() => build([line], [{ lineIndex: 1n, quantity: 1n, recipient: seller }])).toThrow('is invalid');
   });
 
