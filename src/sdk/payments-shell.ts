@@ -25,6 +25,8 @@ type PaymentAllowanceReadClient = {
   }) => Promise<bigint>;
 };
 
+type PaymentBalanceReadClient = Pick<PublicClient, 'getBalance' | 'readContract'>;
+
 type PaymentApprovalWriteClient = {
   writeContract: (params: {
     address: Address;
@@ -167,6 +169,49 @@ export class PaymentApprovalRequiredError extends Error {
     this.requiredAmount = params.requiredAmount;
     this.spenderAddress = params.spenderAddress;
   }
+}
+
+export class PaymentBalanceInsufficientError extends Error {
+  readonly currency: Address;
+  readonly balance: bigint;
+  readonly requiredAmount: bigint;
+
+  constructor(params: { currency: Address; balance: bigint; requiredAmount: bigint }) {
+    super(
+      `Payment balance of ${params.balance.toString()} raw units is below the required ${params.requiredAmount.toString()} raw units.`,
+    );
+    this.name = 'PaymentBalanceInsufficientError';
+    this.currency = params.currency;
+    this.balance = params.balance;
+    this.requiredAmount = params.requiredAmount;
+  }
+}
+
+export function validatePaymentBalance(balance: bigint, requiredAmount: bigint):
+  | { sufficient: true }
+  | { sufficient: false; deficit: bigint } {
+  return balance >= requiredAmount
+    ? { sufficient: true }
+    : { sufficient: false, deficit: requiredAmount - balance };
+}
+
+export async function assertSufficientPaymentBalance(
+  publicClient: PaymentBalanceReadClient,
+  params: { account: Address; currency: Address; requiredAmount: bigint },
+): Promise<bigint> {
+  const balance = isAddressEqual(params.currency, ETH_ADDRESS)
+    ? await publicClient.getBalance({ address: params.account })
+    : await publicClient.readContract({
+      address: params.currency,
+      abi: erc20Abi,
+      functionName: 'balanceOf',
+      args: [params.account],
+    });
+  const validation = validatePaymentBalance(balance, params.requiredAmount);
+  if (!validation.sufficient) {
+    throw new PaymentBalanceInsufficientError({ currency: params.currency, balance, requiredAmount: params.requiredAmount });
+  }
+  return balance;
 }
 
 /**

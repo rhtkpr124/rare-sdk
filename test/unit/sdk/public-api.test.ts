@@ -26,6 +26,7 @@ describe('public SDK API surface', () => {
       'MinterApprovalRequiredError',
       'NftApprovalRequiredError',
       'PaymentApprovalRequiredError',
+      'PaymentBalanceInsufficientError',
       'RareApiError',
       'RareAuthError',
       'createBrowserAccountSessionStore',

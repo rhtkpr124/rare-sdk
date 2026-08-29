@@ -4,7 +4,7 @@ import { cartLensAbi } from '../contracts/abis/cart-lens.js';
 import { ETH_ADDRESS, type SupportedChain } from '../contracts/addresses.js';
 import { approvalAbi, NftApprovalRequiredError, runWithApprovalSideEffectAlert, waitForApprovalState } from './approvals-shell.js';
 import { buildCartListingRootArtifact, cartDomain, hashCartListing, hashCartListingRoot, hashCartOrder, validateCartCheckoutIntent, validateCartCheckoutPreparationForPurchase, validateCartListingIntent, validateCartListingRootArtifact } from './cart-core.js';
-import { PaymentApprovalRequiredError, preparePaymentAmountForSpender } from './payments-shell.js';
+import { assertSufficientPaymentBalance, PaymentApprovalRequiredError, preparePaymentAmountForSpender } from './payments-shell.js';
 import { waitForSuccessfulTransactionReceipt } from './transaction-receipt.js';
 import type { RareClientConfig } from './types/client.js';
 import { cartFulfillmentKinds, type CartCheckoutParams, type CartListing, type CartNamespace, type CartPurchaseParams, type CartPurchaseResult } from './types/cart.js';
@@ -185,6 +185,11 @@ async function purchaseCartCheckout(
 
   const { accountAddress } = requireWallet(config);
   const paymentCurrency = params.preparation.intent.paymentCurrency;
+  await assertSufficientPaymentBalance(publicClient, {
+    account: accountAddress,
+    currency: paymentCurrency,
+    requiredAmount: params.preparation.paymentAmount,
+  });
   if (!isAddressEqual(paymentCurrency, ETH_ADDRESS)) {
     const allowance = await publicClient.readContract({
       address: paymentCurrency,
@@ -207,6 +212,11 @@ async function purchaseCartCheckout(
 
 async function executeCartCheckout(publicClient: PublicClient, config: RareClientConfig, chainId: number, cart: Address, lens: Address | undefined, params: CartCheckoutParams) {
   const { walletClient, account, accountAddress } = requireWallet(config);
+  await assertSufficientPaymentBalance(publicClient, {
+    account: accountAddress,
+    currency: params.order.paymentCurrency,
+    requiredAmount: params.order.paymentAmount,
+  });
   if (lens) {
     const results = await readCartLensPreflight(publicClient, lens, chainId, cart, params);
     if (!results.envelope.valid) throw new CartPreparationError(`lens_${results.envelope.code}`, 'Cart Lens rejected the Purchase Order.', results.envelope);
