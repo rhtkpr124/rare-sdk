@@ -72,7 +72,7 @@ export function validateCartListingIntent(intent: CartListingIntent): CartValida
   intent.listings.forEach((listing, index) => {
     if (!isBytes32(listing.sku)) issues.push(issue('invalid_sku', `listings[${index}].sku`, 'Listing SKU must be bytes32.'));
     if (!isAddress(listing.settlementCurrency)) issues.push(issue('invalid_address', `listings[${index}].settlementCurrency`, 'Settlement currency must be an address.'));
-    if (listing.unitPrice <= 0n) issues.push(issue('non_positive', `listings[${index}].unitPrice`, 'Listing unit price must be positive.'));
+    if (listing.unitPrice < 0n) issues.push(issue('negative', `listings[${index}].unitPrice`, 'Listing unit price cannot be negative.'));
     if (listing.quantity <= 0n) issues.push(issue('non_positive', `listings[${index}].quantity`, 'Listing quantity must be positive.'));
     if (listing.paymentRecipient !== undefined && !isAddress(listing.paymentRecipient)) {
       issues.push(issue('invalid_address', `listings[${index}].paymentRecipient`, 'Payment recipient must be an address.'));
@@ -92,7 +92,7 @@ export function validateCartCheckoutPreparationForPurchase(
   if (!Number.isFinite(expiresAt)) issues.push(issue('invalid_expiration', 'expiresAt', 'Checkout preparation expiration is invalid.'));
   else if (expiresAt <= (expected.nowMs ?? Date.now())) issues.push(issue('expired', 'expiresAt', 'Checkout preparation has expired.'));
   if (preparation.intent.items.length === 0) issues.push(issue('empty', 'intent.items', 'Checkout preparation must contain at least one item.'));
-  if (preparation.paymentAmount <= 0n) issues.push(issue('non_positive', 'paymentAmount', 'Checkout payment amount must be positive.'));
+  if (preparation.paymentAmount < 0n) issues.push(issue('negative', 'paymentAmount', 'Checkout payment amount cannot be negative.'));
   preparation.intent.items.forEach((item, index) => {
     if (item.quantity <= 0n) issues.push(issue('non_positive', `intent.items[${index}].quantity`, 'Checkout item quantity must be positive.'));
   });
@@ -403,7 +403,7 @@ export function validateCartListings(listings: readonly CartListing[]): CartVali
     if (listing.sku === zeroHash) issues.push(issue('zero', `${prefix}.sku`, `${prefix}.sku must be nonzero.`));
     if (listing.seller === zeroAddress) issues.push(issue('zero_address', `${prefix}.seller`, `${prefix}.seller must be nonzero.`));
     if (listing.paymentRecipient === zeroAddress) issues.push(issue('zero_address', `${prefix}.paymentRecipient`, `${prefix}.paymentRecipient must be nonzero.`));
-    if (listing.minimumUnitPrice <= 0n) issues.push(issue('non_positive', `${prefix}.minimumUnitPrice`, `${prefix}.minimumUnitPrice must be positive.`));
+    if (listing.minimumUnitPrice < 0n) issues.push(issue('negative', `${prefix}.minimumUnitPrice`, `${prefix}.minimumUnitPrice cannot be negative.`));
     if (listing.tokenId < 0n || listing.availableQuantity < 0n) issues.push(issue('negative', prefix, `${prefix} integer values cannot be negative.`));
     if (listing.fulfillmentKind === 6) issues.push(issue('invalid_kind', `${prefix}.fulfillmentKind`, 'CURRENCY_SWAP is not valid on a seller Listing.'));
     const onChain = listing.fulfillmentKind >= 2 && listing.fulfillmentKind <= 5;
@@ -419,10 +419,12 @@ function validateCartOrderInputs(lines: readonly CartOrderLine[], actions: reado
   const issues: CartValidationIssue[] = [];
   if (lines.length === 0 || lines.length > 20) issues.push(issue('invalid_length', 'lines', 'lines must include between 1 and 20 Order Lines.'));
   if (params.orderId === zeroHash) issues.push(issue('zero', 'orderId', 'orderId must be nonzero.'));
-  if (params.deadline <= 0n || params.paymentAmount <= 0n) issues.push(issue('non_positive', 'order', 'deadline and paymentAmount must be positive.'));
+  if (params.deadline <= 0n) issues.push(issue('non_positive', 'deadline', 'deadline must be positive.'));
+  if (params.paymentAmount < 0n) issues.push(issue('negative', 'paymentAmount', 'paymentAmount cannot be negative.'));
   if (actions.length > 20) issues.push(issue('invalid_length', 'actions', 'actions cannot contain more than 20 entries.'));
   lines.forEach((line, index) => {
-    if (line.quantity <= 0n || line.amount <= 0n) issues.push(issue('non_positive', `lines[${index}]`, `lines[${index}] quantity and amount must be positive.`));
+    if (line.quantity <= 0n) issues.push(issue('non_positive', `lines[${index}].quantity`, `lines[${index}].quantity must be positive.`));
+    if (line.amount < 0n) issues.push(issue('negative', `lines[${index}].amount`, `lines[${index}].amount cannot be negative.`));
     if (line.sku === zeroHash) issues.push(issue('zero', `lines[${index}].sku`, `lines[${index}].sku must be nonzero.`));
     if (line.paymentRecipient === zeroAddress) issues.push(issue('zero_address', `lines[${index}].paymentRecipient`, `lines[${index}].paymentRecipient must be nonzero.`));
   });
