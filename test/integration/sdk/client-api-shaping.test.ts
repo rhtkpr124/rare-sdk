@@ -19,6 +19,27 @@ const owner = '0x2000000000000000000000000000000000000000' as const;
 const account = '0x3000000000000000000000000000000000000000' as const;
 
 describe('Rare SDK client API request shaping', () => {
+  it('shapes separate Cart Product and Variant searches', async () => {
+    await withRareApiFixture(async ({ baseUrl, requests }) => {
+      const rare = createTestClient(baseUrl);
+      const sku = `0x${'ab'.repeat(32)}` as const;
+
+      await rare.cart.catalog.products.search({ query: 'RarePass', creatorUserId: '7', page: 2 });
+      await rare.cart.catalog.variants.search({ sku, productId: '9' });
+      await rare.cart.catalog.variants.search({ nft: { contract, tokenId: 42n }, ownerUserId: '8' });
+
+      expect(requests).toEqual([
+        expect.objectContaining({ pathname: '/v1/cart/products', query: expect.objectContaining({
+          query: 'RarePass', creatorUserId: '7', page: '2',
+        }) }),
+        expect.objectContaining({ pathname: '/v1/cart/variants', query: expect.objectContaining({ sku, productId: '9' }) }),
+        expect.objectContaining({ pathname: '/v1/cart/variants', query: expect.objectContaining({
+          chainId: '1', nftContract: contract, nftTokenId: '42', ownerUserId: '8',
+        }) }),
+      ]);
+    });
+  });
+
   it('binds search and NFT event API requests to the client chain', async () => {
     await withRareApiFixture(async ({ baseUrl, requests }) => {
       const rare = createTestClient(baseUrl);
@@ -301,6 +322,10 @@ async function handleRequest(
   }
   if (url.pathname === '/v1/collections') {
     writeJson(res, 200, page([{ collectionId: 'mainnet-collection' }], url));
+    return;
+  }
+  if (url.pathname === '/v1/cart/products' || url.pathname === '/v1/cart/variants') {
+    writeJson(res, 200, { data: [], hasNextPage: false });
     return;
   }
   if (url.pathname.endsWith('/events')) {

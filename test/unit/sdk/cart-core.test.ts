@@ -7,6 +7,7 @@ import {
   buildCartListingRootArtifact,
   buildCartOrder,
   buildCartPayoutRoute,
+  buildCartVariantSearchQuery,
   getCartListingArtifactEntry,
   parseCartListingRootArtifact,
   validateCartListings,
@@ -393,5 +394,23 @@ describe('Cart functional core', () => {
   it('rejects seller Listings that use the platform-only currency swap kind', () => {
     expect(() => buildCartListingRootArtifact({ listings: [{ ...listings[0]!, fulfillmentKind: cartFulfillmentKinds.currencySwap }],
       chainId: 11_155_111, cart, nonce: 0n, deadline: 1n })).toThrow('CURRENCY_SWAP');
+  });
+
+  it('maps ergonomic NFT variant filters to the Rare API wire query', () => {
+    expect(buildCartVariantSearchQuery({
+      query: 'RarePass',
+      nft: { contract: seller.toLowerCase() as Address, tokenId: '7' },
+      page: 2,
+    }, 11_155_111)).toEqual({
+      query: 'RarePass',
+      chainId: '11155111',
+      nftContract: seller,
+      nftTokenId: '7',
+      page: 2,
+    });
+    expect(() => buildCartVariantSearchQuery({ sku: bytes32('a'), nft: { contract: seller, tokenId: 1n } }, 1))
+      .toThrow('either sku or nft');
+    expect(() => buildCartVariantSearchQuery({ nft: { contract: seller, tokenId: -1n } }, 1))
+      .toThrow('greater than or equal to 0');
   });
 });

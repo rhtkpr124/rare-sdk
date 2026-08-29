@@ -72,8 +72,10 @@ Each Listing carries a client-generated `listingSalt`; its complete EIP-712
 Merkle artifacts, cancellation, fill state, and order-book APIs.
 
 ```ts
-const products = await rare.cart.catalog.search({ page: 1, perPage: 20 });
-const sku = products.data[0]!.variants[0]!.sku;
+const variants = await rare.cart.catalog.variants.search({
+  nft: { contract: collectionAddress, tokenId },
+});
+const sku = variants.data[0]!.sku;
 
 // Listing preparation resolves SKU fulfillment through Rare API, reads the
 // current seller nonce, and builds an unsigned, non-durable batch artifact.

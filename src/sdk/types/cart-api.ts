@@ -1,4 +1,5 @@
 import type { Address, Hex } from 'viem';
+import type { IntegerInput } from './common.js';
 import type {
   CartFulfillmentKind,
   CartListing,
@@ -13,16 +14,18 @@ export type CartApiCatalogMetadata = Record<string, unknown>;
 
 export type CartApiProduct = {
   id: string;
-  userId?: string;
-  status?: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
+  userId: string;
+  status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
   slug: string | null;
   metadata: CartApiCatalogMetadata;
-  variants: CartCatalogVariant[];
+  variants: CartApiProductVariant[];
   createdAt: string;
   updatedAt: string;
 };
 
-export type CartCatalogVariant = {
+export type CartApiProductVariant = {
+  id: string;
+  productId: string;
   sku: Hex;
   universalTokenId: string | null;
   position: number;
@@ -30,17 +33,43 @@ export type CartCatalogVariant = {
   metadata: CartApiCatalogMetadata;
 };
 
-export type CartCatalogSearchParams = { q?: string; page?: number; perPage?: number };
-export type CartCatalogSearchResult = CartApiPage<CartApiProduct>;
-
-export type CartApiSku = {
+export type CartCatalogVariant = {
   id: string;
+  productId: string;
   sku: Hex;
   universalTokenId: string | null;
+  position: number;
   metadata: CartApiCatalogMetadata;
-  createdAt: string;
-  updatedAt: string;
+  product: {
+    id: string;
+    creatorUserId: string;
+    slug: string | null;
+    metadata: CartApiCatalogMetadata;
+  };
 };
+
+export type CartProductSearchParams = {
+  query?: string;
+  id?: string;
+  slug?: string;
+  creatorUserId?: string;
+  page?: number;
+  perPage?: number;
+};
+
+export type CartVariantSearchParams = {
+  query?: string;
+  sku?: Hex;
+  nft?: { contract: Address; tokenId: IntegerInput };
+  productId?: string;
+  creatorUserId?: string;
+  ownerUserId?: string;
+  page?: number;
+  perPage?: number;
+};
+
+export type CartProductSearchResult = CartApiPage<CartApiProduct>;
+export type CartVariantSearchResult = CartApiPage<CartCatalogVariant>;
 
 export type CartApiPage<T> = {
   data: T[];
@@ -274,14 +303,12 @@ export type CartApiPreparedPurchase = {
 
 export type CartApiNamespace = {
   catalog: {
-    search: (params?: CartCatalogSearchParams) => Promise<CartCatalogSearchResult>;
     products: {
-      list: (params?: { page?: number; perPage?: number }) => Promise<CartApiPage<CartApiProduct>>;
+      search: (params?: CartProductSearchParams) => Promise<CartProductSearchResult>;
       get: (id: string) => Promise<CartApiProduct>;
     };
-    skus: {
-      list: (params?: { page?: number; perPage?: number }) => Promise<CartApiPage<CartApiSku>>;
-      get: (sku: Hex) => Promise<CartApiSku>;
+    variants: {
+      search: (params?: CartVariantSearchParams) => Promise<CartVariantSearchResult>;
     };
   };
   listing: {

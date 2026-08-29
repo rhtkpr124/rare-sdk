@@ -1,7 +1,7 @@
 import type { Account, Address, Hash, Hex, TransactionReceipt } from 'viem';
 import type {
-  CartApiListingRoot, CartApiNamespace, CartApiPreparedPurchase, CartCatalogSearchParams,
-  CartCatalogSearchResult, CartCheckoutIntent, CartCheckoutPreparation, CartListingIntent,
+  CartApiListingRoot, CartApiNamespace, CartApiPreparedPurchase, CartCheckoutIntent,
+  CartCheckoutPreparation, CartListingIntent,
 } from './cart-api.js';
 
 export const cartFulfillmentKinds = {
@@ -108,7 +108,8 @@ export type CartValidationResult<T> = { isValid: true; value: T } | { isValid: f
 export type CartNamespace = {
   api: CartApiNamespace;
   catalog: {
-    search: (params?: CartCatalogSearchParams) => Promise<CartCatalogSearchResult>;
+    products: CartApiNamespace['catalog']['products'];
+    variants: CartApiNamespace['catalog']['variants'];
   };
   approval: {
     status: (tokenContract: Address, owner: Address) => Promise<boolean>;

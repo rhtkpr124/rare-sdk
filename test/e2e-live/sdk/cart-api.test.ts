@@ -44,14 +44,13 @@ describeRareApi('SDK Cart rare-api integration', () => {
     scenario = await createCartScenario();
   }, 120_000);
 
-  it('round-trips Cart catalog products and SKUs', async () => {
+  it('searches Cart Products and Variants independently', async () => {
     const { rare, product, skuA } = scenario;
     await expect(rare.cart.api.catalog.products.get(product.id)).resolves.toMatchObject({ id: product.id });
-    await expect(rare.cart.api.catalog.skus.get(skuA.sku)).resolves.toMatchObject({ sku: skuA.sku });
-    const products = await rare.cart.api.catalog.products.list({ page: 1, perPage: 100 });
+    const products = await rare.cart.api.catalog.products.search({ id: product.id, page: 1, perPage: 100 });
     expect(products.data.some((candidate) => candidate.id === product.id)).toBe(true);
-    const skus = await rare.cart.api.catalog.skus.list({ page: 1, perPage: 100 });
-    expect(skus.data.some((candidate) => candidate.sku === skuA.sku)).toBe(true);
+    const variants = await rare.cart.api.catalog.variants.search({ sku: skuA.sku, page: 1, perPage: 100 });
+    expect(variants.data.some((candidate) => candidate.sku === skuA.sku)).toBe(true);
   }, 30_000);
 
   it('gets and searches signed Listings with filtering and pagination', async () => {
