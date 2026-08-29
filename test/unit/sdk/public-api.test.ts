@@ -29,11 +29,21 @@ describe('public SDK API surface', () => {
       'PaymentBalanceInsufficientError',
       'RareApiError',
       'RareAuthError',
+      'cartFulfillmentKinds',
       'createBrowserAccountSessionStore',
       'createMemoryAccountSessionStore',
       'createRareApi',
       'createRareClient',
     ]);
+    expect(client.cartFulfillmentKinds).toEqual({
+      none: 0,
+      offChain: 1,
+      erc721Transfer: 2,
+      erc1155Transfer: 3,
+      erc721MintTo: 4,
+      erc1155MintTo: 5,
+      currencySwap: 6,
+    });
   });
 
   it('constructs the SDK client when process is unavailable', () => {
