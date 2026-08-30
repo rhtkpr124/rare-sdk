@@ -104,6 +104,18 @@ describe('Cart functional core', () => {
     expect(validateCartListingIntent({ seller, deadline: 2_000_000_000n, listings: [{
       sku: bytes32('a'), settlementCurrency: zeroAddress, unitPrice: 0n, quantity: 1n,
     }] }).isValid).toBe(true);
+    expect(validateCartListingIntent({ seller, deadline: 2_000_000_000n, listings: [{
+      nft: { contract: cart, tokenId: 7n }, fulfillmentKind: 5,
+      settlementCurrency: zeroAddress, unitPrice: 100n, quantity: 1n,
+    }] }).isValid).toBe(true);
+    const invalidResolution = validateCartListingIntent({ seller, deadline: 2_000_000_000n, listings: [{
+      nft: { contract: cart, tokenId: 7n }, fulfillmentKind: 3,
+      settlementCurrency: zeroAddress, unitPrice: 100n, quantity: 1n,
+    }] });
+    expect(invalidResolution.isValid).toBe(false);
+    if (!invalidResolution.isValid) expect(invalidResolution.issues.map((issue) => issue.code)).toEqual([
+      'invalid_fulfillment',
+    ]);
   });
 
   it('builds a portable deterministic Listing Root artifact', () => {

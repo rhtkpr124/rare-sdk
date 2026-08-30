@@ -177,14 +177,18 @@ export type CartApiListingSearchResult = {
   };
 };
 
-export type CartListingIntentItem = {
-  sku: Hex;
+type CartListingIntentTerms = {
   fulfillmentKind?: CartSellerFulfillmentKind;
   settlementCurrency: Address;
   unitPrice: bigint;
   quantity: bigint;
   paymentRecipient?: Address;
 };
+
+export type CartListingIntentItem = CartListingIntentTerms & (
+  | { sku: Hex; nft?: never }
+  | { sku?: never; nft: { contract: Address; tokenId: bigint } }
+);
 
 export type CartListingIntent = {
   seller: Address;

@@ -92,7 +92,12 @@ export function createCartApiNamespace(
           deadline: intent.deadline.toString(),
           listings: intent.listings.map((item) => ({
             listingSalt: generateCartListingSalt(),
-            sku: item.sku,
+            ...('sku' in item
+              ? { sku: item.sku }
+              : {
+                  tokenContract: getAddress(item.nft.contract),
+                  tokenId: item.nft.tokenId.toString(),
+                }),
             ...(item.fulfillmentKind === undefined ? {} : { fulfillmentKind: item.fulfillmentKind }),
             settlementCurrency: getAddress(item.settlementCurrency),
             displayUnitPrice: item.unitPrice.toString(),
