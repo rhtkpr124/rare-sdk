@@ -1,6 +1,6 @@
 /* eslint-disable functional/immutable-data, functional/no-let */
 import {
-  concatHex, encodeAbiParameters, encodePacked, getAddress, hashTypedData, isAddress, isHex, keccak256,
+  concatHex, encodeAbiParameters, encodePacked, getAddress, hashTypedData, isAddress, isAddressEqual, isHex, keccak256,
   toBytes, zeroAddress, type Address, type Hex,
 } from 'viem';
 import { toInteger } from './amounts-core.js';
@@ -295,6 +295,43 @@ export function aggregateCartSettlementObligations(lines: readonly CartOrderLine
     totals.set(currency, (totals.get(currency) ?? 0n) + line.amount);
   }
   return totals;
+}
+
+export type CartSettledOrderLine = Omit<CartOrderLine, 'fulfillmentKind'> & {
+  lineIndex: bigint;
+  fulfillmentKind: number;
+};
+
+export function validateCartSettledOrderLines(
+  expectedLines: readonly CartOrderLine[],
+  settledLines: readonly CartSettledOrderLine[],
+): CartValidationResult<readonly CartSettledOrderLine[]> {
+  const issues: CartValidationIssue[] = [];
+  if (settledLines.length !== expectedLines.length) {
+    issues.push(issue('invalid_length', 'settledLines', 'Settled Order Line count must match the signed Order.'));
+  }
+  const observedIndexes = new Set<bigint>();
+  settledLines.forEach((settledLine, eventIndex) => {
+    const field = `settledLines[${eventIndex}]`;
+    if (observedIndexes.has(settledLine.lineIndex)) {
+      issues.push(issue('duplicate_index', `${field}.lineIndex`, 'Settled Order Line indexes must be unique.'));
+      return;
+    }
+    observedIndexes.add(settledLine.lineIndex);
+    const expectedLine = expectedLines[Number(settledLine.lineIndex)];
+    if (expectedLine === undefined) {
+      issues.push(issue('invalid_index', `${field}.lineIndex`, 'Settled Order Line index is outside the signed Order.'));
+      return;
+    }
+    if (settledLine.sku !== expectedLine.sku || settledLine.listingDigest !== expectedLine.listingDigest ||
+      settledLine.fulfillmentKind !== expectedLine.fulfillmentKind || settledLine.quantity !== expectedLine.quantity ||
+      !isAddressEqual(settledLine.settlementCurrency, expectedLine.settlementCurrency) ||
+      settledLine.amount !== expectedLine.amount ||
+      !isAddressEqual(settledLine.paymentRecipient, expectedLine.paymentRecipient)) {
+      issues.push(issue('value_mismatch', field, 'Settled Order Line values must match the signed Order.'));
+    }
+  });
+  return issues.length === 0 ? { isValid: true, value: settledLines } : { isValid: false, issues };
 }
 
 export function applyCartQuoteSpread(estimatedInput: bigint, spreadBps: bigint): bigint {

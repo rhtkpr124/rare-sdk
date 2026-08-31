@@ -15,6 +15,7 @@ import {
   validateCartCheckoutPreparationForPurchase,
   validateCartListingIntent,
   validateCartListingRootArtifact,
+  validateCartSettledOrderLines,
 } from '../../../src/sdk/cart-core.js';
 import { cartFulfillmentKinds, type CartFulfillmentAction, type CartListing, type CartOrderLine } from '../../../src/sdk/types/cart.js';
 import {
@@ -254,6 +255,40 @@ describe('Cart functional core', () => {
     ];
     expect(aggregateCartSettlementObligations(lines).get(zeroAddress)).toBe(125n);
     expect(applyCartQuoteSpread(101n, 50n)).toBe(102n);
+  });
+
+  it('validates every seller and adjustment payout against its settled receipt event', () => {
+    const royaltyRecipient = '0x3000000000000000000000000000000000000000' as Address;
+    const protocolRecipient = '0x4000000000000000000000000000000000000000' as Address;
+    const lines: CartOrderLine[] = [
+      { sku: bytes32('a'), listingDigest: bytes32('1'), fulfillmentKind: cartFulfillmentKinds.erc721Transfer,
+        quantity: 1n, settlementCurrency: zeroAddress, amount: 850n, paymentRecipient: seller },
+      { sku: bytes32('a'), listingDigest: bytes32('1'), fulfillmentKind: cartFulfillmentKinds.none,
+        quantity: 1n, settlementCurrency: zeroAddress, amount: 100n, paymentRecipient: royaltyRecipient },
+      { sku: bytes32('a'), listingDigest: bytes32('1'), fulfillmentKind: cartFulfillmentKinds.none,
+        quantity: 1n, settlementCurrency: zeroAddress, amount: 30n, paymentRecipient: protocolRecipient },
+    ];
+    const settled = lines.map((line, lineIndex) => ({ ...line, lineIndex: BigInt(lineIndex) }));
+
+    expect(validateCartSettledOrderLines(lines, settled)).toEqual({ isValid: true, value: settled });
+    expect(validateCartSettledOrderLines(lines, settled.map((line) =>
+      line.lineIndex === 1n ? { ...line, amount: 99n } : line)).isValid).toBe(false);
+    expect(validateCartSettledOrderLines(lines, settled.map((line) =>
+      line.lineIndex === 1n ? { ...line, paymentRecipient: protocolRecipient } : line)).isValid).toBe(false);
+  });
+
+  it('rejects missing, duplicate, and out-of-range settled Order Line indexes', () => {
+    const lines: CartOrderLine[] = [
+      { sku: bytes32('a'), listingDigest: bytes32('1'), fulfillmentKind: cartFulfillmentKinds.erc721Transfer,
+        quantity: 1n, settlementCurrency: zeroAddress, amount: 850n, paymentRecipient: seller },
+      { sku: bytes32('a'), listingDigest: bytes32('1'), fulfillmentKind: cartFulfillmentKinds.none,
+        quantity: 1n, settlementCurrency: zeroAddress, amount: 100n, paymentRecipient: cart },
+    ];
+    const first = { ...lines[0]!, lineIndex: 0n };
+
+    expect(validateCartSettledOrderLines(lines, [first]).isValid).toBe(false);
+    expect(validateCartSettledOrderLines(lines, [first, { ...lines[1]!, lineIndex: 0n }]).isValid).toBe(false);
+    expect(validateCartSettledOrderLines(lines, [first, { ...lines[1]!, lineIndex: 2n }]).isValid).toBe(false);
   });
 
   it('encodes an order-wide exact-output route using Cart policy sentinels', () => {

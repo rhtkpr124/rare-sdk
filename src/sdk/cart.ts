@@ -3,7 +3,7 @@ import { cartAbi } from '../contracts/abis/cart.js';
 import { cartLensAbi } from '../contracts/abis/cart-lens.js';
 import { ETH_ADDRESS, type SupportedChain } from '../contracts/addresses.js';
 import { approvalAbi, NftApprovalRequiredError, runWithApprovalSideEffectAlert, waitForApprovalState } from './approvals-shell.js';
-import { buildCartListingRootArtifact, cartDomain, hashCartListing, hashCartListingRoot, hashCartOrder, validateCartCheckoutIntent, validateCartCheckoutPreparationForPurchase, validateCartListingIntent, validateCartListingRootArtifact } from './cart-core.js';
+import { buildCartListingRootArtifact, cartDomain, hashCartListing, hashCartListingRoot, hashCartOrder, validateCartCheckoutIntent, validateCartCheckoutPreparationForPurchase, validateCartListingIntent, validateCartListingRootArtifact, validateCartSettledOrderLines } from './cart-core.js';
 import { assertSufficientPaymentBalance, PaymentApprovalRequiredError, preparePaymentAmountForSpender } from './payments-shell.js';
 import { waitForSuccessfulTransactionReceipt } from './transaction-receipt.js';
 import type { RareClientConfig } from './types/client.js';
@@ -238,6 +238,21 @@ async function executeCartCheckout(publicClient: PublicClient, config: RareClien
         count + (params.lines[Number(action.lineIndex)]?.fulfillmentKind === 4 ? Number(action.quantity) : 1), 0);
       if (purchaseLogs.length !== 1 || lineLogs.length !== params.lines.length || actionLogs.length !== expectedActionEvents || !executed) {
         throw new CartVerificationError('Cart checkout receipt or post-write state did not match the signed Purchase Order.', { txHash, orderId: params.order.orderId, cart });
+      }
+      const settledLines = validateCartSettledOrderLines(params.lines, lineLogs.map((log) => ({
+        lineIndex: log.args.lineIndex,
+        sku: log.args.sku,
+        listingDigest: log.args.listingDigest,
+        fulfillmentKind: log.args.fulfillmentKind,
+        quantity: log.args.quantity,
+        settlementCurrency: log.args.settlementCurrency,
+        amount: log.args.amount,
+        paymentRecipient: log.args.paymentRecipient,
+      })));
+      if (!settledLines.isValid) {
+        throw new CartVerificationError('OrderLineSettled values did not match the signed Purchase Order.', {
+          txHash, orderId: params.order.orderId, cart,
+        });
       }
       const purchase = purchaseLogs[0]!;
       if (!isAddressEqual(purchase.args.payer, accountAddress) || !isAddressEqual(purchase.args.paymentCurrency, params.order.paymentCurrency) || purchase.args.paymentAmount !== params.order.paymentAmount) {
