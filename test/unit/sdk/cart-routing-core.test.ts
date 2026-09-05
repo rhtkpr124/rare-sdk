@@ -87,6 +87,21 @@ describe('Cart routing functional core', () => {
     expect(() => assertCartRoutingQuoteFresh(result, 1_800_000_060_000)).toThrow('expired');
   });
 
+  it('ignores zero obligations and supports a fully free checkout', () => {
+    const plan = planCartRoutingQuote(chain, cart, {
+      paymentCurrency: rare,
+      obligations: [
+        { settlementCurrency: eth, amount: 0n },
+        { settlementCurrency: rare, amount: 0n },
+      ],
+    });
+    const result = buildCartRoutingQuoteResult(plan, zeroAddress, [], 1_800_000_000_000);
+
+    expect(plan.settlements).toEqual([]);
+    expect(result.maximumPaymentInput).toBe('0');
+    expect(result.route).toEqual({ commands: '0x', inputs: [], routerValue: '0' });
+  });
+
   it('supports exact-input only when its protected input guarantees the fixed output', () => {
     const plan = planCartRoutingQuote(chain, cart, {
       paymentCurrency: usdc,

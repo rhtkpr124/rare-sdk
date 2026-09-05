@@ -83,16 +83,14 @@ export function planCartRoutingQuote(
   cart: Address,
   params: CartRoutingQuoteParams,
 ): CartRoutingPlan {
-  if (params.obligations.length === 0) {
-    throw new CartRoutingCoreError('invalid_response', 'Cart routing requires at least one settlement obligation.');
-  }
   const paymentCurrency = normalizeRoutingCurrency(params.paymentCurrency);
   const mode = params.mode ?? cartRoutingDefaultMode;
   const totals = new Map<Address, bigint>();
   for (const [index, obligation] of params.obligations.entries()) {
-    if (obligation.amount <= 0n) {
-      throw new CartRoutingCoreError('invalid_response', `obligations[${index}].amount must be positive.`);
+    if (obligation.amount < 0n) {
+      throw new CartRoutingCoreError('invalid_response', `obligations[${index}].amount cannot be negative.`);
     }
+    if (obligation.amount === 0n) continue;
     const currency = normalizeRoutingCurrency(obligation.settlementCurrency);
     totals.set(currency, (totals.get(currency) ?? 0n) + obligation.amount);
   }
