@@ -161,7 +161,8 @@ export function createCartApiNamespace(
           deadline: intent.deadline.toString(),
           listings: intent.listings.map((item, index) => ({
             listingSalt: artifact.entries[index]?.listing.listingSalt,
-            sku: item.sku,
+            sku: artifact.entries[index]?.listing.sku,
+            ...(item.fulfillmentKind === undefined ? {} : { fulfillmentKind: item.fulfillmentKind }),
             settlementCurrency: item.settlementCurrency,
             displayUnitPrice: item.unitPrice.toString(),
             availableQuantity: item.quantity.toString(),
