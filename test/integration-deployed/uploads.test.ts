@@ -15,10 +15,10 @@ const deployedAccount = () => {
 };
 
 const objectKey = (bytes: Uint8Array) => createHash('sha256').update(bytes).digest('hex');
-const removeObject = (key: string): void => {
+const removeObject = (key: string, access: 'public' | 'private'): void => {
   if (!/^[a-f0-9]{64}$/.test(key)) throw new Error('Invalid test object key');
   try {
-    execFileSync('gcloud', ['--project=superrare-dev', 'storage', 'rm', `gs://rare-api-upload-dev/${key}`], { stdio: 'pipe' });
+    execFileSync('gcloud', ['--project=superrare-dev', 'storage', 'rm', `gs://rare-api-${access}-upload-dev/${key}`], { stdio: 'pipe' });
   } catch (error) {
     // Rejected requests and failures before storage have no object to delete.
     const stderr = error !== null && typeof error === 'object' && 'stderr' in error && error.stderr instanceof Uint8Array
@@ -30,7 +30,8 @@ const removeObject = (key: string): void => {
 const withLiveAccount = async (operation: (account: ReturnType<typeof deployedAccount>, track: (bytes: Uint8Array) => void) => Promise<void>): Promise<void> => {
   const account = deployedAccount();
   // Fail before writes if cleanup access is unavailable.
-  execFileSync('gcloud', ['--project=superrare-dev', 'storage', 'buckets', 'describe', 'gs://rare-api-upload-dev', '--format=value(name)'], { stdio: 'pipe' });
+  execFileSync('gcloud', ['--project=superrare-dev', 'storage', 'buckets', 'describe', 'gs://rare-api-public-upload-dev', '--format=value(name)'], { stdio: 'pipe' });
+  execFileSync('gcloud', ['--project=superrare-dev', 'storage', 'buckets', 'describe', 'gs://rare-api-private-upload-dev', '--format=value(name)'], { stdio: 'pipe' });
   const keys = new Set<string>();
   const track = (bytes: Uint8Array): void => {
     // Register the intended key before transmission, including ambiguous failures.
@@ -43,7 +44,7 @@ const withLiveAccount = async (operation: (account: ReturnType<typeof deployedAc
   } finally {
     const cleanup = await Promise.allSettled([
       account.client.auth.logout(),
-      ...[...keys].map(key => Promise.resolve().then(() => removeObject(key))),
+      ...[...keys].flatMap(key => [Promise.resolve().then(() => removeObject(key, 'public')), Promise.resolve().then(() => removeObject(key, 'private'))]),
     ]);
     const failed = cleanup.filter(result => result.status === 'rejected');
     if (failed.length > 0) throw new AggregateError(failed.map(result => result.reason), 'Live upload cleanup failed');
@@ -77,6 +78,29 @@ describe('uploads through deployed API and real GCS', () => {
     });
   }, 180_000);
 
+  it('isolates private files from public storage and denies anonymous private downloads', async () => {
+    await withLiveAccount(async ({ client }, track) => {
+      const bytes = randomBytes(1024);
+      track(bytes);
+      const privateAsset = await client.uploads.upload(bytes, 'document.bin', { access: 'private' });
+      expect(privateAsset).toEqual({ access: 'private', key: objectKey(bytes), contentType: 'application/octet-stream', size: bytes.length });
+      const privateUrl = `https://storage.googleapis.com/rare-api-private-upload-dev/${privateAsset.key}`;
+      const denied = await fetch(privateUrl, { signal: AbortSignal.timeout(30_000) });
+      expect(denied.status).toBe(403);
+      const publicUrl = `https://storage.googleapis.com/rare-api-public-upload-dev/${privateAsset.key}`;
+      expect((await fetch(publicUrl, { signal: AbortSignal.timeout(30_000) })).status).toBe(404);
+      const publicAsset = await client.uploads.upload(bytes, 'document.bin', { access: 'public' });
+      expect(publicAsset.key).toBe(privateAsset.key);
+      expect(publicAsset.url).toBe(publicUrl);
+      expect(Buffer.from(await (await fetch(publicAsset.url)).arrayBuffer())).toEqual(bytes);
+      expect((await fetch(privateUrl)).status).toBe(403);
+      expect(await client.uploads.upload(bytes, 'duplicate.bin', { access: 'private' })).toEqual(privateAsset);
+      const metadata: unknown = JSON.parse(execFileSync('gcloud', ['--project=superrare-dev', 'storage', 'objects', 'describe', `gs://rare-api-private-upload-dev/${privateAsset.key}`, '--format=json'], { encoding: 'utf8' }));
+      if (metadata === null || typeof metadata !== 'object' || !('cache_control' in metadata)) throw new Error('Missing private storage cache metadata');
+      expect(metadata.cache_control).toBe('private, no-store');
+    });
+  }, 180_000);
+
   it('uploads an avatar through shared storage, attaches it, and clears it without changing other fields', async () => {
     await withLiveAccount(async ({ client }, track) => {
       const before = await client.profile.get();
@@ -87,7 +111,7 @@ describe('uploads through deployed API and real GCS', () => {
       track(bytes);
       try {
         const updated = await client.profile.uploadAvatar(bytes, 'avatar.gif');
-        expect(updated.profile.avatar).toBe(`https://storage.googleapis.com/rare-api-upload-dev/${objectKey(bytes)}`);
+        expect(updated.profile.avatar).toBe(`https://storage.googleapis.com/rare-api-public-upload-dev/${objectKey(bytes)}`);
         expect(updated).toEqual({ ...before, profile: { ...before.profile, avatar: updated.profile.avatar } });
         expect(await client.profile.get()).toEqual(updated);
         const downloaded = await fetch(updated.profile.avatar!, { signal: AbortSignal.timeout(30_000) });
@@ -110,6 +134,7 @@ describe('uploads through deployed API and real GCS', () => {
       track(bytes);
       for (const credential of [undefined, 'Bearer forged']) expect((await uploadRequest(api, bytes, credential)).status).toBe(401);
       expect((await uploadRequest(api, bytes, authorization, { accountId: 'another-account' })).status).toBe(400);
+      expect((await uploadRequest(api, bytes, authorization, { access: 'invalid' })).status).toBe(400);
       expect((await uploadRequest(api, new Uint8Array(), authorization)).status).toBe(400);
       const tooLarge = randomBytes(20 * 1024 * 1024 + 1);
       track(tooLarge);

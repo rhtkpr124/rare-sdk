@@ -15,6 +15,7 @@ import { createMemoryAccountSessionStore, parseAccountSession } from './account-
 import type {
   RareAccountClient, RareAccountClientOptions, RareAccountSession,
   RareAuthRequestOptions, RareDeviceAuthorization, RareDevicePollResult,
+  RareUpload, RarePublicUpload, RarePrivateUpload, RareUploadOptions,
 } from './types/account.js';
 
 const scope = 'rare:account offline_access';
@@ -160,15 +161,23 @@ export function createRareAccountClient(options: RareAccountClientOptions = {}):
     return parseAccountProfile(await json(response));
   };
 
-  const upload = async (file: Uint8Array | Blob, filename: string, requestOptions: RareAuthRequestOptions & { contentType?: string } = {}) => {
+  function upload(file: Uint8Array | Blob, filename: string, requestOptions?: RareUploadOptions & { access?: 'public' }): Promise<RarePublicUpload>;
+  function upload(file: Uint8Array | Blob, filename: string, requestOptions: RareUploadOptions & { access: 'private' }): Promise<RarePrivateUpload>;
+  function upload(file: Uint8Array | Blob, filename: string, requestOptions: RareUploadOptions): Promise<RareUpload>;
+  async function upload(file: Uint8Array | Blob, filename: string, requestOptions: RareUploadOptions = {}): Promise<RareUpload> {
+    const access = requestOptions.access ?? 'public';
+    if (access !== 'public' && access !== 'private') throw new RareAuthError('invalid_upload');
     const plan = planUpload(file, filename, requestOptions.contentType);
     const token = await accessToken(requestOptions);
     const form = new FormData();
     form.set('file', plan.file, plan.filename);
-    return parseUpload(await json(await request(joinAuthPath(apiBaseUrl, 'v1/uploads'), {
+    form.set('access', access);
+    const result = parseUpload(await json(await request(joinAuthPath(apiBaseUrl, 'v1/uploads'), {
       method: 'POST', headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' }, body: form,
     }, requestOptions)));
-  };
+    if (result.access !== access) throw new RareAuthError('invalid_upload_response');
+    return result;
+  }
   const changeFollow = async (method: 'POST' | 'DELETE', input: UserSelector | string, options: RareAuthRequestOptions = {}): Promise<void> => {
     const query = userQuery(input);
     const url = new URL(joinAuthPath(apiBaseUrl, 'v1/me/following'));
@@ -320,7 +329,7 @@ export function createRareAccountClient(options: RareAccountClientOptions = {}):
     profile: {
       async uploadAvatar(buffer, filename, requestOptions = {}) {
         const plan = planAvatarUpload(buffer, filename);
-        const { url: avatar } = await upload(buffer, plan.filename, { ...requestOptions, contentType: plan.contentType });
+        const { url: avatar } = await upload(buffer, plan.filename, { ...requestOptions, contentType: plan.contentType, access: 'public' });
         try {
           return await profileRequest('PATCH', JSON.stringify({ profile: { avatar } }), requestOptions);
         } catch (cause) {

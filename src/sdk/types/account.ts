@@ -105,7 +105,15 @@ export type RareAccountProfilePatch = {
 
 export type RareAuthRequestOptions = { signal?: AbortSignal };
 
-export type RareUpload = { key: string; url: string; contentType: string; size: number };
+export type RarePublicUpload = { access: 'public'; key: string; url: string; contentType: string; size: number };
+export type RarePrivateUpload = { access: 'private'; key: string; contentType: string; size: number };
+export type RareUpload = RarePublicUpload | RarePrivateUpload;
+export type RareUploadOptions = RareAuthRequestOptions & { contentType?: string; access?: 'public' | 'private' };
+export type RareUploadMethod = {
+  (file: Uint8Array | Blob, filename: string, options?: RareUploadOptions & { access?: 'public' }): Promise<RarePublicUpload>;
+  (file: Uint8Array | Blob, filename: string, options: RareUploadOptions & { access: 'private' }): Promise<RarePrivateUpload>;
+  (file: Uint8Array | Blob, filename: string, options: RareUploadOptions): Promise<RareUpload>;
+};
 
 export type RareAccountClient = {
   drops: {
@@ -136,7 +144,7 @@ export type RareAccountClient = {
     unfollow: (input: UserSelector | string, options?: RareAuthRequestOptions) => Promise<void>;
   };
   uploads: {
-    upload: (file: Uint8Array | Blob, filename: string, options?: RareAuthRequestOptions & { contentType?: string }) => Promise<RareUpload>;
+    upload: RareUploadMethod;
   };
   auth: {
     startDeviceAuthorization: (options?: RareAuthRequestOptions) => Promise<RareDeviceAuthorization>;

@@ -250,11 +250,19 @@ await account.profile.update({ profile: { avatar: '', masthead_universal_token_i
 await rare.user.resolve({ username: 'artist' });
 ```
 
-Shared application uploads accept any file type up to 20 MiB:
+Shared application uploads accept any file type up to 20 MiB. `access` selects the public or private bucket and defaults to `public` for compatibility. Public results contain `{ access, key, url, contentType, size }`. Private results contain `{ access, key, contentType, size }`, without a URL:
 
 ```ts
-const asset = await account.uploads.upload(bytes, 'cover.png', { contentType: 'image/png' });
-// asset: { key, url, contentType, size }
+const attachment = await account.uploads.upload(bytes, 'document.pdf', { access: 'private', contentType: 'application/pdf' });
+```
+
+The associated feature owns authorization for private files. This uploader does not issue download URLs or grant access based on possession of a key. Store the `access` and `key` reference with the feature.
+
+Public upload example:
+
+```ts
+const asset = await account.uploads.upload(bytes, 'cover.png', { contentType: 'image/png', access: 'public' });
+// asset: { access: 'public', key, url, contentType, size }
 await account.profile.update({ profile: { avatar: asset.url } });
 ```
 
@@ -268,13 +276,14 @@ and can apply their own Imgix source or other image service.
 Run `npm run test:integration:uploads` manually against a deployed dev API with
 `RARE_ACCOUNT_TEST_API_URL` and `RARE_ACCOUNT_TEST_PRIVATE_KEY` configured. This
 suite uses real storage and requires authenticated `gcloud` access on
-`superrare-dev` to delete its unique test objects from `rare-api-upload-dev`.
+`superrare-dev` to delete its unique test objects from both upload buckets.
 It verifies concurrent deduplication, first-writer metadata, public byte-for-byte
 downloads, avatar attachment and clearing, unchanged unrelated profile fields,
 and HTTP rejection of anonymous, forged, empty, oversized and unexpected-field
 requests. Object hashes are registered before requests so cleanup also runs after
-an ambiguous upload failure. The dev API must use `rare-api-upload-dev` with no
-Imgix source; configured Imgix previews need separate verification. It is not a CI job.
+an ambiguous upload failure. It also verifies private references, anonymous download
+denial, separate bucket storage, and private cache metadata. The dev API must use
+`rare-api-public-upload-dev` and `rare-api-private-upload-dev`. It is not a CI job.
 
 Avatar uploads accept PNG, JPEG or GIF, up to 5 MiB. The upload method saves the
 returned URL to your profile. If the upload succeeds but saving fails,

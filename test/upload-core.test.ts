@@ -11,8 +11,14 @@ describe('shared uploads', () => {
     expect(() => planUpload(new Uint8Array([1]), '../asset')).toThrow();
     expect(() => planUpload(new Uint8Array(20 * 1024 * 1024 + 1), 'large')).toThrow();
   });
+  it('parses private references without exposing URLs', () => {
+    const result = { access: 'private', key: 'a'.repeat(64), contentType: 'application/pdf', size: 3 };
+    expect(parseUpload(result)).toEqual(result);
+    expect(() => parseUpload({ ...result, url: 'https://storage.googleapis.com/bucket/key' })).toThrow();
+    expect(() => parseUpload({ ...result, access: 'unknown' })).toThrow();
+  });
   it('parses stored metadata and rejects malformed results', () => {
-    const result = { key: 'a'.repeat(64), url: 'https://storage.googleapis.com/bucket/key', contentType: 'application/octet-stream', size: 3 };
+    const result = { access: 'public', key: 'a'.repeat(64), url: 'https://storage.googleapis.com/bucket/key', contentType: 'application/octet-stream', size: 3 };
     expect(parseUpload(result)).toEqual(result);
     expect(() => parseUpload({ ...result, size: -1 })).toThrow();
     expect(() => parseUpload({ ...result, url: 'javascript:alert(1)' })).toThrow();

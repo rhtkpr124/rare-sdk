@@ -102,7 +102,7 @@ describe('creator post images and pagination against deployed services', () => {
     const comment = Buffer.from(randomBytes(16).toString('hex'));
     const bytes = Buffer.concat([gif.subarray(0, -1), Buffer.from([0x21, 0xfe, comment.length]), comment, Buffer.from([0, 0x3b])]);
     const key = createHash('sha256').update(bytes).digest('hex');
-    execFileSync('gcloud', ['--project=superrare-dev', 'storage', 'buckets', 'describe', 'gs://rare-api-upload-dev', '--format=value(name)'], { stdio: 'pipe' });
+    execFileSync('gcloud', ['--project=superrare-dev', 'storage', 'buckets', 'describe', 'gs://rare-api-public-upload-dev', '--format=value(name)'], { stdio: 'pipe' });
     try {
       await account.auth.loginWithWallet({ address: signer.address, chainId: 1, signMessage: message => signer.signMessage({ message }) });
       const profile = await account.profile.get();
@@ -146,7 +146,7 @@ describe('creator post images and pagination against deployed services', () => {
       }
       await account.auth.logout();
       try {
-        execFileSync('gcloud', ['--project=superrare-dev', 'storage', 'rm', `gs://rare-api-upload-dev/${key}`], { stdio: 'pipe' });
+        execFileSync('gcloud', ['--project=superrare-dev', 'storage', 'rm', `gs://rare-api-public-upload-dev/${key}`], { stdio: 'pipe' });
       } catch (error) {
         const stderr = error !== null && typeof error === 'object' && 'stderr' in error && error.stderr instanceof Uint8Array ? Buffer.from(error.stderr).toString('utf8') : '';
         if (!/No URLs matched|URLs matched no objects or files|NotFoundException|HTTPError 404|does not exist/.test(stderr)) throw error;
