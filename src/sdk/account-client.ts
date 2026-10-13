@@ -1,3 +1,4 @@
+import { createMessagingClient } from './messaging-client.js';
 import { normalizeDropId, planCreateDrop, planDropUpdate, parseDrop } from './drops-core.js';
 import { normalizePostId, planCreatePost, postText, parsePost, parsePostComment, parsePostData, parsePostPage, parsePostDeleted } from './posts-core.js';
 import { normalizeFavoriteId, favoritePageQuery, parseFavoritesPage, parseFavoriteStatus, type FavoriteArtworkInput } from './favorites-core.js';
@@ -209,6 +210,10 @@ export function createRareAccountClient(options: RareAccountClientOptions = {}):
     return result;
   };
   return {
+    messaging: createMessagingClient(async (method, path, body, headers, requestOptions = {}) => {
+      const token = await accessToken(requestOptions);
+      return request(joinAuthPath(apiBaseUrl, path), { method, headers: { Authorization: `Bearer ${token}`, Accept: 'application/json', ...headers }, ...(body === undefined ? {} : { body }) }, requestOptions);
+    }, json),
     drops: {
       async create(input, options) { const plan = planCreateDrop(input); return parsePostData(await postRequest('POST', 'v1/drops', plan, options), parseDrop); },
       async update(dropId, input, options) { const id = normalizeDropId(dropId); const plan = planDropUpdate(input); return parsePostData(await postRequest('PATCH', `v1/drops/${id}`, plan, options), parseDrop); },

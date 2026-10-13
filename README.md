@@ -409,3 +409,79 @@ Calendar and detail reads are public. Calendar windows are at most 30 days; user
 Creation and updates require an existing account and preserve the website's artist rule: mainnet requires SuperRare artist approval, while Sepolia and Base Sepolia retain its testnet exception. Deletion only requires ownership.
 
 Run `npm run test:integration:drops` manually after deploying the new routes. Set `RARE_ACCOUNT_TEST_API_URL`, `RARE_ACCOUNT_TEST_PRIVATE_KEY` and `RARE_ACCOUNT_TEST_SECOND_PRIVATE_KEY` to a non-production HTTPS API origin and two distinct dedicated wallets with existing accounts. The first wallet must not be an approved mainnet artist. Successful mutations authenticate on Sepolia; a separate mainnet login tests artist rejection. The suite performs real uploads and deletes its announcements afterward. Missing prerequisites fail the suite. It does not run in CI.
+
+## Durable messaging
+
+Messaging uses the same account session and refresh lifecycle as profile operations.
+Call `createRareAccountClient`, sign in, then use `account.messaging`:
+
+```ts
+const room = await account.messaging.createRoom({
+  type: 'group', title: 'Studio chat', description: '', guidelines: '',
+  clientOperationId: crypto.randomUUID(), inviteeUserIds: ['42'],
+});
+const input = {
+  clientMessageId: crypto.randomUUID(), body: 'Hello!',
+  attachmentIds: [], mentionUserIds: [],
+};
+const message = await account.messaging.send(room.id, input);
+const history = await account.messaging.history(room.id);
+const changes = await account.messaging.changes(room.id, history.changeCursor);
+await account.messaging.command(room.id, { action: 'preferences', notification: 'mentions' });
+await account.messaging.messageCommand(room.id, message.id, { action: 'delete' });
+```
+
+Keep `clientOperationId` and `clientMessageId` stable when explicitly retrying the
+same operation. The SDK does not automatically retry ambiguous mutations. Account IDs,
+message sequences, and pagination cursors stay strings.
+
+The namespace exposes `session`, `inbox`, `people`, `createDirect`, `createRoom`,
+`history`, `changes`, `participants`, `send`, `command`, `messageCommand`, `blocks`,
+`block`, `unblock`, `preview`, `uploadImage`, and `readImage`. Commands use the
+existing API actions for membership, lifecycle, notification preferences, read
+markers, editing, deletion, reactions, pins, and reporting. Input and response types
+are exported from the SDK and derive from the Rare API OpenAPI contract.
+
+Messaging image attachments use the existing private conversation attachment API:
+`uploadImage(room.id, bytes, { contentType: 'image/png', width: 100, height: 100,
+uploadId: crypto.randomUUID() })`. Reuse `uploadId` for retries of the same image.
+`readImage(attachment.id)` returns an authenticated `Blob`; it does not expose a
+public storage URL.
+
+Run `npm run test:integration:messaging` manually against a deployment with account
+bearer support. Set `RARE_ACCOUNT_TEST_API_URL`, `RARE_ACCOUNT_TEST_PRIVATE_KEY`, and
+`RARE_ACCOUNT_TEST_SECOND_PRIVATE_KEY` to a non-production HTTPS origin and two
+existing dedicated test accounts. The suite deletes its messages and closes its
+new room; closed room records remain in durable history. It is excluded from the
+standard test command and is not a CI job.
+
+Public auction, liquid-edition, and drop rooms use the same durable conversation
+system. Anonymous callers can resolve a room and read its history without joining:
+
+```ts
+import { createRareApi } from '@rareprotocol/rare-sdk';
+const api = createRareApi({ baseUrl: 'https://api.superrare.com' });
+const room = await api.messaging.resolveRoom({ type: 'auction', id: auctionId });
+const page = await api.messaging.history(room.id, { limit: 50 });
+const sent = await account.messaging.sendPublic(room.id, {
+  clientMessageId: crypto.randomUUID(), body: 'Great artwork!', mentionUserIds: [],
+});
+```
+
+Sending the first successful message joins the room. Reads do not subscribe the
+caller. Public history returns user messages and trusted system messages, distinguished
+by `kind`. The SDK provides no method for writing system messages. Existing private
+conversation IDs remain inaccessible through the public history endpoint.
+
+Run `npm run test:integration:messaging:public` separately with the same account/API
+variables plus `RARE_MESSAGING_TEST_PUBLIC_CONTEXTS`, a JSON array containing one
+existing context of each type: `auction` with `id`, `liquid-edition` with `chainId`
+and `contractAddress`, and `drop-announcement` with `id`. Use dedicated fixture rooms
+where the test account is not already subscribed. The suite deletes its messages
+and leaves each room afterward.
+
+For public history, `nextCursor` is the last sequence in a truncated page. While
+polling forward, request `history(room.id, { after, limit: 100 })`, drain every
+`nextCursor` page, then advance to the final page's `room.latestSequence`. Private
+conversation change cursors are a separate sequence and must not be used for
+public history.

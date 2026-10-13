@@ -129,7 +129,9 @@
     "test:integration:follows": "vitest run test/integration-deployed/follows.test.ts",
     "test:integration:favorites": "vitest run test/integration-deployed/favorites.test.ts",
     "test:integration:posts": "vitest run test/integration-deployed/posts.test.ts",
-    "test:integration:drops": "vitest run test/integration-deployed/drops.test.ts"
+    "test:integration:drops": "vitest run test/integration-deployed/drops.test.ts",
+    "test:integration:messaging": "vitest run test/integration-deployed/messaging.test.ts",
+    "test:integration:messaging:public": "vitest run test/integration-deployed/messaging-public.test.ts"
   },
   "dependencies": {
     "merkletreejs": "0.6.0",

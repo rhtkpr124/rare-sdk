@@ -56,3 +56,8 @@ export type { ArtworkFavorite, FavoriteArtworkInput, FavoritesListOptions } from
 
 export type { DropAnnouncement, DropType, DropMetadataInput, CreateDropInput, UpdateDropInput, DropListOptions } from './drops-core.js';
 export type { CreatorPost, CreatorPostComment, CreatePostInput } from './posts-core.js';
+
+export type * from './types/messaging.js';
+
+export { createRareApi } from './api.js';
+export type { RareApi, RareApiOptions } from './api.js';

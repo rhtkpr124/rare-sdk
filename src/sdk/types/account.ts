@@ -1,3 +1,4 @@
+import type { RareMessagingClient } from './messaging.js';
 import type { DropAnnouncement, CreateDropInput, UpdateDropInput } from '../drops-core.js';
 import type { CreatorPost, CreatorPostComment, CreatePostInput } from '../posts-core.js';
 import type { ArtworkFavorite, FavoriteArtworkInput, FavoritesListOptions } from '../favorites-core.js';
@@ -116,6 +117,7 @@ export type RareUploadMethod = {
 };
 
 export type RareAccountClient = {
+  messaging: RareMessagingClient;
   drops: {
     create: (input: CreateDropInput, options?: RareAuthRequestOptions) => Promise<DropAnnouncement>;
     update: (dropId: string, input: UpdateDropInput, options?: RareAuthRequestOptions) => Promise<DropAnnouncement>;

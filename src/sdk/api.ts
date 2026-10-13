@@ -1,3 +1,5 @@
+import { createPublicMessagingClient } from './public-messaging-client.js';
+import type { PublicMessagingClient } from './types/messaging.js';
 import { dropListQuery, normalizeDropId, parseDrop, type DropAnnouncement, type DropListOptions } from './drops-core.js';
 import { favoritePageQuery } from './favorites-core.js';
 import { normalizePostId, parsePostData, parsePost, parsePostComment, parsePostPage, type CreatorPost, type CreatorPostComment } from './posts-core.js';
@@ -39,6 +41,7 @@ export type RareApiOptions = {
 };
 
 export type RareApi = {
+  messaging: PublicMessagingClient;
   getDrops: (options: DropListOptions) => Promise<SearchPageResponse<DropAnnouncement>>;
   getDrop: (dropId: string) => Promise<DropAnnouncement>;
   getPosts: (user: UserSelector | string, options?: UserListOptions) => Promise<SearchPageResponse<CreatorPost>>;
@@ -139,6 +142,7 @@ export function createRareApi(options: RareApiOptions = {}): RareApi {
     return data.data;
   };
   return {
+    messaging: createPublicMessagingClient(client),
     async getDrops(options) { const { data } = await client.GET('/v1/drops', { params: { query: dropListQuery(options) } }); return parsePostPage(data, parseDrop); },
     async getDrop(dropId) { const id = normalizeDropId(dropId); const { data } = await client.GET('/v1/drops/{dropId}', { params: { path: { dropId: id } } }); return parsePostData(data, parseDrop); },
     async getPosts(input, options) { const { data } = await client.GET('/v1/posts', { params: { query: userQuery(input, favoritePageQuery(options)) } }); return parsePostPage(data, parsePost); },
