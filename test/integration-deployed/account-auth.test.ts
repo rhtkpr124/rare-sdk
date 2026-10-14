@@ -51,7 +51,7 @@ describe('account integration with deployed services', () => {
   it('does not expose email in public profile responses, including field-selection attempts', async () => {
     const api = required('RARE_ACCOUNT_TEST_API_URL');
     if (new URL(api).protocol !== 'https:' || new URL(api).hostname === 'api.superrare.com') throw new Error('Use a non-production HTTPS API');
-    const address = '0xd87d6f5754295ae9fc3a101d1d65297e145acb8a';
+    const address = testWallet('RARE_ACCOUNT_TEST_PRIVATE_KEY').address;
     const assertPublic = (value: unknown): void => {
       if (Array.isArray(value)) value.forEach(assertPublic);
       else if (value !== null && typeof value === 'object') {
