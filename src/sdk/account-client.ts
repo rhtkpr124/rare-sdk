@@ -175,22 +175,23 @@ export function createRareAccountClient(options: RareAccountClientOptions = {}):
       method: 'POST', headers: { Authorization: `Bearer ${token}`, Accept: 'application/json', 'Content-Type': 'application/json' },
       body: JSON.stringify({ access, size: plan.file.size, contentType: plan.file.type }),
     }, requestOptions)));
+    // Google's resumable upload header avoids treating progress responses as HTTP redirects.
     const transfer = async (offset: number, recoveries = 0): Promise<void> => {
       const end = Math.min(offset + 8 * 1024 * 1024, plan.file.size);
       const response = await request(session.uploadUrl, {
-        method: 'PUT', headers: { 'Content-Type': plan.file.type, 'Content-Range': `bytes ${offset}-${end - 1}/${plan.file.size}` },
+        method: 'PUT', headers: { 'X-GUploader-No-308': 'yes', 'Content-Type': plan.file.type, 'Content-Range': `bytes ${offset}-${end - 1}/${plan.file.size}` },
         body: plan.file.slice(offset, end),
       }, requestOptions, 120_000).catch(async (error: unknown) => {
         if (!(error instanceof RareAuthError) || error.code !== 'transport_error' || recoveries >= 2) throw error;
         // Query GCS's committed offset before retransmitting an ambiguous chunk.
-        const status = await request(session.uploadUrl, { method: 'PUT', headers: { 'Content-Range': `bytes */${plan.file.size}` }, body: new Blob([]) }, requestOptions);
-        if (status.status === 200 || status.status === 201) return status;
-        if (status.status !== 308) throw new RareAuthError('upload_failed', status.status);
+        const status = await request(session.uploadUrl, { method: 'PUT', headers: { 'X-GUploader-No-308': 'yes', 'Content-Range': `bytes */${plan.file.size}` }, body: new Blob([]) }, requestOptions);
+        if ((status.status === 200 || status.status === 201) && status.headers.get('x-http-status-code-override') !== '308') return status;
+        if (status.status !== 308 && status.headers.get('x-http-status-code-override') !== '308') throw new RareAuthError('upload_failed', status.status);
         await transfer(uploadedOffset(status.headers.get('range'), plan.file.size), recoveries + 1);
         return null;
       });
       if (response === null) return;
-      if (response.status === 308) {
+      if (response.status === 308 || response.headers.get('x-http-status-code-override') === '308') {
         const next = uploadedOffset(response.headers.get('range'), plan.file.size);
         if (next <= offset || next > end) throw new RareAuthError('invalid_upload_progress');
         return transfer(next, recoveries);

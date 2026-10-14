@@ -83,7 +83,9 @@ describe('uploads through deployed API and real GCS', () => {
       const bytes = randomBytes(33 * 1024 * 1024); track(bytes);
       const result = await client.uploads.upload(bytes, 'video.mp4', { contentType: 'video/mp4' });
       expect(result).toMatchObject({ key: objectKey(bytes), size: bytes.length, contentType: 'video/mp4' });
-      expect(Buffer.from(await (await fetch(result.url)).arrayBuffer())).toEqual(bytes);
+      const downloaded = new Uint8Array(await (await fetch(result.url)).arrayBuffer());
+      expect(downloaded.byteLength).toBe(bytes.length);
+      expect(objectKey(downloaded)).toBe(objectKey(bytes));
     });
   }, 240_000);
 
