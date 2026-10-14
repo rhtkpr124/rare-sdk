@@ -18,6 +18,14 @@ const wallet = (name: string) => {
 const login = async (client: RareAccountClient, owner: ReturnType<typeof wallet>): Promise<void> => {
   await client.auth.loginWithWallet({ address: owner.address, chainId: 1, signMessage: message => owner.signMessage({ message }) });
 };
+// Successful index reads may lag the database write. Service errors fail immediately.
+const waitFavoriteCount = async (api: ReturnType<typeof createRareApi>, id: string, expected: number, deadline = Date.now() + 30_000): Promise<number> => {
+  const count = await api.getNftFavoriteCount(id);
+  if (count === expected) return count;
+  if (Date.now() >= deadline) throw new Error(`Favorite index did not reach ${expected} within 30 seconds; observed ${count}`);
+  await new Promise(resolve => setTimeout(resolve, 500));
+  return waitFavoriteCount(api, id, expected, deadline);
+};
 describe('artwork favorites against deployed services', () => {
   it('restricts list access to its account, exposes only aggregate counts, and applies writes only to the signed-in account', async () => {
     const url = new URL(required('RARE_ACCOUNT_TEST_API_URL'));
@@ -63,7 +71,7 @@ describe('artwork favorites against deployed services', () => {
         expect(afterLast.data).toEqual([]);
         expect(afterLast.pagination.totalCount).toBe(visible.pagination.totalCount);
         expect(JSON.stringify(list)).not.toContain('email');
-        expect(await api.getNftFavoriteCount(id)).toBe(beforeCount + 1);
+        expect(await waitFavoriteCount(api, id, beforeCount + 1)).toBe(beforeCount + 1);
         const count = await call(`/v1/nfts/${id}/favorites/count`);
         expect(await count.json()).toEqual({ data: { count: beforeCount + 1 } });
         expect((await call(`/v1/nfts/${id}/favorites`)).status).toBe(404);
@@ -82,7 +90,7 @@ describe('artwork favorites against deployed services', () => {
         await account.favorites.remove(id);
         expect(await account.favorites.has(id)).toBe(false);
         expect(await account.favorites.list()).toEqual(before);
-        expect(await api.getNftFavoriteCount(id)).toBe(beforeCount);
+        expect(await waitFavoriteCount(api, id, beforeCount)).toBe(beforeCount);
       } finally {
         await account.favorites.remove(id);
       }
