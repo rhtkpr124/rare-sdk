@@ -5653,7 +5653,7 @@ export interface components {
             /** @enum {string} */
             action: "edit";
             body: string;
-            version: number;
+            version?: number;
             removePreview?: boolean;
         } | {
             /** @enum {string} */

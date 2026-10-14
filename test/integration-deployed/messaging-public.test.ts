@@ -38,6 +38,9 @@ describe('public durable messaging against deployed services', () => {
           return forward(page.nextCursor);
         };
         expect(await forward(initial.room.latestSequence)).toBe(true);
+        const edited = await account.messaging.messageCommand(room.id, sent.id, { action: 'edit', body: 'Updated public SDK message' });
+        expect(edited.body).toBe('Updated public SDK message');
+        expect((await api.messaging.history(room.id)).messages.find(message => message.id === sent.id)?.body).toBe('Updated public SDK message');
         const inbox = await account.messaging.inbox();
         expect(inbox.conversations.some(row => row.id === room.id)).toBe(true);
         const request = (token: string | undefined, body: unknown) => fetch(`${apiBaseUrl}/v1/messaging/public/rooms/${room.id}/messages`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-messaging-request': '1', ...(token === undefined ? {} : { Authorization: `Bearer ${token}` }) }, body: JSON.stringify(body), signal: AbortSignal.timeout(30_000) });

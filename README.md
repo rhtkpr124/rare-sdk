@@ -431,6 +431,8 @@ await account.messaging.command(room.id, { action: 'preferences', notification: 
 await account.messaging.messageCommand(room.id, message.id, { action: 'delete' });
 ```
 
+Message edits use `messageCommand(room.id, message.id, { action: 'edit', body: 'Updated text' })`. The `version` field is optional. Supply the version from a previously read message when you want stale edits rejected; otherwise the latest successful edit wins.
+
 Keep `clientOperationId` and `clientMessageId` stable when explicitly retrying the
 same operation. The SDK does not automatically retry ambiguous mutations. Account IDs,
 message sequences, and pagination cursors stay strings.

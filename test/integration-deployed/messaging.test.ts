@@ -45,8 +45,9 @@ describe('durable messaging against deployed services', () => {
         cleanupMessages.push({ account: other, id: reply.id });
         expect(reply.replyToId).toBe(sent.id);
         await expect(other.messaging.messageCommand(room.id, sent.id, { action: 'edit', body: 'Forged', version: sent.version })).rejects.toMatchObject({ status: 403 });
-        const edited = await owner.messaging.messageCommand(room.id, sent.id, { action: 'edit', body: 'Edited live SDK message', version: sent.version });
+        const edited = await owner.messaging.messageCommand(room.id, sent.id, { action: 'edit', body: 'Edited live SDK message' });
         expect(edited.body).toBe('Edited live SDK message');
+        await expect(owner.messaging.messageCommand(room.id, sent.id, { action: 'edit', body: 'Stale edit', version: sent.version })).rejects.toMatchObject({ status: 409 });
         const reacted = await other.messaging.messageCommand(room.id, sent.id, { action: 'reaction', emoji: '❤️', active: true }); expect(reacted.reactions.some(row => row.emoji === '❤️' && row.reacted)).toBe(true);
         await other.messaging.messageCommand(room.id, sent.id, { action: 'reaction', emoji: '❤️', active: false });
         await owner.messaging.messageCommand(room.id, sent.id, { action: 'pin', pinned: true });
