@@ -61,3 +61,5 @@ export type * from './types/messaging.js';
 
 export { createRareApi } from './api.js';
 export type { RareApi, RareApiOptions } from './api.js';
+
+export type * from './types/notifications.js';

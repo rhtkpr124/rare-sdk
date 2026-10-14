@@ -487,3 +487,32 @@ polling forward, request `history(room.id, { after, limit: 100 })`, drain every
 `nextCursor` page, then advance to the final page's `room.latestSequence`. Private
 conversation change cursors are a separate sequence and must not be used for
 public history.
+
+## Notification inbox
+
+After signing in, use `account.notifications` to read delivered app notifications:
+
+```ts
+const page = await account.notifications.list({ limit: 20 });
+const next = page.nextCursor === null
+  ? null
+  : await account.notifications.list({ cursor: page.nextCursor, limit: 20 });
+const unreadCount = await account.notifications.unreadCount();
+const notification = page.data[0];
+if (notification) await account.notifications.markRead(notification.id);
+// Explicitly acknowledge every delivered inbox entry:
+await account.notifications.markAllRead();
+```
+
+Entries contain `id`, `category`, `notificationId`, `payload`, `readAt`, and
+`createdAt`. IDs are strings. Internal provider and delivery metadata are excluded.
+The inbox returns individual deliveries, including messaging notifications.
+Marking an entry read does not mark its conversation messages read. Use the
+messaging `read` command for conversation read state.
+
+Run `npm run test:integration:notifications` manually against a non-production API
+with the notification routes and the deployed Pipelines messaging worker. Supply
+`RARE_ACCOUNT_TEST_API_URL`, `RARE_ACCOUNT_TEST_PRIVATE_KEY`, and
+`RARE_ACCOUNT_TEST_SECOND_PRIVATE_KEY` for two existing accounts. The test sends
+real messages and waits for worker-created deliveries. It does not seed delivery
+rows or invoke the worker itself, and it fails when prerequisites are missing.

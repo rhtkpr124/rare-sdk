@@ -131,7 +131,8 @@
     "test:integration:posts": "vitest run test/integration-deployed/posts.test.ts",
     "test:integration:drops": "vitest run test/integration-deployed/drops.test.ts",
     "test:integration:messaging": "vitest run test/integration-deployed/messaging.test.ts",
-    "test:integration:messaging:public": "vitest run test/integration-deployed/messaging-public.test.ts"
+    "test:integration:messaging:public": "vitest run test/integration-deployed/messaging-public.test.ts",
+    "test:integration:notifications": "vitest run test/integration-deployed/notifications.test.ts"
   },
   "dependencies": {
     "merkletreejs": "0.6.0",

@@ -1,3 +1,4 @@
+import { createNotificationsClient } from './notifications-client.js';
 import { createMessagingClient } from './messaging-client.js';
 import { normalizeDropId, planCreateDrop, planDropUpdate, parseDrop } from './drops-core.js';
 import { normalizePostId, planCreatePost, postText, parsePost, parsePostComment, parsePostData, parsePostPage, parsePostDeleted } from './posts-core.js';
@@ -210,6 +211,7 @@ export function createRareAccountClient(options: RareAccountClientOptions = {}):
     return result;
   };
   return {
+    notifications: createNotificationsClient(postRequest),
     messaging: createMessagingClient(async (method, path, body, headers, requestOptions = {}) => {
       const token = await accessToken(requestOptions);
       return request(joinAuthPath(apiBaseUrl, path), { method, headers: { Authorization: `Bearer ${token}`, Accept: 'application/json', ...headers }, ...(body === undefined ? {} : { body }) }, requestOptions);
