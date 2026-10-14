@@ -2,6 +2,8 @@ import { execFileSync } from 'node:child_process';
 import { createHash, randomBytes } from 'node:crypto';
 import { privateKeyToAccount } from 'viem/accounts';
 import { describe, expect, it } from 'vitest';
+import { parseUploadSession } from '../../src/sdk/upload-core.js';
+import { isPrivateKeyString } from '../../src/sdk/validation.js';
 import { createRareAccountClient } from '../../src/sdk/account-client.js';
 
 const deployedAccount = () => {
@@ -16,7 +18,7 @@ const deployedAccount = () => {
 
 const objectKey = (bytes: Uint8Array) => createHash('sha256').update(bytes).digest('hex');
 const removeObject = (key: string, access: 'public' | 'private'): void => {
-  if (!/^[a-f0-9]{64}$/.test(key)) throw new Error('Invalid test object key');
+  if (!/^(?:[a-f0-9]{64}|pending\/rare-api\/[0-9a-f-]{36})$/.test(key)) throw new Error('Invalid test object key');
   try {
     execFileSync('gcloud', ['--project=superrare-dev', 'storage', 'rm', `gs://rare-api-${access}-upload-dev/${key}`], { stdio: 'pipe' });
   } catch (error) {
@@ -51,12 +53,10 @@ const withLiveAccount = async (operation: (account: ReturnType<typeof deployedAc
   }
 };
 
-const uploadRequest = (api: string, bytes: Uint8Array, authorization?: string, fields?: Record<string, string>) => {
-  const body = new FormData();
-  body.set('file', new Blob([new Uint8Array(bytes)]), 'file.bin');
-  for (const [key, value] of Object.entries(fields ?? {})) body.set(key, value);
-  return fetch(`${api}/v1/uploads`, { method: 'POST', headers: authorization ? { authorization } : {}, body, signal: AbortSignal.timeout(60_000) });
-};
+const uploadRequest = (api: string, bytes: Uint8Array, authorization?: string, fields?: Record<string, unknown>) => fetch(`${api}/v1/uploads`, {
+  method: 'POST', headers: { 'Content-Type': 'application/json', ...(authorization ? { authorization } : {}) },
+  body: JSON.stringify({ size: bytes.length, contentType: 'application/octet-stream', ...fields }), signal: AbortSignal.timeout(60_000),
+});
 
 describe('uploads through deployed API and real GCS', () => {
   it('deduplicates concurrent uploads, preserves stored metadata, and does not edit profiles', async () => {
@@ -75,6 +75,40 @@ describe('uploads through deployed API and real GCS', () => {
       expect(downloaded.headers.get('cache-control')).toContain('immutable');
       expect(downloaded.headers.get('content-type')).toContain('application/octet-stream');
       expect(Buffer.from(await downloaded.arrayBuffer())).toEqual(bytes);
+    });
+  }, 180_000);
+
+  it('uploads beyond Cloud Run request limits using multiple direct GCS chunks', async () => {
+    await withLiveAccount(async ({ client }, track) => {
+      const bytes = randomBytes(33 * 1024 * 1024); track(bytes);
+      const result = await client.uploads.upload(bytes, 'video.mp4', { contentType: 'video/mp4' });
+      expect(result).toMatchObject({ key: objectKey(bytes), size: bytes.length, contentType: 'video/mp4' });
+      expect(Buffer.from(await (await fetch(result.url)).arrayBuffer())).toEqual(bytes);
+    });
+  }, 240_000);
+
+  it('binds finalization to the initiating account and keeps pending objects private', async () => {
+    await withLiveAccount(async ({ api, client }, track) => {
+      const bytes = randomBytes(1024); track(bytes);
+      const session = await client.auth.getSession(); if (!session) throw new Error('Missing live session');
+      const started = await uploadRequest(api, bytes, `Bearer ${session.accessToken}`); expect(started.status).toBe(201);
+      const input: unknown = await started.json(); const pending = parseUploadSession(input);
+      const otherKey = process.env.RARE_ACCOUNT_TEST_SECOND_PRIVATE_KEY;
+      if (!otherKey || !isPrivateKeyString(otherKey)) throw new Error('Configure the second existing account wallet');
+      const otherWallet = privateKeyToAccount(otherKey); const other = createRareAccountClient({ apiBaseUrl: api });
+      const complete = (authorization?: string) => fetch(`${api}/v1/uploads/${pending.id}/complete`, { method: 'POST', headers: authorization ? { authorization } : {} });
+      try {
+        const otherSession = await other.auth.loginWithWallet({ address: otherWallet.address, chainId: 1, signMessage: message => otherWallet.signMessage({ message }) });
+        expect((await complete()).status).toBe(401);
+        expect((await complete(`Bearer ${otherSession.accessToken}`)).status).toBe(404);
+        expect((await complete(`Bearer ${session.accessToken}`)).status).toBe(409);
+        const uploaded = await fetch(pending.uploadUrl, { method: 'PUT', headers: { 'Content-Type': 'application/octet-stream', 'Content-Range': `bytes 0-${bytes.length - 1}/${bytes.length}` }, body: bytes });
+        expect([200, 201]).toContain(uploaded.status);
+        const staged = `https://storage.googleapis.com/rare-api-private-upload-dev/pending/rare-api/${pending.id}`;
+        expect((await fetch(staged)).status).toBe(403);
+        const completed = await complete(`Bearer ${session.accessToken}`); expect(completed.status).toBe(200);
+        const result: unknown = await completed.json(); expect(await (await complete(`Bearer ${session.accessToken}`)).json()).toEqual(result);
+      } finally { await other.auth.logout(); removeObject(`pending/rare-api/${pending.id}`, 'private'); }
     });
   }, 180_000);
 
@@ -136,10 +170,9 @@ describe('uploads through deployed API and real GCS', () => {
       expect((await uploadRequest(api, bytes, authorization, { accountId: 'another-account' })).status).toBe(400);
       expect((await uploadRequest(api, bytes, authorization, { access: 'invalid' })).status).toBe(400);
       expect((await uploadRequest(api, new Uint8Array(), authorization)).status).toBe(400);
-      const tooLarge = randomBytes(20 * 1024 * 1024 + 1);
-      track(tooLarge);
+      const tooLarge = 250 * 1024 * 1024 + 1;
       // Bypass SDK prevalidation so the deployed server must reject the request.
-      expect((await uploadRequest(api, tooLarge, authorization)).status).toBe(413);
+      expect((await uploadRequest(api, bytes, authorization, { size: tooLarge })).status).toBe(400);
     });
   }, 180_000);
 });

@@ -250,7 +250,7 @@ await account.profile.update({ profile: { avatar: '', masthead_universal_token_i
 await rare.user.resolve({ username: 'artist' });
 ```
 
-Shared application uploads accept any file type up to 20 MiB. `access` selects the public or private bucket and defaults to `public` for compatibility. Public results contain `{ access, key, url, contentType, size }`. Private results contain `{ access, key, contentType, size }`, without a URL:
+Shared application uploads accept any file type up to 250 MiB. `access` selects the public or private bucket and defaults to `public` for compatibility. Public results contain `{ access, key, url, contentType, size }`. Private results contain `{ access, key, contentType, size }`, without a URL:
 
 ```ts
 const attachment = await account.uploads.upload(bytes, 'document.pdf', { access: 'private', contentType: 'application/pdf' });
@@ -266,15 +266,20 @@ const asset = await account.uploads.upload(bytes, 'cover.png', { contentType: 'i
 await account.profile.update({ profile: { avatar: asset.url } });
 ```
 
-The uploader uses `POST /v1/uploads`, stores files by SHA-256, and does not edit
-profiles or other features. Identical bytes return the same stored object.
+The uploader authorizes through `POST /v1/uploads`, transfers 8 MiB chunks directly
+to a GCS resumable session URL, then finalizes through
+`POST /v1/uploads/{id}/complete`. Rare API verifies size and content type, streams
+the stored generation through SHA-256, and publishes or deduplicates the asset.
+Upload capabilities stay private, and account tokens are never sent to GCS.
+Uploading does not edit profiles or other features. Identical bytes return the same stored object.
 Browser callers may pass a `Blob` or `File`; its content type is used by default.
 Byte arrays default to `application/octet-stream` unless `contentType` is supplied.
 The original URL serves files as attachments. Clients own image transformations
 and can apply their own Imgix source or other image service.
 
 Run `npm run test:integration:uploads` manually against a deployed dev API with
-`RARE_ACCOUNT_TEST_API_URL` and `RARE_ACCOUNT_TEST_PRIVATE_KEY` configured. This
+`RARE_ACCOUNT_TEST_API_URL`, `RARE_ACCOUNT_TEST_PRIVATE_KEY`, and
+`RARE_ACCOUNT_TEST_SECOND_PRIVATE_KEY` configured. This
 suite uses real storage and requires authenticated `gcloud` access on
 `superrare-dev` to delete its unique test objects from both upload buckets.
 It verifies concurrent deduplication, first-writer metadata, public byte-for-byte
@@ -282,7 +287,8 @@ downloads, avatar attachment and clearing, unchanged unrelated profile fields,
 and HTTP rejection of anonymous, forged, empty, oversized and unexpected-field
 requests. Object hashes are registered before requests so cleanup also runs after
 an ambiguous upload failure. It also verifies private references, anonymous download
-denial, separate bucket storage, and private cache metadata. The dev API must use
+denial, separate bucket storage, private cache metadata, a 33 MiB multi-chunk upload,
+private staging, unfinished-upload rejection, and account-bound repeat finalization. The dev API must use
 `rare-api-public-upload-dev` and `rare-api-private-upload-dev`. It is not a CI job.
 
 Avatar uploads accept PNG, JPEG or GIF, up to 5 MiB. The upload method saves the

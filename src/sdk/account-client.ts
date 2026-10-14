@@ -4,7 +4,7 @@ import { normalizeDropId, planCreateDrop, planDropUpdate, parseDrop } from './dr
 import { normalizePostId, planCreatePost, postText, parsePost, parsePostComment, parsePostData, parsePostPage, parsePostDeleted } from './posts-core.js';
 import { normalizeFavoriteId, favoritePageQuery, parseFavoritesPage, parseFavoriteStatus, type FavoriteArtworkInput } from './favorites-core.js';
 import { userQuery, type UserSelector } from './user-core.js';
-import { planUpload, parseUpload } from './upload-core.js';
+import { planUpload, parseUpload, parseUploadSession, uploadedOffset } from './upload-core.js';
 import { isAddress } from 'viem';
 import { parseSiweMessage, validateSiweMessage } from 'viem/siwe';
 import { DEFAULT_RARE_API_BASE_URL } from '../data-access/base-url.js';
@@ -37,9 +37,9 @@ export function createRareAccountClient(options: RareAccountClientOptions = {}):
   // eslint-disable-next-line functional/no-let
   let generation = 0;
 
-  const request = async (url: string, init: RequestInit, requestOptions: RareAuthRequestOptions = {}): Promise<Response> => {
+  const request = async (url: string, init: RequestInit, requestOptions: RareAuthRequestOptions = {}, timeoutMilliseconds = 30_000): Promise<Response> => {
     try {
-      const timeout = AbortSignal.timeout(30_000);
+      const timeout = AbortSignal.timeout(timeoutMilliseconds);
       const signal = requestOptions.signal === undefined ? timeout : AbortSignal.any([timeout, requestOptions.signal]);
       return await fetchImpl(url, { ...init, redirect: 'error', credentials: 'omit', signal });
     } catch {
@@ -171,13 +171,39 @@ export function createRareAccountClient(options: RareAccountClientOptions = {}):
     if (access !== 'public' && access !== 'private') throw new RareAuthError('invalid_upload');
     const plan = planUpload(file, filename, requestOptions.contentType);
     const token = await accessToken(requestOptions);
-    const form = new FormData();
-    form.set('file', plan.file, plan.filename);
-    form.set('access', access);
-    const result = parseUpload(await json(await request(joinAuthPath(apiBaseUrl, 'v1/uploads'), {
-      method: 'POST', headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' }, body: form,
+    const session = parseUploadSession(await json(await request(joinAuthPath(apiBaseUrl, 'v1/uploads'), {
+      method: 'POST', headers: { Authorization: `Bearer ${token}`, Accept: 'application/json', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ access, size: plan.file.size, contentType: plan.file.type }),
     }, requestOptions)));
-    if (result.access !== access) throw new RareAuthError('invalid_upload_response');
+    const transfer = async (offset: number, recoveries = 0): Promise<void> => {
+      const end = Math.min(offset + 8 * 1024 * 1024, plan.file.size);
+      const response = await request(session.uploadUrl, {
+        method: 'PUT', headers: { 'Content-Type': plan.file.type, 'Content-Range': `bytes ${offset}-${end - 1}/${plan.file.size}` },
+        body: plan.file.slice(offset, end),
+      }, requestOptions, 120_000).catch(async (error: unknown) => {
+        if (!(error instanceof RareAuthError) || error.code !== 'transport_error' || recoveries >= 2) throw error;
+        // Query GCS's committed offset before retransmitting an ambiguous chunk.
+        const status = await request(session.uploadUrl, { method: 'PUT', headers: { 'Content-Range': `bytes */${plan.file.size}` }, body: new Blob([]) }, requestOptions);
+        if (status.status === 200 || status.status === 201) return status;
+        if (status.status !== 308) throw new RareAuthError('upload_failed', status.status);
+        await transfer(uploadedOffset(status.headers.get('range'), plan.file.size), recoveries + 1);
+        return null;
+      });
+      if (response === null) return;
+      if (response.status === 308) {
+        const next = uploadedOffset(response.headers.get('range'), plan.file.size);
+        if (next <= offset || next > end) throw new RareAuthError('invalid_upload_progress');
+        return transfer(next, recoveries);
+      }
+      if (response.status !== 200 && response.status !== 201) throw new RareAuthError('upload_failed', response.status);
+      if (end !== plan.file.size) throw new RareAuthError('invalid_upload_progress');
+    };
+    await transfer(0);
+    const finalToken = await accessToken(requestOptions);
+    const result = parseUpload(await json(await request(joinAuthPath(apiBaseUrl, `v1/uploads/${session.id}/complete`), {
+      method: 'POST', headers: { Authorization: `Bearer ${finalToken}`, Accept: 'application/json' },
+    }, requestOptions, 300_000)));
+    if (result.access !== access || result.size !== plan.file.size) throw new RareAuthError('invalid_upload_response');
     return result;
   }
   const changeFollow = async (method: 'POST' | 'DELETE', input: UserSelector | string, options: RareAuthRequestOptions = {}): Promise<void> => {

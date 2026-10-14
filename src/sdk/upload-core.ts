@@ -4,7 +4,7 @@ import type { RareUpload } from './types/account.js';
 export function planUpload(file: Uint8Array | Blob, filename: string, contentType?: string): { file: Blob; filename: string } {
   const size = file instanceof Blob ? file.size : file.byteLength;
   const type = (contentType ?? (file instanceof Blob ? file.type : '')) || 'application/octet-stream';
-  if (size === 0 || size > 20 * 1024 * 1024 || filename.length === 0 || filename.length > 255 ||
+  if (size === 0 || size > 250 * 1024 * 1024 || filename.length === 0 || filename.length > 255 ||
       /[/\\\r\n]/.test(filename) || !/^[\w!#$&^.+-]+\/[\w!#$&^.+-]+$/.test(type)) throw new RareAuthError('invalid_upload');
   return { file: file instanceof Blob ? file.slice(0, size, type) : new Blob([new Uint8Array(file)], { type }), filename };
 }
@@ -25,4 +25,21 @@ export function parseUpload(value: unknown): RareUpload {
   const parsed = new URL(url);
   if (parsed.protocol !== 'https:' || parsed.username || parsed.password) throw new RareAuthError('invalid_upload_response');
   return { ...metadata, access: 'public', url };
+}
+
+export function parseUploadSession(value: unknown): { id: string; uploadUrl: string; expiresAt: string } {
+  if (!isRecord(value)) throw new RareAuthError('invalid_upload_response');
+  const id = requireString(value.id, 'upload_id');
+  const uploadUrl = requireString(value.uploadUrl, 'upload_url');
+  const expiresAt = requireString(value.expiresAt, 'upload_expiry');
+  const url = new URL(uploadUrl);
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id) || url.protocol !== 'https:' || url.hostname !== 'storage.googleapis.com' || url.username || url.password || !url.pathname.startsWith('/upload/storage/v1/') || !Number.isFinite(Date.parse(expiresAt))) throw new RareAuthError('invalid_upload_response');
+  return { id, uploadUrl, expiresAt };
+}
+export function uploadedOffset(range: string | null, total: number): number {
+  if (range === null) return 0;
+  const match = /^bytes=0-([0-9]+)$/.exec(range);
+  const offset = match === null ? NaN : Number(match[1]) + 1;
+  if (!Number.isSafeInteger(offset) || offset < 0 || offset >= total) throw new RareAuthError('invalid_upload_progress');
+  return offset;
 }
