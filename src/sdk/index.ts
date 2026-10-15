@@ -55,7 +55,7 @@ export type { UserSelector, UserListOptions } from './user-core.js';
 export type { ArtworkFavorite, FavoriteArtworkInput, FavoritesListOptions } from './favorites-core.js';
 
 export type { DropAnnouncement, DropType, DropMetadataInput, CreateDropInput, UpdateDropInput, DropListOptions } from './drops-core.js';
-export type { CreatorPost, CreatorPostComment, CreatePostInput } from './posts-core.js';
+export type { CreatorPost, CreatorPostComment, CreatorPostCommentPage, PostCommentListOptions, CreatePostInput } from './posts-core.js';
 
 export type * from './types/messaging.js';
 

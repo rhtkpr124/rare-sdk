@@ -763,6 +763,8 @@ export interface paths {
                 query?: {
                     page?: number;
                     perPage?: number;
+                    parentCommentId?: string;
+                    afterCommentId?: string;
                 };
                 header?: never;
                 path: {
@@ -781,6 +783,7 @@ export interface paths {
                         "application/json": {
                             data: components["schemas"]["CreatorPostComment"][];
                             pagination: components["schemas"]["Pagination"];
+                            nextCursor: string | null;
                         };
                     };
                 };
@@ -846,6 +849,7 @@ export interface paths {
                 content: {
                     "application/json": {
                         body: string;
+                        parentCommentId?: string;
                     };
                 };
             };
@@ -3766,6 +3770,8 @@ export interface components {
             id: string;
             postId: string;
             authorUserId: string;
+            parentCommentId: string | null;
+            replyCount: number;
             body: string;
             createdAt: string;
             updatedAt: string;

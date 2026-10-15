@@ -127,7 +127,7 @@ export type RareAccountClient = {
   };
   posts: {
     create: (input: CreatePostInput, options?: RareAuthRequestOptions) => Promise<CreatorPost>;
-    comment: (postId: string, body: string, options?: RareAuthRequestOptions) => Promise<CreatorPostComment>;
+    comment: (postId: string, body: string, options?: RareAuthRequestOptions & { parentCommentId?: string }) => Promise<CreatorPostComment>;
     delete: (postId: string, options?: RareAuthRequestOptions) => Promise<void>;
     deleteComment: (postId: string, commentId: string, options?: RareAuthRequestOptions) => Promise<void>;
   };

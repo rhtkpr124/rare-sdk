@@ -1,7 +1,7 @@
 import { createNotificationsClient } from './notifications-client.js';
 import { createMessagingClient } from './messaging-client.js';
 import { normalizeDropId, planCreateDrop, planDropUpdate, parseDrop } from './drops-core.js';
-import { normalizePostId, planCreatePost, postText, parsePost, parsePostComment, parsePostData, parsePostPage, parsePostDeleted } from './posts-core.js';
+import { normalizePostId, planCreatePost, planPostComment, parsePost, parsePostComment, parsePostData, parsePostPage, parsePostDeleted } from './posts-core.js';
 import { normalizeFavoriteId, favoritePageQuery, parseFavoritesPage, parseFavoriteStatus, type FavoriteArtworkInput } from './favorites-core.js';
 import { userQuery, type UserSelector } from './user-core.js';
 import { planUpload, parseUpload, parseUploadSession, uploadedOffset } from './upload-core.js';
@@ -250,7 +250,7 @@ export function createRareAccountClient(options: RareAccountClientOptions = {}):
     },
     posts: {
       async create(input, options) { const plan = planCreatePost(input); return parsePostData(await postRequest('POST', 'v1/posts', plan, options), parsePost); },
-      async comment(postId, body, options) { const id = normalizePostId(postId); const input = { body: postText(body, 1000) }; return parsePostData(await postRequest('POST', `v1/posts/${id}/comments`, input, options), parsePostComment); },
+      async comment(postId, body, options) { const id = normalizePostId(postId); const input = planPostComment(body, options?.parentCommentId); return parsePostData(await postRequest('POST', `v1/posts/${id}/comments`, input, options), parsePostComment); },
       async delete(postId, options) { const id = normalizePostId(postId); parsePostDeleted(await postRequest('DELETE', `v1/posts/${id}`, undefined, options)); },
       async deleteComment(postId, commentId, options) { const id = normalizePostId(postId); const comment = normalizePostId(commentId); parsePostDeleted(await postRequest('DELETE', `v1/posts/${id}/comments/${comment}`, undefined, options)); },
     },

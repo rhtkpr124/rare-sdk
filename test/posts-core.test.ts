@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { normalizePostId, planCreatePost, postText, parsePost, parsePostPage, parsePostDeleted } from '../src/sdk/posts-core.js';
+import { normalizePostId, planCreatePost, postText, parsePost, parsePostPage, parsePostDeleted, parsePostComment, parsePostCommentPage, postCommentQuery, planPostComment } from '../src/sdk/posts-core.js';
 
 describe('creator post planning and response parsing', () => {
   it('validates and normalizes before writes', () => {
@@ -19,4 +19,18 @@ describe('creator post planning and response parsing', () => {
     expect(() => parsePostPage({ data: [row], pagination: { page: 1, perPage: 101, totalCount: 1, totalPages: 1 } }, parsePost)).toThrow();
     expect(() => parsePostDeleted({ data: { deleted: false } })).toThrow();
   });
+  it('validates reply inputs and parses thread metadata and cursors', () => {
+    expect(planPostComment(' Reply ', '12')).toEqual({ body: 'Reply', parentCommentId: '12' });
+    expect(planPostComment(' Root ')).toEqual({ body: 'Root' });
+    expect(postCommentQuery({ parentCommentId: '12', afterCommentId: '13', perPage: 2 })).toEqual({ page: 1, perPage: 2, parentCommentId: '12', afterCommentId: '13' });
+    expect(() => postCommentQuery({ afterCommentId: '13' })).toThrow();
+    expect(() => postCommentQuery({ parentCommentId: '12', page: 2 })).toThrow();
+    expect(() => planPostComment('Reply', '../other')).toThrow();
+    const reply = { id: '13', postId: '1', authorUserId: '2', parentCommentId: '12', replyCount: 0, body: 'Reply', createdAt: 'now', updatedAt: 'now' };
+    expect(parsePostComment(reply)).toMatchObject({ parentCommentId: '12', replyCount: 0 });
+    expect(parsePostComment({ ...reply, parentCommentId: null, replyCount: 3 })).toMatchObject({ parentCommentId: null, replyCount: 3 });
+    expect(() => parsePostComment({ ...reply, replyCount: -1 })).toThrow();
+    expect(parsePostCommentPage({ data: [reply], pagination: { page: 1, perPage: 1, totalCount: 2, totalPages: 2 }, nextCursor: '13' }).nextCursor).toBe('13');
+  });
+
 });

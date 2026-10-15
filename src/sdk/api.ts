@@ -2,7 +2,7 @@ import { createPublicMessagingClient } from './public-messaging-client.js';
 import type { PublicMessagingClient } from './types/messaging.js';
 import { dropListQuery, normalizeDropId, parseDrop, type DropAnnouncement, type DropListOptions } from './drops-core.js';
 import { favoritePageQuery } from './favorites-core.js';
-import { normalizePostId, parsePostData, parsePost, parsePostComment, parsePostPage, type CreatorPost, type CreatorPostComment } from './posts-core.js';
+import { normalizePostId, parsePostData, parsePost, parsePostCommentPage, postCommentQuery, parsePostPage, type CreatorPost, type CreatorPostCommentPage, type PostCommentListOptions } from './posts-core.js';
 import { normalizeFavoriteId } from './favorites-core.js';
 import { userQuery, type UserSelector, type UserListOptions } from './user-core.js';
 export type { UserSelector, UserListOptions } from './user-core.js';
@@ -46,7 +46,7 @@ export type RareApi = {
   getDrop: (dropId: string) => Promise<DropAnnouncement>;
   getPosts: (user: UserSelector | string, options?: UserListOptions) => Promise<SearchPageResponse<CreatorPost>>;
   getPost: (postId: string) => Promise<CreatorPost>;
-  getPostComments: (postId: string, options?: UserListOptions) => Promise<SearchPageResponse<CreatorPostComment>>;
+  getPostComments: (postId: string, options?: PostCommentListOptions) => Promise<CreatorPostCommentPage>;
   searchLiquidEditions: (params?: LiquidEditionSearchParams) => Promise<SearchPageResponse<LiquidEdition>>;
   getLiquidEdition: (id: string) => Promise<LiquidEdition>;
   pinFile: (buffer: Uint8Array, filename: string) => Promise<IpfsUploadResult>;
@@ -147,7 +147,7 @@ export function createRareApi(options: RareApiOptions = {}): RareApi {
     async getDrop(dropId) { const id = normalizeDropId(dropId); const { data } = await client.GET('/v1/drops/{dropId}', { params: { path: { dropId: id } } }); return parsePostData(data, parseDrop); },
     async getPosts(input, options) { const { data } = await client.GET('/v1/posts', { params: { query: userQuery(input, favoritePageQuery(options)) } }); return parsePostPage(data, parsePost); },
     async getPost(postId) { const id = normalizePostId(postId); const { data } = await client.GET('/v1/posts/{postId}', { params: { path: { postId: id } } }); return parsePostData(data, parsePost); },
-    async getPostComments(postId, options) { const id = normalizePostId(postId); const { data } = await client.GET('/v1/posts/{postId}/comments', { params: { path: { postId: id }, query: favoritePageQuery(options) } }); return parsePostPage(data, parsePostComment); },
+    async getPostComments(postId, options) { const id = normalizePostId(postId); const { data } = await client.GET('/v1/posts/{postId}/comments', { params: { path: { postId: id }, query: postCommentQuery(options) } }); return parsePostCommentPage(data); },
     pinFile: async (buffer, filename) => pinFileWithClient(client, fetchImpl, buffer, filename),
     pinJson: async (value, filename) => pinJsonWithClient(client, fetchImpl, value, filename),
     uploadMedia: async (buffer, filename) => uploadMediaWithClient(client, fetchImpl, buffer, filename),

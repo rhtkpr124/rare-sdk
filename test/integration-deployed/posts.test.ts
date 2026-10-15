@@ -157,3 +157,48 @@ describe('creator post images and pagination against deployed services', () => {
     }
   }, 240_000);
 });
+
+
+describe('threaded post replies against deployed services', () => {
+  it('retrieves saved replies, verifies cursor pages and counts, and cascades root deletion', async () => {
+    const apiBaseUrl = origin();
+    const owner = createRareAccountClient({ apiBaseUrl });
+    const other = createRareAccountClient({ apiBaseUrl });
+    const api = createRareApi({ baseUrl: apiBaseUrl });
+    try {
+      for (const [account, name] of [[owner, 'RARE_ACCOUNT_TEST_PRIVATE_KEY'], [other, 'RARE_ACCOUNT_TEST_SECOND_PRIVATE_KEY']] as const) {
+        const signer = wallet(name);
+        await account.auth.loginWithWallet({ address: signer.address, chainId: 1, signMessage: message => signer.signMessage({ message }) });
+      }
+      const post = await owner.posts.create({ title: 'Reply integration', body: 'Threads' });
+      try {
+        const root = await other.posts.comment(post.id, 'Root');
+        const secondRoot = await owner.posts.comment(post.id, 'Other root');
+        const first = await owner.posts.comment(post.id, 'First reply', { parentCommentId: root.id });
+        const second = await owner.posts.comment(post.id, 'Second reply', { parentCommentId: root.id });
+        const third = await owner.posts.comment(post.id, 'Third reply', { parentCommentId: root.id });
+        expect(first).toMatchObject({ parentCommentId: root.id, replyCount: 0 });
+        expect((await api.getPost(post.id)).commentCount).toBe(5);
+        const roots = await api.getPostComments(post.id);
+        expect(roots.data).toMatchObject([{ id: root.id, parentCommentId: null, replyCount: 3 }, { id: secondRoot.id, replyCount: 0 }]);
+        expect(roots.pagination.totalCount).toBe(2);
+        const page = await api.getPostComments(post.id, { parentCommentId: root.id, perPage: 2 });
+        expect(page.data.map(row => row.id)).toEqual([first.id, second.id]);
+        expect(page.pagination.totalCount).toBe(3);
+        expect(page.nextCursor).toBe(second.id);
+        const last = await api.getPostComments(post.id, { parentCommentId: root.id, afterCommentId: second.id, perPage: 2 });
+        expect(last.data.map(row => row.id)).toEqual([third.id]);
+        expect(last.nextCursor).toBeNull();
+        await expect(owner.posts.comment(post.id, 'Nested', { parentCommentId: first.id })).rejects.toMatchObject({ status: 404 });
+        await expect(owner.posts.deleteComment(post.id, root.id)).rejects.toMatchObject({ status: 403 });
+        await owner.posts.deleteComment(post.id, second.id);
+        expect((await api.getPostComments(post.id)).data[0]?.replyCount).toBe(2);
+        expect((await api.getPostComments(post.id, { parentCommentId: root.id, afterCommentId: second.id, perPage: 2 })).data.map(row => row.id)).toEqual([third.id]);
+        await other.posts.deleteComment(post.id, root.id);
+        expect((await api.getPost(post.id)).commentCount).toBe(1);
+        expect((await api.getPostComments(post.id)).data.map(row => row.id)).toEqual([secondRoot.id]);
+        await expect(api.getPostComments(post.id, { parentCommentId: root.id })).rejects.toMatchObject({ status: 404 });
+      } finally { await owner.posts.delete(post.id); }
+    } finally { await owner.auth.logout(); await other.auth.logout(); }
+  }, 180_000);
+});
