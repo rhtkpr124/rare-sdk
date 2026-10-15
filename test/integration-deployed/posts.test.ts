@@ -31,17 +31,18 @@ describe('creator posts against deployed services', () => {
     for (const [account, signer] of [[owner, ownerWallet], [other, otherWallet]] as const) await account.auth.loginWithWallet({ address: signer.address, chainId: 1, signMessage: message => signer.signMessage({ message }) });
     const profile = await owner.profile.get();
     const before = await other.postFavorites.list();
-    const post = await owner.posts.create({ title: `SDK integration ${Date.now()}`, body: '**Markdown** body', imageUrls: [] });
+    const postInput = { title: `SDK integration ${Date.now()}`, body: '**Markdown** body', imageUrls: [] };
+    const post = await owner.posts.create(postInput);
     try {
       expect(post.creatorUserId).toBe(profile.accountId);
-      expect(await api.getPost(post.id)).toEqual(post);
+      expect(await api.getPost(post.id)).toMatchObject({ ...postInput, creatorUserId: profile.accountId });
       for (const selector of [{ address: ownerWallet.address }, { username: profile.username }, { userId: Number(profile.accountId) }]) {
         const page = await api.getPosts(selector, { perPage: 100 });
-        expect(page.data.some(row => row.id === post.id)).toBe(true); noEmail(page);
+        expect(page.data.find(row => row.id === post.id)).toMatchObject({ ...postInput, creatorUserId: profile.accountId }); noEmail(page);
       }
       const comment = await other.posts.comment(post.id, 'A public comment');
       const comments = await api.getPostComments(post.id);
-      expect(comments.data.some(row => row.id === comment.id)).toBe(true); noEmail(comments);
+      expect(comments.data.find(row => row.id === comment.id)).toMatchObject({ postId: post.id, body: 'A public comment', authorUserId: (await other.profile.get()).accountId }); noEmail(comments);
       await Promise.all([other.postFavorites.add(post.id), other.postFavorites.add(post.id)]);
       expect(await other.postFavorites.has(post.id)).toBe(true);
       expect(await owner.postFavorites.has(post.id)).toBe(false);
@@ -50,6 +51,8 @@ describe('creator posts against deployed services', () => {
       await other.postFavorites.remove(post.id);
       await other.postFavorites.remove(post.id);
       expect(await other.postFavorites.list()).toEqual(before);
+      expect(await other.postFavorites.has(post.id)).toBe(false);
+      expect((await api.getPost(post.id)).likeCount).toBe(0);
       await other.posts.deleteComment(post.id, comment.id);
       expect((await api.getPostComments(post.id)).data).toEqual([]);
     } finally { await owner.posts.delete(post.id); }

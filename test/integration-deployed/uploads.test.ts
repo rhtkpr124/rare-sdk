@@ -155,6 +155,7 @@ describe('uploads through deployed API and real GCS', () => {
         expect(Buffer.from(await downloaded.arrayBuffer())).toEqual(bytes);
         const cleared = await client.profile.update({ profile: { avatar: '' } });
         expect(cleared).toEqual({ ...before, profile: { ...before.profile, avatar: '' } });
+        expect(await client.profile.get()).toEqual(cleared);
       } finally {
         await client.profile.update({ profile: { avatar: before.profile.avatar ?? '' } });
       }

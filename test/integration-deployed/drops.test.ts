@@ -41,7 +41,12 @@ describe('drops against deployed services', () => {
         expect(updated.metadata.imageUrl).toBe(upload.url);
         expect(updated.metadata.slug).toBe(drop.metadata.slug);
         expect(updated.startsAt).toBe(drop.startsAt);
-        noEmail(await publicApi.getDrop(drop.id));
+        const persisted = await publicApi.getDrop(drop.id);
+        expect(persisted).toMatchObject({ id: drop.id, userId: profile.accountId, type: drop.type, startsAt, metadata: { ...drop.metadata, headline: 'Updated by SDK' } });
+        expect(Date.parse(persisted.updatedAt)).toBeGreaterThanOrEqual(Date.parse(drop.updatedAt));
+        const calendar = await publicApi.getDrops({ from: new Date(Date.parse(startsAt) - 1000).toISOString(), to: new Date(Date.parse(startsAt) + 1000).toISOString(), user: { userId: Number(profile.accountId) }, perPage: 100 });
+        expect(calendar.data.find(row => row.id === drop.id)).toEqual(persisted);
+        noEmail(persisted);
       } finally { await account.drops.delete(drop.id); }
       await expect(publicApi.getDrop(drop.id)).rejects.toMatchObject({ status: 404 });
     } finally { await account.auth.logout(); }

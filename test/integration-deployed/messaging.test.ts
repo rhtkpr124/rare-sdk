@@ -47,20 +47,31 @@ describe('durable messaging against deployed services', () => {
         await expect(other.messaging.messageCommand(room.id, sent.id, { action: 'edit', body: 'Forged', version: sent.version })).rejects.toMatchObject({ status: 403 });
         const edited = await owner.messaging.messageCommand(room.id, sent.id, { action: 'edit', body: 'Edited live SDK message' });
         expect(edited.body).toBe('Edited live SDK message');
+        expect((await other.messaging.history(room.id)).messages.find(row => row.id === sent.id)).toMatchObject({ body: 'Edited live SDK message', author: { id: actor.user.id } });
         await expect(owner.messaging.messageCommand(room.id, sent.id, { action: 'edit', body: 'Stale edit', version: sent.version })).rejects.toMatchObject({ status: 409 });
         const reacted = await other.messaging.messageCommand(room.id, sent.id, { action: 'reaction', emoji: '❤️', active: true }); expect(reacted.reactions.some(row => row.emoji === '❤️' && row.reacted)).toBe(true);
+        expect((await owner.messaging.history(room.id)).messages.find(row => row.id === sent.id)?.reactions).toContainEqual({ emoji: '❤️', count: 1, reacted: false });
         await other.messaging.messageCommand(room.id, sent.id, { action: 'reaction', emoji: '❤️', active: false });
+        expect((await owner.messaging.history(room.id)).messages.find(row => row.id === sent.id)?.reactions.some(row => row.emoji === '❤️')).toBe(false);
         await owner.messaging.messageCommand(room.id, sent.id, { action: 'pin', pinned: true });
         expect((await other.messaging.history(room.id, { pinned: true })).messages.some(row => row.id === sent.id)).toBe(true);
+        await owner.messaging.messageCommand(room.id, sent.id, { action: 'pin', pinned: false });
+        expect((await other.messaging.history(room.id, { pinned: true })).messages.some(row => row.id === sent.id)).toBe(false);
+        expect((await other.messaging.history(room.id)).messages.find(row => row.id === sent.id)?.pinned).toBe(false);
         expect((await owner.messaging.participants(room.id)).participants.some(row => row.user.id === recipient.user.id && row.state === 'joined')).toBe(true);
         expect((await other.messaging.changes(room.id, '0')).messages.some(row => row.id === reply.id)).toBe(true);
         await other.messaging.command(room.id, { action: 'preferences', notification: 'muted' });
         await other.messaging.command(room.id, { action: 'read', sequence: reply.sequence });
-        const history = await other.messaging.history(room.id); expect(history.conversation.notification).toBe('muted'); expect(history.messages.some(row => row.id === sent.id)).toBe(true);
+        const history = await other.messaging.history(room.id); expect(history.conversation.notification).toBe('muted'); expect(history.conversation.readSequence).toBe(reply.sequence); expect(history.conversation.unreadCount).toBe(0); expect(history.messages.some(row => row.id === sent.id)).toBe(true);
+        await other.messaging.messageCommand(room.id, reply.id, { action: 'delete' });
+        const deleted = (await owner.messaging.history(room.id)).messages.find(row => row.id === reply.id);
+        expect(deleted).toMatchObject({ deleted: true, body: '' });
+        expect((await owner.messaging.changes(room.id, '0')).messages.find(row => row.id === reply.id)).toMatchObject({ deleted: true, body: '' });
         const mismatchedActor = await fetch(`${apiBaseUrl}/v1/messaging/conversations/${room.id}/messages`, { method: 'POST', headers: { Authorization: `Bearer ${otherSession.accessToken}`, 'Content-Type': 'application/json', 'x-messaging-request': '1', 'x-messaging-actor': actor.user.id }, body: JSON.stringify({ ...input, clientMessageId: randomUUID() }) }); expect(mismatchedActor.status).toBe(409);
       } finally {
         const results = await Promise.allSettled(cleanupMessages.map(row => row.account.messaging.messageCommand(room.id, row.id, { action: 'delete' })));
         await owner.messaging.command(room.id, { action: 'close' });
+        expect((await owner.messaging.history(room.id)).conversation.lifecycle).toBe('closed');
         const failed = results.find(result => result.status === 'rejected');
         if (failed?.status === 'rejected') throw failed.reason;
       }

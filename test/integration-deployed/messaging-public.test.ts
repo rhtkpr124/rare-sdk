@@ -47,8 +47,13 @@ describe('public durable messaging against deployed services', () => {
         expect((await request(undefined, input)).status).toBe(401);
         expect((await request(session.accessToken, { ...input, clientMessageId: randomUUID(), kind: 'system', system: { sourceId: randomUUID(), type: 'auction.bid', summary: 'Forged', payload: {}, occurredAt: new Date().toISOString() } })).status).toBe(400);
         await account.messaging.command(room.id, { action: 'preferences', notification: 'muted' });
-      } finally { await account.messaging.messageCommand(room.id, sent.id, { action: 'delete' }); }
+        expect((await account.messaging.inbox()).conversations.find(row => row.id === room.id)?.notification).toBe('muted');
+      } finally {
+        await account.messaging.messageCommand(room.id, sent.id, { action: 'delete' });
+        expect((await api.messaging.history(room.id)).messages.some(row => row.id === sent.id)).toBe(false);
+      }
       await account.messaging.command(room.id, { action: 'leave' });
+      expect((await account.messaging.inbox()).conversations.some(row => row.id === room.id)).toBe(false);
     } finally { await account.auth.logout(); }
   }, 240_000);
 });
