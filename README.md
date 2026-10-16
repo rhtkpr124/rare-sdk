@@ -522,3 +522,15 @@ with the notification routes and the deployed Pipelines messaging worker. Supply
 `RARE_ACCOUNT_TEST_SECOND_PRIVATE_KEY` for two existing accounts. The test sends
 real messages and waits for worker-created deliveries. It does not seed delivery
 rows or invoke the worker itself, and it fails when prerequisites are missing.
+
+Random NFT discovery uses the existing search method and supports existing filters:
+
+```ts
+await rare.search.nfts({ sortBy: 'random', perPage: 1 });
+await rare.search.nfts({ sortBy: 'random', creatorAddress: '0x...', perPage: 5 });
+```
+
+Each request uses native Typesense random ordering. Random pages do not form a
+stable traversal; use another sort order when paging through a complete result set.
+Run the public live integration with
+`RARE_ACCOUNT_TEST_API_URL=https://your-feature-api npm run test:integration:nfts`.

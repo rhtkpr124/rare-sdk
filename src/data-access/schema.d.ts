@@ -1537,7 +1537,7 @@ export interface paths {
                     currency?: components["schemas"]["EthereumAddress"] & unknown;
                     mediaType?: "AUDIO" | "HTML" | "IMAGE" | "THREE_D" | "VIDEO";
                     tags?: string[] | string;
-                    sortBy?: "newest" | "oldest" | "priceAsc" | "priceDesc" | "recentlySold" | "auctionEndingSoon" | "recentActivity" | "bidAsc" | "bidDesc";
+                    sortBy?: "newest" | "oldest" | "priceAsc" | "priceDesc" | "recentlySold" | "auctionEndingSoon" | "recentActivity" | "bidAsc" | "bidDesc" | "random";
                 };
                 header?: never;
                 path?: never;
