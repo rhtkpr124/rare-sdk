@@ -43,8 +43,12 @@ type CartApiScope = {
 export function createCartApiNamespace(
   options: RareApiOptions,
   scope: CartApiScope,
+  authenticatedFetch?: typeof globalThis.fetch,
 ): CartApiNamespace {
   const client = createApiClient(options.baseUrl, options.fetch) as unknown as CartApiTransport;
+  const protectedClient = authenticatedFetch === undefined
+    ? client
+    : createApiClient(options.baseUrl, authenticatedFetch) as unknown as CartApiTransport;
   const chainId = chainIdString(scope.chainId);
   const cartAddress = (): Address => {
     if (scope.cartAddress === undefined) {
@@ -87,7 +91,7 @@ export function createCartApiNamespace(
   const listing = {
     preview: async (intent: CartListingIntent): Promise<CartListing[]> => {
       const wire = await getWrappedData<CartListingPreviewWire>(
-        client.POST('/v1/cart/listings/preview', { params: { query: { chainId, cartAddress: cartAddress() } }, body: {
+        protectedClient.POST('/v1/cart/listings/preview', { params: { query: { chainId, cartAddress: cartAddress() } }, body: {
           seller: getAddress(intent.seller),
           deadline: intent.deadline.toString(),
           listings: intent.listings.map((item) => ({
@@ -118,14 +122,14 @@ export function createCartApiNamespace(
       'Rare API did not return the Cart Listing.',
     ),
     invalidate: async (listingDigest: Hex, invalidatedAt?: string | null): Promise<CartApiListing> => getWrappedData(
-      client.POST(`/v1/cart/listings/${encodeURIComponent(listingDigest)}/invalidate`, {
+      protectedClient.POST(`/v1/cart/listings/${encodeURIComponent(listingDigest)}/invalidate`, {
         params: { query: { chainId, cartAddress: cartAddress() } },
         ...(invalidatedAt === undefined ? {} : { body: { invalidatedAt } }),
       }),
       'Rare API did not return the invalidated Cart Listing.',
     ),
     publish: async (artifact: CartListingRootArtifact & { signature: Hex }): Promise<CartApiListingRoot> => getWrappedData(
-      client.POST('/v1/cart/listing-roots', { body: toCartListingRootArtifactWire(artifact) }),
+      protectedClient.POST('/v1/cart/listing-roots', { body: toCartListingRootArtifactWire(artifact) }),
       'Rare API did not return the ingested Cart Listing Root.',
     ),
   };
@@ -146,7 +150,7 @@ export function createCartApiNamespace(
     },
     prepare: async (intent: CartCheckoutIntent): Promise<CartApiPreparedPurchase> => {
       const wire = await getWrappedData<CartApiPreparedPurchaseWire>(
-        client.POST('/v1/cart/checkout/prepare', {
+        protectedClient.POST('/v1/cart/checkout/prepare', {
           params: { query: { chainId, cartAddress: cartAddress() } },
           body: { paymentCurrency: intent.paymentCurrency, items: intent.items.map(toWireDraftItem) },
         }),

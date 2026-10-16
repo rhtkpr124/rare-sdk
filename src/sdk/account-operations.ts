@@ -200,6 +200,7 @@ export function createAccountClient(options: RareAccountClientOptions | RareAcco
   };
 
   return {
+    authenticatedFetch: authenticatedRequest,
     ...createAccountFeatures(async (path, init, requestOptions = {}, timeoutMilliseconds) => {
       return authenticatedRequest(joinAuthPath(apiBaseUrl, path), init, requestOptions, timeoutMilliseconds);
     }, applicationRequest),

@@ -31,6 +31,7 @@ import type { OfferNamespace } from './offer.js';
 import type { SwapNamespace } from './swap.js';
 import type { TokenNamespace } from './token.js';
 import type { CartNamespace } from './cart.js';
+import type { RareAccountClient } from './account.js';
 import type { RareUtilsNamespace } from './utils.js';
 
 /**
@@ -59,6 +60,8 @@ export type RareClientConfig = {
    * Optional fetch implementation for API-backed SDK methods.
    */
   apiFetch?: typeof fetch;
+  /** Share an existing account login with protected Cart API operations. Public reads stay anonymous. */
+  accountClient?: Pick<RareAccountClient, 'authenticatedFetch'>;
   /**
    * Optional Uniswap Trade API key used when token trades require the hosted
    * Uniswap route.
