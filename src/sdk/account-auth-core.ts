@@ -15,6 +15,13 @@ export function joinAuthPath(baseUrl: string, path: string): string {
   return `${baseUrl}/${path.replace(/^\/+/, '')}`;
 }
 
+/** The trailing slash prevents an /api credential from reaching /api-other. */
+export function isAccountRequestAuthority(target: URL, authority: URL): boolean {
+  const basePath = `${authority.pathname.replace(/\/+$/, '')}/`;
+  return target.origin === authority.origin && target.pathname.startsWith(basePath) &&
+    target.username === '' && target.password === '';
+}
+
 export function resolveSigningOrigin(apiBaseUrl: string, requested?: string, browserOrigin?: string): string {
   const origin = requested ?? browserOrigin ?? new URL(apiBaseUrl).origin;
   normalizeAuthBaseUrl(origin);

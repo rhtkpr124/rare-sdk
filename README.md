@@ -71,6 +71,24 @@ Each Listing carries a client-generated `listingSalt`; its complete EIP-712
 `listingDigest` is the immutable public identity referenced by Order Lines,
 Merkle artifacts, cancellation, fill state, and order-book APIs.
 
+Protected Cart requests reuse account authentication. Create an account client
+with your existing session store, then pass it to the chain client. This does not
+log in again or change the wallet used for transaction signatures.
+
+```ts
+const accountClient = createRareAccountClient({ apiBaseUrl, sessionStore });
+const rare = createRareClient({ publicClient, walletClient, apiBaseUrl, accountClient });
+```
+
+Listing preparation, publication, invalidation, and signed checkout preparation
+send the account's bearer token. Public catalog reads, Listing reads, and checkout
+quotes remain anonymous. The account's `authenticatedFetch` also works with the
+lower-level `createApiClient(apiBaseUrl, accountClient.authenticatedFetch)`.
+It refuses other API origins or base paths, omits cookies, follows no redirects,
+and does not replay a mutation after a failure. Both clients must use the same
+API base URL. `apiFetch` remains available for existing cookie-based integrations
+that do not supply an account client.
+
 ```ts
 const variants = await rare.cart.catalog.variants.search({
   nft: { contract: collectionAddress, tokenId },

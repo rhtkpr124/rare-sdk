@@ -5,7 +5,7 @@ import { isAddress } from 'viem';
 import { parseSiweMessage, validateSiweMessage } from 'viem/siwe';
 import { DEFAULT_RARE_API_BASE_URL } from '../data-access/base-url.js';
 import {
-  isRecord, joinAuthPath, normalizeAuthBaseUrl, parseAuthErrorCode, resolveSigningOrigin,
+  isAccountRequestAuthority, isRecord, joinAuthPath, normalizeAuthBaseUrl, parseAuthErrorCode, resolveSigningOrigin,
   RareAuthError, requirePositiveNumber, requireString,
 } from './account-auth-core.js';
 import { createMemoryAccountSessionStore, parseAccountSession } from './account-session-store.js';
@@ -182,6 +182,17 @@ export function createAccountClient(options: RareAccountClientOptions | RareAcco
   };
 
   return {
+    authenticatedFetch: async (input, init) => {
+      const pending = new Request(input, init);
+      const target = new URL(pending.url);
+      const authority = new URL(apiBaseUrl);
+      if (!isAccountRequestAuthority(target, authority)) throw new RareAuthError('request_authority_mismatch');
+      const token = await accessToken({ signal: pending.signal });
+      const headers = new Headers(pending.headers);
+      headers.set('Authorization', `Bearer ${token}`);
+      return fetchImpl(new Request(pending, { headers, redirect: 'error', credentials: 'omit',
+        signal: AbortSignal.any([pending.signal, AbortSignal.timeout(30_000)]) }));
+    },
     ...createAccountFeatures(async (path, init, requestOptions = {}, timeoutMilliseconds) => {
       const token = await accessToken(requestOptions);
       return applicationRequest(joinAuthPath(apiBaseUrl, path), { ...init, headers: { ...init.headers, Authorization: `Bearer ${token}` } }, requestOptions, timeoutMilliseconds);
