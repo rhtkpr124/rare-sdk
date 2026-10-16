@@ -108,8 +108,14 @@ describe('Cart functional core', () => {
       nft: { contract: cart, tokenId: 7n }, fulfillmentKind: 5,
       settlementCurrency: zeroAddress, unitPrice: 100n, quantity: 1n,
     }] }).isValid).toBe(true);
+    for (const fulfillmentKind of [2, 3] as const) {
+      expect(validateCartListingIntent({ seller, deadline: 2_000_000_000n, listings: [{
+        nft: { contract: cart, tokenId: 7n }, fulfillmentKind,
+        settlementCurrency: zeroAddress, unitPrice: 100n, quantity: 1n,
+      }] }).isValid).toBe(true);
+    }
     const invalidResolution = validateCartListingIntent({ seller, deadline: 2_000_000_000n, listings: [{
-      nft: { contract: cart, tokenId: 7n }, fulfillmentKind: 3,
+      nft: { contract: cart, tokenId: 7n }, fulfillmentKind: 4,
       settlementCurrency: zeroAddress, unitPrice: 100n, quantity: 1n,
     }] });
     expect(invalidResolution.isValid).toBe(false);

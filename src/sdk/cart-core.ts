@@ -75,7 +75,7 @@ export function validateCartListingIntent(intent: CartListingIntent): CartValida
     } else {
       if (!isAddress(listing.nft.contract)) issues.push(issue('invalid_address', `listings[${index}].nft.contract`, 'Listing NFT contract must be an address.'));
       if (listing.nft.tokenId < 0n) issues.push(issue('negative', `listings[${index}].nft.tokenId`, 'Listing NFT token ID cannot be negative.'));
-      if (listing.fulfillmentKind !== 5) issues.push(issue('invalid_fulfillment', `listings[${index}].fulfillmentKind`, 'NFT identity resolution requires ERC1155_MINT_TO fulfillment.'));
+      if (listing.fulfillmentKind !== 2 && listing.fulfillmentKind !== 3 && listing.fulfillmentKind !== 5) issues.push(issue('invalid_fulfillment', `listings[${index}].fulfillmentKind`, 'NFT identity resolution requires ERC721_TRANSFER, ERC1155_TRANSFER or ERC1155_MINT_TO fulfillment.'));
     }
     if (!isAddress(listing.settlementCurrency)) issues.push(issue('invalid_address', `listings[${index}].settlementCurrency`, 'Settlement currency must be an address.'));
     if (listing.unitPrice < 0n) issues.push(issue('negative', `listings[${index}].unitPrice`, 'Listing unit price cannot be negative.'));
