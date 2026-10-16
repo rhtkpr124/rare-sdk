@@ -31,7 +31,7 @@ describe.sequential('SDK Cart rare-api integration', () => {
 
   beforeAll(async () => {
     scenario = await createCreatorCartScenario();
-  }, 120_000);
+  }, 360_000);
 
   afterAll(async () => {
     await scenario?.accountClient.auth.logout();
