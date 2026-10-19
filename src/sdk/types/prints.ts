@@ -30,6 +30,8 @@ export type PrintsNamespace = {
   listings: {
     prepare: (input: PreparePrintListing) => Promise<PrintListingPreparation>;
     publish: (preparationId: string, artifact: CartListingRootArtifact & { signature: Hex }) => Promise<PrintListingPreparation>;
-    signAndPublish: (preparation: PrintListingPreparation) => Promise<{ preparation: PrintListingPreparation; signedArtifact: CartListingRootArtifact & { signature: Hex } }>;
+    signAndPublish: (preparation: PrintListingPreparation, options?: { autoApprove?: boolean }) => Promise<{
+      preparation: PrintListingPreparation; signedArtifact: CartListingRootArtifact & { signature: Hex }; approvalTxHash?: Hex;
+    }>;
   };
 };

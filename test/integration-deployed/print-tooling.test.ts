@@ -61,7 +61,8 @@ describe('print tooling through deployed Rare API', () => {
       const frozen = await rare.prints.listings.prepare({ optionId: option.id, seller: wallet.address,
         listingSalt: keccak256(toHex(randomUUID())), deadline: String(Math.floor(Date.now() / 1000) + 86_400),
         availableQuantity: '10', fulfillmentKind: 1 });
-      const published = await rare.prints.listings.signAndPublish(frozen);
+      const published = await rare.prints.listings.signAndPublish(frozen, { autoApprove: false });
+      expect(published.approvalTxHash).toBeUndefined();
       const entry = published.signedArtifact.entries[0];
       if (!entry) throw new Error('Published print Listing returned no Cart entry.');
       const publicDrop = await rare.prints.drops.get(created.id);
