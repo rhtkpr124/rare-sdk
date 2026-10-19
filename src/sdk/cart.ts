@@ -160,6 +160,7 @@ export function createCartNamespace(
     checkout: {
       receipt: api.checkout.receipt,
       authorize(preparation) { return authorizeCartCheckout(api, chainId, requireCart(), preparation); },
+      coinflow: api.checkout.coinflow,
       prepare(intent) {
         const validation = validateCartCheckoutIntent(intent);
         if (!validation.isValid) throw new CartPreparationError('invalid_intent', 'Cart checkout intent is invalid.', validation.issues);
@@ -233,7 +234,18 @@ async function authorizeCartCheckout(
 ) {
   const validation = validateCartCheckoutPreparationForPurchase(preparation, { chainId: BigInt(chainId), cart });
   if (!validation.isValid) throw new CartPreparationError('invalid_preparation', 'Cart checkout preparation cannot be authorized.', validation.issues);
-  const preparedPurchase = await api.checkout.prepare(preparation.preparationReference);
+  const delivery = preparation.intent.delivery;
+  const idempotencyKey = preparation.idempotencyKey;
+  if (delivery !== undefined && idempotencyKey === undefined) {
+    throw new CartPreparationError('invalid_preparation', 'Delivery checkout requires its original idempotency key.');
+  }
+  const preparedPurchase = await api.checkout.prepare(delivery === undefined || idempotencyKey === undefined
+    ? preparation.preparationReference
+    : { ...preparation.intent, delivery, idempotencyKey });
+  if (preparedPurchase.executePurchase.order.paymentAmount > preparation.paymentAmount) {
+    throw new CartPreparationError('quote_changed', 'The checkout total increased. Review a fresh quote before purchasing.');
+  }
+
   const swapValidation = validateCartApprovedSwapOutputs(preparation.lines, preparedPurchase.executePurchase.lines);
   if (!swapValidation.isValid) {
     throw new CartPreparationError('quote_changed', 'The quoted token outputs changed. Review a fresh quote before purchasing.', swapValidation.issues);
