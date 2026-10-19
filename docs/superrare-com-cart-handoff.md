@@ -5,60 +5,7 @@ This handoff is for implementing Cart commerce, eligibility, and print tooling i
 policy. Do not introduce new cart requests through `gql-api`, direct database
 access, or direct Typesense access.
 
-The claims and print interfaces require the corresponding backend migrations,
-endpoints, and pipeline workers. Their presence in SDK source does not establish
-that a particular Rare API deployment supports them.
-
-## Current handoff status
-
-Verification on October 19, 2026 used SDK revision `fff36d7` from
-[SDK PR #24](https://github.com/superrare/rare-sdk/pull/24), based on the
-[claims SDK PR #23](https://github.com/superrare/rare-sdk/pull/23).
-[CLI PR #140](https://github.com/superrare/rare-cli/pull/140) pins that SDK revision
-and sits above CLI claims PR #139. Later documentation-only commits do not change
-the tested SDK behavior.
-
-The owning monorepo changes are split across persistence
-[#1975](https://github.com/superrare/superrare-monorepo/pull/1975), creator and
-checkout APIs [#1976](https://github.com/superrare/superrare-monorepo/pull/1976),
-and fulfillment [#1978](https://github.com/superrare/superrare-monorepo/pull/1978).
-PR #1978 remains the backend deployment tip. The frontend migration is not part
-of those changes.
-
-The last SDK and CLI live runs targeted the
-[Sepolia feature API](https://rare-api-367a-25x4ysoo5a-ue.a.run.app/). Account
-authentication and uploads succeeded, but `POST /v1/prints/drops` returned HTTP
-400 for the new `productionUploadKey` contract. Rebuild the backend before
-rerunning the full print flow. No checkout payment or physical provider order
-was submitted by those runs.
-
-Default verification passed 532 SDK tests, 206 CLI tests, and 1,497 Rare API tests.
-The SDK retained 14 existing skips, and the CLI retained three. Real PostgreSQL,
-GCS, and Redis checks passed for ownership, private uploads, immutable snapshots,
-and configuration conflicts. The additional signed-download test could not sign
-with local user ADC. Development runtime signing permissions were verified;
-no IAM changes were needed. Actual deployed signed-download verification remains
-pending the rebuild.
-
-## Check the application and deployment versions
-
-Before changing the frontend, inspect its dependency pins and installed exports.
-The existing application has used published `@rareprotocol/rare-sdk` alongside
-a separately git-pinned `@rareprotocol/cart-sdk` alias. Do not assume either
-installed version includes the authenticated Cart and eligibility interfaces.
-
-Use an SDK revision containing this PR and its Cart dependencies. Record the
-tested SDK revision, Rare API deployment, chain, and configured Cart address.
-Do not upgrade unrelated SDK consumers as an incidental change.
-
-[Superrare-com migration PR #2197](https://github.com/superrare/superrare-monorepo/pull/2197)
-explicitly consolidates that application onto one SDK dependency and removes the
-temporary alias. Its migration catalog records the import audit and NFT flow
-verification. It pins SDK revision `59c296e` from
-[wallet-adapter PR #25](https://github.com/superrare/rare-sdk/pull/25), which adds
-the supported `/wallet` entry point for direct viem writes outside SDK
-namespaces. High-level SDK writes apply wallet compatibility handling
-automatically. Neither connect-com nor rare-api is migrated by that PR.
+## Use the public SDK interfaces
 
 Check the public interfaces in these files rather than importing SDK internals:
 
@@ -76,6 +23,8 @@ Use the application's existing viem public and wallet clients. Supply the same
 Rare API base URL to its account and chain clients:
 
 ```typescript
+import { createRareAccountClient, createRareClient } from '@rareprotocol/rare-sdk';
+
 const accountClient = createRareAccountClient({ apiBaseUrl, sessionStore });
 const rare = createRareClient({
 	publicClient,
@@ -89,6 +38,12 @@ Both constructors are public SDK exports. Reuse the existing session store
 instead of prompting for a second login. Wallet connection alone does not
 authenticate an account. Account identity and the wallet used for transaction
 signatures are separate inputs.
+
+Pass the original viem wallet client to `createRareClient`. SDK namespace writes
+apply wallet compatibility handling automatically. For direct viem writes outside
+SDK namespaces, use `createRareWalletClient({ publicClient, walletClient })` from
+`@rareprotocol/rare-sdk/wallet`. Do not import private SDK modules or apply a
+second compatibility wrapper to SDK namespace writes.
 
 `accountClient.authenticatedFetch` supplies protected API requests with account
 credentials and handles session renewal. It is restricted to its configured
@@ -528,11 +483,11 @@ cases against a compatible backend:
 Run application typechecking, lint, and browser flow checks. Run the SDK's
 relevant checks after changing its interface. The dedicated live eligibility
 suite is `npm run test:integration:eligibility`; it needs a test deployment with
-the new backend and the dedicated test account and RPC configuration. Do not run
-funded write tests against production or report a source-only check as live
-integration coverage.
+Cart and eligibility endpoints, a dedicated test account, and RPC configuration.
+Do not run funded write tests against production or report a source-only check
+as live integration coverage.
 
-For the new print methods, run `npm run test:integration:prints` in this repo and
+For print methods, run `npm run test:integration:prints` in this repo and
 `npm run test:prints:e2e` in rare-cli against the same compatible feature API.
 Set `RARE_ACCOUNT_TEST_API_URL` explicitly for the SDK and `RARE_API_BASE_URL`
 explicitly for the CLI. Use registered dedicated test accounts and Sepolia RPC
@@ -546,6 +501,3 @@ The CLI suite covers its corresponding
 commands through delivery preview and signed Order preparation. Neither suite
 pays or submits a physical Order. A separate funded sandbox fulfillment run is required to prove provider
 submission and the private signed download end to end.
-
-At handoff, report the SDK revision, API deployment, chain, test commands and
-results, and any endpoint still missing from the SDK or backend.
