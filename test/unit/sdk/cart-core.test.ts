@@ -148,6 +148,12 @@ describe('Cart functional core', () => {
   });
 
   it('validates seller-facing Listing intent without contract fulfillment fields', () => {
+    const gated = { seller, deadline: 2_000_000_000n, eligibilityRuleId: 'b299b521-0f42-4b31-8b37-d686afaf7196',
+      listings: [{ sku: bytes32('a'), settlementCurrency: zeroAddress, unitPrice: 100n, quantity: 1n }] };
+    expect(validateCartListingIntent(gated)).toEqual({ isValid: true, value: gated });
+    const invalidRule = validateCartListingIntent({ ...gated, eligibilityRuleId: 'not-a-rule' });
+    expect(invalidRule.isValid).toBe(false);
+    if (!invalidRule.isValid) expect(invalidRule.issues).toContainEqual(expect.objectContaining({ field: 'eligibilityRuleId' }));
     expect(validateCartListingIntent({ seller, deadline: 2_000_000_000n, listings: [{
       sku: bytes32('a'), settlementCurrency: zeroAddress, unitPrice: 100n, quantity: 1n,
     }] }).isValid).toBe(true);

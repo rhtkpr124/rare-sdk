@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createRareClient } from '../../../src/sdk/client.js';
 import { createCreatorCartScenario } from '../../helpers/cart-creator-fixture.js';
 import { loadDotEnv } from '../../helpers/env.js';
+import { zeroAddress } from 'viem';
 
 loadDotEnv();
 
@@ -24,6 +25,16 @@ describe.sequential('SDK eligibility against the deployed Rare API', () => {
       expect(rule.enabled).toBe(true);
       expect(rule.definition.kind).toBe('PRIMARY_SALE');
       expect((await scenario.rare.eligibility.listRules()).some(candidate => candidate.id === rule.id)).toBe(true);
+      const item = scenario.listingIntent.listings[0];
+      if (item === undefined) throw new Error('Eligibility fixture requires a Listing intent.');
+      const preparation = await scenario.rare.cart.listing.prepare({ ...scenario.listingIntent,
+        listings: [item], eligibilityRuleId: rule.id });
+      const published = await scenario.rare.cart.listing.publish({ preparation });
+      const gated = published.signedArtifact.entries[0];
+      if (gated === undefined) throw new Error('Gated publication returned no Listing.');
+      const preview = await scenario.rare.cart.api.checkout.preview({ paymentCurrency: zeroAddress,
+        items: [{ listingDigest: gated.listingDigest, quantity: 1n, recipient: scenario.seller.address }] });
+      await expect(scenario.rare.cart.api.checkout.prepare(preview.preparationReference)).rejects.toThrow();
       const scope = { chainId: String(scenario.chainId), cartAddress: scenario.cart,
         listingDigest: created.listingDigest };
       await scenario.rare.eligibility.setListingRequirement({ ...scope, ruleId: rule.id });

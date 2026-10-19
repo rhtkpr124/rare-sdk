@@ -133,6 +133,7 @@ export function createCartApiNamespace(
     publish: async (intent: CartListingIntent, artifact: CartListingRootArtifact & { signature: Hex }): Promise<CartApiListingRoot> => getWrappedData(
       protectedClient.POST('/v1/cart/listing-roots', { body: {
         artifact: toCartListingRootArtifactWire(artifact),
+        ...(intent.eligibilityRuleId === undefined ? {} : { eligibilityRuleId: intent.eligibilityRuleId }),
         intent: {
           seller: intent.seller,
           deadline: intent.deadline.toString(),

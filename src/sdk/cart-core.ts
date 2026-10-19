@@ -75,6 +75,9 @@ export function validateCartCheckoutIntent(intent: CartCheckoutIntent): CartVali
 export function validateCartListingIntent(intent: CartListingIntent): CartValidationResult<CartListingIntent> {
   const issues: CartValidationIssue[] = [];
   if (!isAddress(intent.seller)) issues.push(issue('invalid_address', 'seller', 'Listing seller must be an address.'));
+  if (intent.eligibilityRuleId !== undefined && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(intent.eligibilityRuleId)) {
+    issues.push(issue('invalid_rule_id', 'eligibilityRuleId', 'Eligibility rule ID must be a UUID.'));
+  }
   if (intent.deadline <= 0n) issues.push(issue('non_positive', 'deadline', 'Listing deadline must be positive.'));
   if (intent.listings.length === 0) issues.push(issue('invalid_length', 'listings', 'At least one Listing is required.'));
   intent.listings.forEach((listing, index) => {
