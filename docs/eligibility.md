@@ -33,6 +33,10 @@ await rare.eligibility.setListingRequirement({
 
 Listings are open unless they explicitly require a rule. Checkout reserves and consumes claims on the server. Clients cannot release a signed Order reservation or mark a claim consumed.
 
+For a new gated Listing, pass `eligibilityRuleId` in `rare.cart.listing.prepare` and publish that preparation. Publication attaches the rule in the same database transaction as the Listing. Publishing an open Listing and attaching a requirement afterward cannot revoke Orders signed during that gap.
+
+For `CURRENT_HOLDER`, supply explicit `source.tokenIds` to initialize claims for existing holders at a confirmed block. Collection-wide rules without token IDs apply to future events only. Historical purchase backfills are not included.
+
 The deployed integration suite is `test/e2e-live/sdk/eligibility.test.ts`. It creates its own collection and SKUs through the existing creator fixture. Run it only against a test deployment with the eligibility migrations and endpoints installed:
 
 ```sh

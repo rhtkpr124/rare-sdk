@@ -203,6 +203,8 @@ export type CartListingIntent = {
   seller: Address;
   listings: readonly CartListingIntentItem[];
   deadline: bigint;
+  /** Attach the owned rule atomically when publishing every Listing in this root. */
+  eligibilityRuleId?: string;
 };
 
 export type CartListingPreviewWire = {
