@@ -62,6 +62,8 @@ Batch listings and release configuration are available through
 `rare.listing.batch` and `rare.listing.release`; ERC-1155 collection,
 listing, and offer behavior is nested under its corresponding intent namespace.
 
+See [Eligibility client](docs/eligibility.md) for creator rules, SKU claims, and Listing requirements.
+
 Cart commerce is grouped under `rare.cart.catalog`, `rare.cart.listing`, and
 `rare.cart.checkout`. Sellers select a Rare API-generated SKU from the public
 catalogue, prepare and publish Listings, and buyers prepare and purchase a
