@@ -3,12 +3,12 @@ import { randomUUID } from 'node:crypto';
 import { createWalletClient, http, isHex, zeroAddress } from 'viem';
 import { sepolia } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
-import { createRareClient } from '../../src/sdk/client.js';
+import { createRareClient } from '../../dist/sdk/index.js';
 import { getCartAddress } from '../../src/contracts/addresses.js';
 import { hashCartListing } from '../../src/sdk/cart-core.js';
 import { createTestSepoliaPublicClient, getTestRpcUrl } from './liveViem.js';
 
-export async function createCreatorCartScenario() {
+export async function createCreatorCartScenario(options: { tokenCount?: number; eligibility?: boolean } = {}) {
   const apiBaseUrl = process.env.RARE_API_BASE_URL;
   const rawKeys = process.env.E2E_SELLER_PRIVATE_KEYS;
   const key = process.env.RARE_ACCOUNT_TEST_PRIVATE_KEY ?? rawKeys?.split(/[,\s]+/u).find(Boolean);
@@ -27,12 +27,14 @@ export async function createCreatorCartScenario() {
   try {
     await rare.profile.get();
     const image = await rare.upload(await downloadTestImage(), 'cart-artwork.jpg', { contentType: 'image/jpeg' });
-    const collection = await rare.collection.deploy.erc721({ name: `SDK Cart ${runId}`, symbol: 'SCART', maxTokens: 2 });
+    if (options.eligibility === true) await rare.eligibility.listRules();
+    const tokenCount = options.tokenCount ?? 2;
+    const collection = await rare.collection.deploy.erc721({ name: `SDK Cart ${runId}`, symbol: 'SCART', maxTokens: tokenCount });
     const tokenUri = `data:application/json,${encodeURIComponent(JSON.stringify({ name: `SDK Cart ${runId}`, image: image.url }))}`;
-    const tokens = [
-      await rare.collection.mint({ contract: collection.contract, tokenUri }),
-      await rare.collection.mint({ contract: collection.contract, tokenUri }),
-    ];
+    const tokens = await Array.from({ length: tokenCount }).reduce<Promise<Awaited<ReturnType<typeof rare.collection.mint>>[]>>(
+      async (pending) => [...await pending, await rare.collection.mint({ contract: collection.contract, tokenUri })],
+      Promise.resolve([]),
+    );
     const createdProduct = await rare.cart.catalog.products.create({
       slug: `sdk-cart-${runId}`, metadata: { title: 'SDK Cart integration', source: 'rare-sdk', runId },
     });

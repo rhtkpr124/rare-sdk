@@ -40,7 +40,11 @@ For `CURRENT_HOLDER`, supply explicit `source.tokenIds` to initialize claims for
 The deployed integration suite is `test/e2e-live/sdk/eligibility.test.ts`. It creates its own collection and SKUs through the existing creator fixture. Run it only against a test deployment with the eligibility migrations and endpoints installed:
 
 ```sh
-npx vitest run test/e2e-live/sdk/eligibility.test.ts
+npm run test:integration:eligibility
 ```
 
 The suite requires the same dedicated account, API, and Sepolia RPC configuration as the Cart integration tests. A missing deployment or credentials fails the selected suite rather than silently skipping it.
+
+The lifecycle case also requires a distinct registered buyer in `E2E_BUYER_PRIVATE_KEYS`. It uses the built SDK, creates three NFTs and creator-owned SKUs, and purchases a source NFT through Cart. It waits for an `AVAILABLE` claim, checks `RESERVED` status and Order reuse across retry keys, then executes a gated reward purchase and waits for `CONSUMED`. A second reward remains in stock, and checkout must reject it because no unspent claim remains. The rule is scoped to the source token so reward purchases cannot issue replacement claims.
+
+These are live Sepolia writes. Each purchase has a test budget of 0.001 ETH before network gas. The creator rule is disabled and account sessions are revoked during cleanup. Missing eligibility endpoints fail before collection deployment.
