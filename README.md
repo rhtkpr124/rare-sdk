@@ -63,6 +63,7 @@ Batch listings and release configuration are available through
 listing, and offer behavior is nested under its corresponding intent namespace.
 
 See [Eligibility client](docs/eligibility.md) for creator rules, SKU claims, and Listing requirements.
+For frontend implementation, use [Build SuperRare cart features through the SDK](docs/superrare-com-cart-handoff.md).
 
 Cart commerce is grouped under `rare.cart.catalog`, `rare.cart.listing`, and
 `rare.cart.checkout`. Sellers select a Rare API-generated SKU from the public
