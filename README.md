@@ -178,10 +178,25 @@ The package intentionally exposes only these supported entry points:
 | `@rareprotocol/rare-sdk/contracts` | contract addresses + ABIs per chain |
 | `@rareprotocol/rare-sdk/utils` | public helpers |
 | `@rareprotocol/rare-sdk/data-access` | typed Rare API client and errors |
+| `@rareprotocol/rare-sdk/wallet` | compatible viem wallet client for direct writes |
 
 Implementation modules, including planners, shell helpers, individual ABI
 files, and data-access internals, are private. Consumers should use only the
-documented root, `client`, `contracts`, `utils`, and `data-access` entry points.
+documented root, `client`, `contracts`, `utils`, `data-access`, and `wallet` entry points.
+
+For direct viem writes outside SDK namespaces, `createRareWalletClient` from
+`@rareprotocol/rare-sdk/wallet` applies the same Reown wallet compatibility
+handling used internally by `createRareClient`:
+
+```ts
+import { createRareWalletClient } from '@rareprotocol/rare-sdk/wallet';
+
+const compatibleWallet = createRareWalletClient({ publicClient, walletClient });
+```
+
+Pass the original wallet to `createRareClient`. High-level SDK writes already
+apply this handling. The adapter retries only the recognized CAIP chain-ID
+conversion error through `wallet_sendCalls`, not ordinary failures or rejections.
 
 Catchable approval errors, including `MinterApprovalRequiredError`, are exported
 from the root package and `@rareprotocol/rare-sdk/client`.

@@ -18,7 +18,12 @@ vi.mock('viem/actions', async (importOriginal) => ({
   ...walletActions,
 }));
 
-import { createWalletClientWithCallsFallback } from '../src/sdk/transaction-fallback-shell.js';
+import { createRareWalletClient } from '../src/sdk/wallet.js';
+
+const createWalletClientWithCallsFallback = <Wallet extends WalletClient>(
+  publicClient: PublicClient,
+  walletClient: Wallet,
+): Wallet => createRareWalletClient({ publicClient, walletClient });
 
 const contractAddress = '0x0000000000000000000000000000000000000001';
 const account = '0x0000000000000000000000000000000000000002';
