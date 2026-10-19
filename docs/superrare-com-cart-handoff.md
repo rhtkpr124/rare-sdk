@@ -447,6 +447,9 @@ pay again while fulfillment is pending.
 
 ## Extend missing SDK capabilities instead of bypassing them
 
+If integration requires backend or SDK changes, send Keegan a DM with the use
+case and the missing or incorrect behavior.
+
 The account shipping, print authoring, delivery checkout, card session, and
 fulfillment Order methods above now exist. The Cart catalog supports the creator
 operations listed above, but does not provide saved carts or every Product edit.
