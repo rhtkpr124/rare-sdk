@@ -32,6 +32,7 @@ import type { SwapNamespace } from './swap.js';
 import type { TokenNamespace } from './token.js';
 import type { CartNamespace } from './cart.js';
 import type { EligibilityNamespace } from './eligibility.js';
+import type { PrintsNamespace } from './prints.js';
 import type { RareUtilsNamespace } from './utils.js';
 
 /**
@@ -183,6 +184,7 @@ export type RareChainFeatures = {
   currency: CurrencyNamespace;
   cart: CartNamespace;
   eligibility: EligibilityNamespace;
+  prints: PrintsNamespace;
 }
 
 export type { IntegerInput };

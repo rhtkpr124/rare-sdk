@@ -134,6 +134,7 @@ export type CartNamespace = {
   };
   checkout: {
     prepare: (intent: CartCheckoutIntent) => Promise<CartCheckoutPreparation>;
+    coinflow: CartApiNamespace['checkout']['coinflow'];
     purchase: (params: CartPurchaseParams) => Promise<CartPurchaseResult>;
     execute: (params: CartCheckoutParams) => Promise<CartCheckoutResult>;
   };

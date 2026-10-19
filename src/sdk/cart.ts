@@ -153,6 +153,7 @@ export function createCartNamespace(
       invalidateNonce() { return writeSimple('invalidateListingNonce'); },
     },
     checkout: {
+      coinflow: api.checkout.coinflow,
       prepare(intent) {
         const validation = validateCartCheckoutIntent(intent);
         if (!validation.isValid) throw new CartPreparationError('invalid_intent', 'Cart checkout intent is invalid.', validation.issues);
@@ -212,7 +213,17 @@ async function purchaseCartCheckout(
     }
   }
 
-  const preparedPurchase = await api.checkout.prepare(params.preparation.preparationReference);
+  const delivery = params.preparation.intent.delivery;
+  const idempotencyKey = params.preparation.idempotencyKey;
+  if (delivery !== undefined && idempotencyKey === undefined) {
+    throw new CartPreparationError('invalid_preparation', 'Delivery checkout requires its original idempotency key.');
+  }
+  const preparedPurchase = await api.checkout.prepare(delivery === undefined || idempotencyKey === undefined
+    ? params.preparation.preparationReference
+    : { ...params.preparation.intent, delivery, idempotencyKey });
+  if (preparedPurchase.executePurchase.order.paymentAmount > params.preparation.paymentAmount) {
+    throw new CartPreparationError('quote_changed', 'The checkout total increased. Review a fresh quote before purchasing.');
+  }
   const swapValidation = validateCartApprovedSwapOutputs(params.preparation.lines, preparedPurchase.executePurchase.lines);
   if (!swapValidation.isValid) {
     throw new CartPreparationError('quote_changed', 'The quoted token outputs changed. Review a fresh quote before purchasing.', swapValidation.issues);

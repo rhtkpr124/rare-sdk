@@ -5,6 +5,8 @@ import type { CreatorPost, CreatorPostComment, CreatePostInput } from '../posts-
 import type { ArtworkFavorite, FavoriteArtworkInput, FavoritesListOptions } from '../favorites-core.js';
 import type { SearchPageResponse } from '../api.js';
 import type { UserSelector } from '../user-core.js';
+import type { ShippingAddressesNamespace } from './shipping-addresses.js';
+import type { AccountOrdersNamespace } from './orders.js';
 /** Sensitive credentials. Never print this object in logs or status output. */
 export type RareAccountSession = {
   revision: string;
@@ -121,6 +123,8 @@ export type RareAccountClient = {
    * Pass the account client to createRareClient({ accountClient }) to share login with Cart.
    */
   authenticatedFetch: typeof globalThis.fetch;
+  shippingAddresses: ShippingAddressesNamespace;
+  orders: AccountOrdersNamespace;
   messaging: RareMessagingClient;
   notifications: RareNotificationsClient;
   drops: {

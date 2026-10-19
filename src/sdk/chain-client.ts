@@ -21,6 +21,7 @@ import { createCollectionNamespace } from './collection.js';
 import { createUtilsNamespace } from './utils.js';
 import { createCartNamespace } from './cart.js';
 import { createEligibilityNamespace } from './eligibility.js';
+import { createPrintsNamespace } from './prints.js';
 import { buildNftUniversalTokenId } from './nft-core.js';
 import {
   createErc1155CollectionNamespace,
@@ -184,6 +185,7 @@ export function createChainClient(config: RareClientConfig, api = createRareApi(
     currency: createCurrencyNamespace(publicClient, chain),
     cart: createCartNamespace(publicClient, runtimeConfig, chain, chainId, addresses),
     eligibility: createEligibilityNamespace(runtimeConfig),
+    prints: createPrintsNamespace(runtimeConfig),
     search: {
       async liquidEditions(params = {}): ReturnType<RareClient['search']['liquidEditions']> {
         assertNoClientChainOverride(params, 'rare.search.liquidEditions', chain);
