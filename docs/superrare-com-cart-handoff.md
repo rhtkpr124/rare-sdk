@@ -45,8 +45,16 @@ installed version includes the authenticated Cart and eligibility interfaces.
 
 Use an SDK revision containing this PR and its Cart dependencies. Record the
 tested SDK revision, Rare API deployment, chain, and configured Cart address.
-Do not upgrade unrelated SDK consumers or remove the compatibility alias as
-an incidental change.
+Do not upgrade unrelated SDK consumers as an incidental change.
+
+[Superrare-com migration PR #2197](https://github.com/superrare/superrare-monorepo/pull/2197)
+explicitly consolidates that application onto one SDK dependency and removes the
+temporary alias. Its migration catalog records the import audit and NFT flow
+verification. It pins SDK revision `59c296e` from
+[wallet-adapter PR #25](https://github.com/superrare/rare-sdk/pull/25), which adds
+the supported `/wallet` entry point for direct viem writes outside SDK
+namespaces. High-level SDK writes apply wallet compatibility handling
+automatically. Neither connect-com nor rare-api is migrated by that PR.
 
 Check the public interfaces in these files rather than importing SDK internals:
 
