@@ -1,13 +1,44 @@
 # Build SuperRare cart features through the SDK
 
-This handoff is for implementing cart commerce and eligibility in
+This handoff is for implementing Cart commerce, eligibility, and print tooling in
 `superrare-com`. Use the Rare SDK for client behavior and Rare API for backend
 policy. Do not introduce new cart requests through `gql-api`, direct database
 access, or direct Typesense access.
 
-The claims interface in this PR requires the corresponding backend migrations,
-endpoints, and pipeline workers. Its presence in SDK source does not establish
-that a particular Rare API deployment supports it.
+The claims and print interfaces require the corresponding backend migrations,
+endpoints, and pipeline workers. Their presence in SDK source does not establish
+that a particular Rare API deployment supports them.
+
+## Current handoff status
+
+Verification on October 19, 2026 used SDK revision `fff36d7` from
+[SDK PR #24](https://github.com/superrare/rare-sdk/pull/24), based on the
+[claims SDK PR #23](https://github.com/superrare/rare-sdk/pull/23).
+[CLI PR #140](https://github.com/superrare/rare-cli/pull/140) pins that SDK revision
+and sits above CLI claims PR #139. Later documentation-only commits do not change
+the tested SDK behavior.
+
+The owning monorepo changes are split across persistence
+[#1975](https://github.com/superrare/superrare-monorepo/pull/1975), creator and
+checkout APIs [#1976](https://github.com/superrare/superrare-monorepo/pull/1976),
+and fulfillment [#1978](https://github.com/superrare/superrare-monorepo/pull/1978).
+PR #1978 remains the backend deployment tip. The frontend migration is not part
+of those changes.
+
+The last SDK and CLI live runs targeted the
+[Sepolia feature API](https://rare-api-367a-25x4ysoo5a-ue.a.run.app/). Account
+authentication and uploads succeeded, but `POST /v1/prints/drops` returned HTTP
+400 for the new `productionUploadKey` contract. Rebuild the backend before
+rerunning the full print flow. No checkout payment or physical provider order
+was submitted by those runs.
+
+Default verification passed 532 SDK tests, 206 CLI tests, and 1,497 Rare API tests.
+The SDK retained 14 existing skips, and the CLI retained three. Real PostgreSQL,
+GCS, and Redis checks passed for ownership, private uploads, immutable snapshots,
+and configuration conflicts. The additional signed-download test could not sign
+with local user ADC. Development runtime signing permissions were verified;
+no IAM changes were needed. Actual deployed signed-download verification remains
+pending the rebuild.
 
 ## Check the application and deployment versions
 
@@ -27,6 +58,9 @@ Check the public interfaces in these files rather than importing SDK internals:
 - [`src/sdk/types/cart.ts`](../src/sdk/types/cart.ts)
 - [`src/sdk/types/cart-api.ts`](../src/sdk/types/cart-api.ts)
 - [`src/sdk/types/eligibility.ts`](../src/sdk/types/eligibility.ts)
+- [`src/sdk/types/prints.ts`](../src/sdk/types/prints.ts)
+- [`src/sdk/types/shipping-addresses.ts`](../src/sdk/types/shipping-addresses.ts)
+- [`src/sdk/types/orders.ts`](../src/sdk/types/orders.ts)
 
 ## Share account authentication with the chain client
 
@@ -67,7 +101,7 @@ forward requests, but it must not become another eligibility or fee engine.
 
 Use `rare.cart.catalog.products.search/get` and
 `rare.cart.catalog.variants.search` for public Product and SKU discovery.
-Use `rare.cart.listing.search/get` for seller-authorized offers. Check each
+Use `rare.cart.listing.search/get` for seller-authorized Listings. Check each
 response's pagination rather than treating the first page as complete inventory.
 
 Keep Product presentation, SKU identity, and Listing terms separate. NFT
@@ -224,11 +258,134 @@ holder a second spendable right. Show a pending or unavailable state until the
 backend resolves the existing Order. Claim expiration and routing quote
 expiration are different deadlines.
 
+## Build the print creator flow
+
+Use the authenticated `rare.prints` methods rather than component-local Rare API
+requests. Keep platform fee rules, provider credentials, and administrative
+configuration out of creator controls.
+
+1. Load paper and size choices with `rare.prints.specifications.list()`.
+2. Upload the master with
+   `accountClient.uploads.upload(file, filename, { access: 'private' })`.
+3. Upload display photos through the same uploader with `access: 'public'`.
+4. Create the standalone draft with `rare.prints.drops.create`. Supply
+   `print.productionUploadKey` from the private result and `print.images` from
+   public upload URLs. Do not supply `productionImageUri` for a new standalone
+   print.
+5. Call `rare.prints.options.configure(dropId, { displayPriceUsdCents })` for
+   pricing and the production estimate. Current print Listings settle in USDC;
+   this does not restrict the buyer's supported payment currencies.
+6. Prepare the frozen terms with `rare.prints.listings.prepare`, then call
+   `rare.prints.listings.signAndPublish(preparation, { autoApprove: false })`.
+   One UI action can await both signing and publication, then redirect to the
+   public print page.
+
+The standard upload limit is 250 MiB. Print attachment accepts JPEG and PNG
+uploads. New drafts and photo edits accept at most four supplemental photos;
+historical drops with eight photos remain readable. Display only public
+supplemental media through Imgix transformations. Do not put a private master
+reference or a signed provider download URL into a public image component.
+
+Rare API verifies durable upload ownership and freezes the production object
+generation. After payment is indexed and fulfillment is leased, it generates a
+six-day download URL for Prodigi. Retries retain the provider idempotency key
+and obtain a fresh URL. Neither the frontend nor the SDK creates these URLs.
+
+Use `rare.prints.drops.listMine/getMine` for creator management and
+`rare.prints.drops.update` for names, descriptions, tags, and display photos.
+Production file and specification edits are allowed only before pricing is
+configured. Later physical changes require a replacement drop and SKU. Price
+changes require freshly prepared and signed Listing terms. Existing paid Orders
+keep their original fulfillment snapshots.
+
+NFT transfer fulfillments can require collection approval. Handle
+`NftApprovalRequiredError` with explicit consent before retrying
+`signAndPublish` with `autoApprove: true`. Preserve any returned `approvalTxHash`.
+An `ApprovalSideEffectError` means the approval may remain active even though
+the later signature or publication failed.
+
+Use `rare.prints.drops.get/activity` for public detail and activity reads, and
+`rare.prints.releases.list({ universalTokenId })` for linked-artwork discovery.
+The older NFT-linked print-release implementation remains separate.
+
+## Reuse account shipping and generic checkout
+
+Use the same `accountClient` that exposes `profile.get/update`:
+
+- `shippingAddresses.list()` retrieves the private address book.
+- `shippingAddresses.save({ id, label, details, makeDefault })` creates or updates
+  a stable address UUID and can select the default.
+- `shippingAddresses.delete(id)` removes an entry.
+
+Saving requires explicit user consent. Passing delivery details to checkout does
+not save them. Load the default saved address into an editable summary and offer
+a change action. Use `accountClient.profile.get()` to prefill contact email when
+available; never expose that private email through public profile data.
+
+Prints use `rare.cart.checkout`, not a separate print payment engine. Add either
+`delivery: { savedAddressId }` or `delivery: { recipientDetails }` to the usual
+intent. Current delivery checkout supports one print with quantity one, not
+mixed or multi-print carts.
+
+Call `rare.cart.checkout.prepare(intent)` to get the unsigned preview. Display
+its `breakdown.displayPrice`, `shipping`, `networkFee`, and `total` when present.
+The current print breakdown is computed from settlement lines and the configured
+print price. Do not treat it as a converted breakdown in the buyer's payment
+currency. Current print Listings settle in USDC; format the breakdown separately
+from the signed Order's payment amount. Do not assume `breakdown.total` equals
+`paymentAmount` for ETH or RARE payment. An explicitly currency-tagged or
+converted breakdown needs backend support before displaying those components
+in the selected payment currency.
+
+Retain the complete preparation, including its `idempotencyKey` and delivery intent, for
+`rare.cart.checkout.purchase({ preparation, autoApprove })` and recovery.
+
+The lower-level `rare.cart.api.checkout.prepare` accepts the full delivery draft
+and its original idempotency key. A delivery preview reference alone cannot
+finalize checkout because previews do not cache postal data. Do not generate a
+new idempotency key merely because a request timed out or the buyer retries.
+If the finalized total increases, the SDK rejects execution and requires a fresh
+review rather than silently raising the spending cap.
+
+For cards, call `rare.cart.checkout.coinflow` with the delivery draft and an
+idempotency key. It returns the provider session and prepared Cart Order for the
+card UI. Card checkout requires USDC as its payment currency. Keep card setup
+and crypto execution under one checkout UI, and do not expose provider session
+credentials in logs.
+
+## Recover Orders and display fulfillment progress
+
+Use `accountClient.orders.list({ after, take })` for `{ data, nextCursor }` pages,
+and `accountClient.orders.get(cartOrderId)` for one account-owned fulfillment
+Order. The identifier is the Cart Order's bytes32 ID, not an internal fulfillment
+UUID or provider Order ID. These methods do not include legacy NFT purchase
+history and do not return private postal snapshots.
+
+Keep payment state separate from each line's fulfillment state. Fulfillment
+`COMPLETED` means the provider accepted the Order; it does not mean shipped or
+delivered. Shipment tracking is not implemented by these methods.
+
+Persist enough account-scoped recovery state to reconnect a confirmed payment
+to its Cart Order. Poll stored backend status with the application's query
+library. Backend workers own submission, retries, and reconciliation, so closing
+the page must not be the mechanism that loses or releases an Order. Do not claim
+provider confirmation from the transaction receipt alone, or ask the buyer to
+pay again while fulfillment is pending.
+
 ## Extend missing SDK capabilities instead of bypassing them
 
-The high-level Cart catalog interface is read-oriented. Do not assume it also
-exposes Product mutations, saved carts, shipping addresses, print configuration,
-card payment sessions, or provider fulfillment status.
+The account shipping, print authoring, delivery checkout, card session, and
+fulfillment Order methods above now exist. The high-level Cart catalog interface
+remains read-oriented; do not assume it exposes Product mutations or saved carts.
+Mixed delivery carts and shipment tracking remain unsupported.
+
+The print-specific Listing preparation request does not currently expose
+`eligibilityRuleId`. Do not bypass its fulfillment preparation by publishing
+through the generic Listing path, or publish an open print Listing and attach
+its gate afterward. Extend print preparation and publication in Rare API and the
+SDK before offering atomic claim-gated print publication. The generic gated
+Listing example above does not establish that this print authoring method
+already supports that option.
 
 For each missing capability, inspect the generated Rare API contract first.
 If the endpoint exists, add a typed SDK method using the existing transport and
@@ -240,11 +397,6 @@ lower-level transport. It can use `accountClient.authenticatedFetch`. Prefer a
 named reusable SDK method when the operation is needed by several consumers.
 Do not import private SDK modules or replace a missing method with another
 component-local request client.
-
-Payment confirmation is not fulfillment confirmation. Poll the backend's
-fulfillment state for a provider order ID and confirmed processing. Do not
-infer that a print order was submitted from `PurchaseExecuted` alone, and do
-not ask the buyer to pay again because fulfillment is delayed.
 
 ## Verify the complete client flow
 
@@ -269,6 +421,19 @@ suite is `npm run test:integration:eligibility`; it needs a test deployment with
 the new backend and the dedicated test account and RPC configuration. Do not run
 funded write tests against production or report a source-only check as live
 integration coverage.
+
+For the new print methods, run `npm run test:integration:prints` in this repo and
+`npm run test:prints:e2e` in rare-cli against the same compatible feature API.
+Set `RARE_ACCOUNT_TEST_API_URL` explicitly for the SDK and `RARE_API_BASE_URL`
+explicitly for the CLI. Use registered dedicated test accounts and Sepolia RPC
+configuration. Do not rely on an environment file's default deployment.
+
+The SDK print suite covers address storage, private/public uploads, creator edits,
+configuration, publication, generic delivery quotes, idempotent signed Order
+preparation, and account Order reads. The CLI suite covers its corresponding
+commands through delivery preview. Neither suite pays or submits a physical
+Order. A separate funded sandbox fulfillment run is required to prove provider
+submission and the private signed download end to end.
 
 At handoff, report the SDK revision, API deployment, chain, test commands and
 results, and any endpoint still missing from the SDK or backend.
