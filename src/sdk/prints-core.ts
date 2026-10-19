@@ -21,13 +21,16 @@ const fulfillmentKind = (value: unknown): CartFulfillmentKind => {
 };
 
 /** Validate server-owned frozen terms before asking the wallet to sign them. */
-export function parsePrintListingTerms(preparation: PrintListingPreparation): { listing: CartListing; deadline: bigint } {
+export function parsePrintListingTerms(preparation: PrintListingPreparation): { listing: CartListing; deadline: bigint; dropId: string } {
   const snapshot: unknown = preparation.snapshot;
   if (!record(snapshot) || !record(snapshot.configured) || !record(snapshot.configured.listing) || !record(snapshot.intent)) {
     throw new Error('Print preparation does not contain frozen Listing terms.');
   }
+  if (typeof snapshot.dropId !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu.test(snapshot.dropId)) {
+    throw new Error('Print preparation does not identify its owned drop.');
+  }
   const value = snapshot.configured.listing;
-  return { deadline: integer(snapshot.intent.deadline), listing: {
+  return { dropId: snapshot.dropId, deadline: integer(snapshot.intent.deadline), listing: {
     listingSalt: hex(value.listingSalt), seller: address(value.seller), sku: hex(value.sku),
     fulfillmentKind: fulfillmentKind(value.fulfillmentKind), tokenContract: address(value.tokenContract),
     tokenId: integer(value.tokenId), settlementCurrency: address(value.settlementCurrency),

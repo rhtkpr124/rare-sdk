@@ -952,8 +952,12 @@ Prepare seller terms with `rare.prints.listings.prepare`, then call
 `rare.prints.listings.signAndPublish(preparation)` to sign and publish the frozen
 terms. This helper checks the chain, configured Cart contract, seller, and Listing
 digest before requesting the wallet signature.
-NFT transfer fulfillments require existing Cart collection approval. A missing
-approval raises `NftApprovalRequiredError` before the signature request.
+NFT transfer fulfillments require Cart collection approval. A missing approval
+raises `NftApprovalRequiredError` before the signature request. Pass
+`{ autoApprove: true }` as the second argument to explicitly authorize the existing
+Cart approval flow. The SDK verifies NFT ownership first and returns
+`approvalTxHash` when it submits an approval. If signing or publication fails after
+approval, `ApprovalSideEffectError` identifies the approval that remains active.
 
 Use `rare.prints.drops.update` for presentation edits. Production file and
 specification changes are allowed only before pricing is configured. Later
