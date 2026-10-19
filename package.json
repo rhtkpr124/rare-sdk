@@ -90,6 +90,7 @@
     "prepublishOnly": "npm run typecheck && npm run lint && npm run test",
     "test:integration:uploads": "vitest run test/integration-deployed/uploads.test.ts",
     "test:integration:account": "vitest run test/integration-deployed/account-auth.test.ts test/integration-deployed/account-origins.test.ts test/integration-deployed/account-transport.test.ts --no-file-parallelism",
+    "test:integration:eligibility": "vitest run test/e2e-live/sdk/eligibility.test.ts",
     "test:integration": "RARE_API_INTEGRATION=1 vitest run test/integration/liquid-edition-discovery.test.ts",
     "prepare": "npm run build",
     "test:integration:follows": "vitest run test/integration-deployed/follows.test.ts",
