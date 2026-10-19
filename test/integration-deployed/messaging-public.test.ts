@@ -28,7 +28,7 @@ describe('public durable messaging against deployed services', () => {
       const input = { clientMessageId: randomUUID(), body: `SDK public integration ${randomUUID()}`, mentionUserIds: [] };
       const sent = await account.messaging.sendPublic(room.id, input);
       try {
-        expect(sent.kind).toBe('user');
+        expect(sent.type).toBe('user');
         expect((await account.messaging.sendPublic(room.id, input)).id).toBe(sent.id);
         const forward = async (after: string): Promise<boolean> => {
           const page = await api.messaging.history(room.id, { after, limit: 1 });
@@ -45,7 +45,7 @@ describe('public durable messaging against deployed services', () => {
         expect(inbox.conversations.some(row => row.id === room.id)).toBe(true);
         const request = (token: string | undefined, body: unknown) => fetch(`${apiBaseUrl}/v1/messaging/public/rooms/${room.id}/messages`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-messaging-request': '1', ...(token === undefined ? {} : { Authorization: `Bearer ${token}` }) }, body: JSON.stringify(body), signal: AbortSignal.timeout(30_000) });
         expect((await request(undefined, input)).status).toBe(401);
-        expect((await request(session.accessToken, { ...input, clientMessageId: randomUUID(), kind: 'system', system: { sourceId: randomUUID(), type: 'auction.bid', summary: 'Forged', payload: {}, occurredAt: new Date().toISOString() } })).status).toBe(400);
+        expect((await request(session.accessToken, { ...input, clientMessageId: randomUUID(), type: 'system', system: { sourceId: randomUUID(), type: 'auction.bid', summary: 'Forged', payload: {}, occurredAt: new Date().toISOString() } })).status).toBe(400);
         await account.messaging.command(room.id, { action: 'preferences', notification: 'muted' });
         expect((await account.messaging.inbox()).conversations.find(row => row.id === room.id)?.notification).toBe('muted');
       } finally {

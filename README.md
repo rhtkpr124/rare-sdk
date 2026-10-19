@@ -478,7 +478,7 @@ const sent = await account.messaging.sendPublic(room.id, {
 
 Sending the first successful message joins the room. Reads do not subscribe the
 caller. Public history returns user messages and trusted system messages, distinguished
-by `kind`. The SDK provides no method for writing system messages. Existing private
+by `type`. The SDK provides no method for writing system messages. Existing private
 conversation IDs remain inaccessible through the public history endpoint.
 
 Run `npm run test:integration:messaging:public` separately with the same account/API

@@ -24,10 +24,10 @@ describe('messaging pure contract parsing', () => {
   });
   it('parses user and flexible trusted system entries without inventing authors', () => {
     const base = { id, conversationId: id, sequence: '1', body: 'Bid received', createdAt: conversation.updatedAt, replyToId: null };
-    const system = { ...base, kind: 'system', author: null, system: { sourceId: 'tx:1', type: 'auction.bid', summary: 'Bid received', payload: { amount: '123', future: { field: true } }, occurredAt: conversation.updatedAt } };
+    const system = { ...base, type: 'system', author: null, system: { sourceId: 'tx:1', type: 'auction.bid', summary: 'Bid received', payload: { amount: '123', future: { field: true } }, occurredAt: conversation.updatedAt } };
     expect(parseMessagingPublicMessage(system)).toEqual(system);
     expect(() => parseMessagingPublicMessage({ ...system, author: user })).toThrow();
-    const userMessage = { ...base, kind: 'user', author: user, mentions: [], replyTo: null };
+    const userMessage = { ...base, type: 'user', author: user, mentions: [], replyTo: null };
     expect(parseMessagingPublicMessage(userMessage)).toEqual(userMessage);
     const page = { room: { id, context: { type: 'auction', id: 'auction-1', universalTokenId: '1-0x1234567890123456789012345678901234567890-1' }, title: 'Auction', latestSequence: '1' }, messages: [userMessage, system], nextCursor: null };
     expect(parseMessagingPublicPage(page)).toEqual(page);

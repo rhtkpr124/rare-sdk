@@ -123,13 +123,13 @@ export function parseMessagingPublicRoom(value: unknown): MessagingPublicRoom {
 export function parseMessagingPublicMessage(value: unknown): MessagingPublicMessage {
   const row = record(value);
   const base = { id: messagingId(text(row.id)), conversationId: messagingId(text(row.conversationId)), sequence: messagingSequence(text(row.sequence)), body: text(row.body), createdAt: text(row.createdAt), replyToId: row.replyToId === null ? null : messagingId(text(row.replyToId)) };
-  if (row.kind === 'user') {
+  if (row.type === 'user') {
     const reply = row.replyTo == null ? null : record(row.replyTo);
-    return { ...base, kind: 'user', author: parseMessagingUser(row.author), mentions: list(row.mentions, parseMessagingUser), replyTo: reply === null ? null : { id: messagingId(text(reply.id)), authorUsername: nullable(reply.authorUsername), authorAddress: text(reply.authorAddress), bodySnippet: text(reply.bodySnippet) } };
+    return { ...base, type: 'user', author: parseMessagingUser(row.author), mentions: list(row.mentions, parseMessagingUser), replyTo: reply === null ? null : { id: messagingId(text(reply.id)), authorUsername: nullable(reply.authorUsername), authorAddress: text(reply.authorAddress), bodySnippet: text(reply.bodySnippet) } };
   }
-  if (row.kind === 'system' && row.author === null) {
+  if (row.type === 'system' && row.author === null) {
     const system = record(row.system);
-    return { ...base, kind: 'system', author: null, system: { sourceId: text(system.sourceId), type: text(system.type), summary: text(system.summary), payload: record(system.payload), occurredAt: text(system.occurredAt) } };
+    return { ...base, type: 'system', author: null, system: { sourceId: text(system.sourceId), type: text(system.type), summary: text(system.summary), payload: record(system.payload), occurredAt: text(system.occurredAt) } };
   }
   return invalid();
 }

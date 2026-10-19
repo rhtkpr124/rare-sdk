@@ -5736,7 +5736,7 @@ export interface components {
                 /** Format: uuid */
                 replyToId: string | null;
                 /** @enum {string} */
-                kind: "user";
+                type: "user";
                 author: {
                     id: string;
                     username: string;
@@ -5770,7 +5770,7 @@ export interface components {
                 /** Format: uuid */
                 replyToId: string | null;
                 /** @enum {string} */
-                kind: "system";
+                type: "system";
                 author: unknown;
                 system: {
                     sourceId: string;
@@ -5798,7 +5798,7 @@ export interface components {
             /** Format: uuid */
             replyToId: string | null;
             /** @enum {string} */
-            kind: "user";
+            type: "user";
             author: {
                 id: string;
                 username: string;
@@ -5832,7 +5832,7 @@ export interface components {
             /** Format: uuid */
             replyToId: string | null;
             /** @enum {string} */
-            kind: "system";
+            type: "system";
             author: unknown;
             system: {
                 sourceId: string;
