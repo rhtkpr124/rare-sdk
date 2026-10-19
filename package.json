@@ -71,6 +71,16 @@
         "default": "./dist/data-access/index.cjs"
       }
     },
+    "./wallet": {
+      "import": {
+        "types": "./dist/sdk/wallet.d.ts",
+        "default": "./dist/sdk/wallet.js"
+      },
+      "require": {
+        "types": "./dist/sdk/wallet.d.cts",
+        "default": "./dist/sdk/wallet.cjs"
+      }
+    },
     "./package.json": "./package.json"
   },
   "files": [
@@ -153,6 +163,9 @@
       ],
       "utils": [
         "./dist/sdk/public-utils.d.ts"
+      ],
+      "wallet": [
+        "./dist/sdk/wallet.d.ts"
       ],
       "data-access": [
         "./dist/data-access/index.d.ts"

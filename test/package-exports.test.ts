@@ -16,6 +16,7 @@ const packageNames = {
   contracts: '@rareprotocol/rare-sdk/contracts',
   utils: '@rareprotocol/rare-sdk/utils',
   dataAccess: '@rareprotocol/rare-sdk/data-access',
+  wallet: '@rareprotocol/rare-sdk/wallet',
   packageJson: '@rareprotocol/rare-sdk/package.json',
 } as const;
 
@@ -30,6 +31,7 @@ describe('package exports', () => {
     const client = await import(packageNames.client);
     const contracts = await import(packageNames.contracts);
     const utils = await import(packageNames.utils);
+    const wallet = await import(packageNames.wallet);
 
     expect(typeof root.createRareClient).toBe('function');
     expect('createRareAccountClient' in root).toBe(false);
@@ -39,6 +41,7 @@ describe('package exports', () => {
     expect(typeof contracts.getContractAddresses).toBe('function');
     expect(typeof utils.getCurvePresetDefinition).toBe('function');
     expect(typeof utils.parseCurveConfig).toBe('function');
+    expect(typeof wallet.createRareWalletClient).toBe('function');
     expect(typeof (await import(packageNames.dataAccess)).createApiClient).toBe('function');
   });
 
@@ -47,6 +50,7 @@ describe('package exports', () => {
     const client = require(packageNames.client);
     const dataAccess = require(packageNames.dataAccess);
     const utils = require(packageNames.utils);
+    const wallet = require(packageNames.wallet);
 
     expect(typeof root.createRareClient).toBe('function');
     expect('createRareAccountClient' in root).toBe(false);
@@ -56,6 +60,7 @@ describe('package exports', () => {
     expect(typeof dataAccess.createApiClient).toBe('function');
     expect(typeof utils.getCurvePresetDefinition).toBe('function');
     expect(typeof utils.parseCurveConfig).toBe('function');
+    expect(typeof wallet.createRareWalletClient).toBe('function');
 
     const publicClient = createPublicClient({
       chain: sepolia,
@@ -73,6 +78,7 @@ describe('package exports', () => {
     'marketplace-core',
     'collection-core',
     'payments-shell',
+    'transaction-fallback-shell',
     'swap/trade-core',
     'contracts/addresses',
     'contracts/abis/auction',
@@ -100,6 +106,7 @@ describe('package exports', () => {
       'marketplace-core',
       'collection-core',
       'payments-shell',
+      'transaction-fallback-shell',
       'swap/trade-core',
       'contracts/addresses',
       'contracts/abis/auction',
