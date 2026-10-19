@@ -664,9 +664,7 @@ export interface paths {
                             name: string;
                             description: string;
                             tags: string[];
-                            /** Format: uri */
-                            productionImageUri?: string;
-                            productionUploadKey?: string;
+                            productionUploadKey: string;
                             images: string[];
                             specificationId: string;
                         };

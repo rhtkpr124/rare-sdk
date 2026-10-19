@@ -1,7 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, expectTypeOf, it } from 'vitest';
 import { zeroAddress, zeroHash } from 'viem';
 import { parsePrintListingTerms } from '../../../src/sdk/prints-core.js';
-import type { PrintListingPreparation } from '../../../src/sdk/types/prints.js';
+import type { CreatePrintDrop, PrintListingPreparation } from '../../../src/sdk/types/prints.js';
 
 const listing = { listingSalt: zeroHash, seller: zeroAddress, sku: zeroHash, fulfillmentKind: 1,
   tokenContract: zeroAddress, tokenId: '0', settlementCurrency: zeroAddress, minimumUnitPrice: '15000000',
@@ -14,6 +14,10 @@ const preparation = (snapshot: PrintListingPreparation['snapshot']): PrintListin
 });
 
 describe('frozen print Listing terms', () => {
+  it('requires private upload keys rather than public master URLs for new standalone prints', () => {
+    expectTypeOf<NonNullable<CreatePrintDrop['print']>>().toHaveProperty('productionUploadKey').toEqualTypeOf<string>();
+    expectTypeOf<NonNullable<CreatePrintDrop['print']>>().not.toHaveProperty('productionImageUri');
+  });
   it('retains zero token IDs and converts frozen amounts without changing seller economics', () => {
     const terms = parsePrintListingTerms(preparation({ dropId, configured: { listing }, intent: { deadline: '2000000000' } }));
     expect(terms).toEqual({ dropId, deadline: 2000000000n, listing: { ...listing, tokenId: 0n,
