@@ -87,7 +87,8 @@ describe('print tooling through deployed Rare API', () => {
       const signed = await rare.cart.api.checkout.prepare(request);
       expect((await rare.cart.api.checkout.prepare(request)).executePurchase.order.orderId).toBe(signed.executePurchase.order.orderId);
       expect(signed.executePurchase.order.paymentAmount).toBe(checkout.paymentAmount);
-      expect(signed.executePurchase.actions.find(action => action.quantity === 2n)).toBeDefined();
+      expect(signed.executePurchase.lines.find(line => line.listingDigest === entry.listingDigest)?.quantity).toBe(2n);
+      expect(signed.executePurchase.actions).toEqual([]);
       await expect(rare.cart.api.checkout.prepare({ ...request,
         items: [{ listingDigest: entry.listingDigest, quantity: 1n, recipient: wallet.address }],
       })).rejects.toMatchObject({ status: 409 });
