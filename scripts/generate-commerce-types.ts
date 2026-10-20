@@ -12,7 +12,8 @@ if (!isRecord(document) || !isRecord(document.paths) || !isRecord(document.compo
 }
 const schemas = document.components.schemas;
 const paths = Object.fromEntries(Object.entries(document.paths).filter(([path]) =>
-  path.startsWith('/v1/prints/') || path.startsWith('/v1/account/shipping-addresses') || path.startsWith('/v1/account/orders')));
+  (path.startsWith('/v1/prints/') && !path.startsWith('/v1/prints/internal/')) ||
+  path.startsWith('/v1/account/shipping-addresses') || path.startsWith('/v1/account/orders')));
 const referenced = new Set<string>();
 const collectReferences = (value: unknown): void => {
   if (Array.isArray(value)) value.forEach(collectReferences);
