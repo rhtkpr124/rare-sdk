@@ -18,14 +18,9 @@ describe('public durable messaging against deployed services', () => {
     const account = createRareAccountClient({ apiBaseUrl });
     const api = createRareApi({ baseUrl: apiBaseUrl });
     try {
-      await account.auth.loginWithWallet({ address: wallet.address, chainId: 1, signMessage: message => wallet.signMessage({ message }) });
-      const rawContexts: unknown = JSON.parse(required('RARE_MESSAGING_TEST_PUBLIC_CONTEXTS'));
-      if (!Array.isArray(rawContexts)) throw new Error('Provide public fixture contexts');
-      const fixtureContext = rawContexts.map(parseMessagingPublicContext).find(context => context.type === 'drop-announcement');
-      if (fixtureContext?.type !== 'drop-announcement') throw new Error('Provide a drop-announcement fixture');
-      const fixtureDrop = await api.getDrop(fixtureContext.id);
-      const imageUrl = fixtureDrop.metadata.imageUrl;
-      if (imageUrl === undefined) throw new Error('The dedicated drop fixture needs a valid image URL');
+      await account.auth.loginWithWallet({ address: wallet.address, chainId: 11155111, signMessage: message => wallet.signMessage({ message }) });
+      const upload = await account.uploads.upload(Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64'), 'system-message-fixture.gif', { contentType: 'image/gif' });
+      const imageUrl = upload.url;
       const drop = await account.drops.create({ type: 'NONE', startsAt: new Date(Date.now() + 86400000).toISOString(), metadata: { headline: `Producer retry fixture ${randomUUID()}`, description: 'Dedicated SDK integration fixture', destinationUrl: '', imageUrl } });
       try {
         const room = await api.messaging.resolveRoom({ type: 'drop-announcement', id: drop.id });

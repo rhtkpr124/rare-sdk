@@ -457,11 +457,20 @@ uploadId: crypto.randomUUID() })`. Reuse `uploadId` for retries of the same imag
 public storage URL.
 
 Run `npm run test:integration:messaging` manually against a deployment with account
-bearer support. Set `RARE_ACCOUNT_TEST_API_URL`, `RARE_ACCOUNT_TEST_PRIVATE_KEY`, and
-`RARE_ACCOUNT_TEST_SECOND_PRIVATE_KEY` to a non-production HTTPS origin and two
-existing dedicated test accounts. The suite deletes its messages and closes its
-new room; closed room records remain in durable history. It is excluded from the
-standard test command and is not a CI job.
+bearer support. Set `RARE_ACCOUNT_TEST_API_URL` to a non-production HTTPS origin.
+Set `RARE_ACCOUNT_TEST_PRIVATE_KEY`, `RARE_ACCOUNT_TEST_SECOND_PRIVATE_KEY`, and
+`RARE_ACCOUNT_TEST_THIRD_PRIVATE_KEY` to three distinct existing dedicated accounts.
+If `RARE_API_BASE_URL` is set, it must match the test origin. The first/second account
+pair is reserved for declined direct requests; do not accept that pair's request
+or follow the first account from the second. The first/third pair is used for an
+accepted direct conversation. Blocking is restored afterward. Public messages and
+transient direct replies are deleted. Request seed messages remain for repeatable
+runs, and new groups are closed with their durable history retained.
+Set `RARE_MESSAGING_TEST_PRIVATE_BUCKET` to the deployment's private messaging
+bucket and authenticate `gcloud` for `superrare-dev` so attachment fixtures can be
+removed. These tests verify private bytes through authenticated downloads and
+verify revocation after bans and message deletion. They are excluded from the
+standard test command and do not run in CI.
 
 Public auction, liquid-edition, and drop rooms use the same durable conversation
 system. Anonymous callers can resolve a room and read its history without joining:
@@ -486,7 +495,16 @@ variables plus `RARE_MESSAGING_TEST_PUBLIC_CONTEXTS`, a JSON array containing on
 existing context of each type: `auction` with `id`, `liquid-edition` with `chainId`
 and `contractAddress`, and `drop-announcement` with `id`. Use dedicated fixture rooms
 where the test account is not already subscribed. The suite deletes its messages
-and leaves each room afterward.
+and leaves each room afterward. Also set `RARE_MESSAGING_TEST_INTERNAL_API_KEY` to
+the non-production deployment's internal producer credential. Public delivery tests
+verify delivery for all three room types, default subscriptions in a new room, mentions-only and muted
+preferences, and actual app-inbox delivery. A positive control confirms that the
+worker is running during muted-delivery checks. System-message fixtures use a new
+temporary drop room, then verify anonymous thread reads, producer retry deduplication,
+one notification per event, and rejection of user writes/edits/deletes. The SDK does
+not expose the internal producer endpoint. Deleting the fixture drop leaves its
+unadvertised durable system history; tests do not put synthetic events into an
+existing auction or liquid-edition history.
 
 For public history, `nextCursor` is the last sequence in a truncated page. While
 polling forward, request `history(room.id, { after, limit: 100 })`, drain every
