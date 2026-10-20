@@ -422,6 +422,15 @@ new idempotency key merely because a request timed out or the buyer retries.
 If the finalized total increases, the SDK rejects execution and requires a fresh
 review rather than silently raising the spending cap.
 
+If finalization times out before the signed Order reaches the browser, call
+`rare.cart.api.checkout.recover(originalIdempotencyKey)` with the same account and
+wallet. `READY`, `EXECUTED`, and `EXPIRED` include the original prepared Purchase;
+retain that exact payload and reconcile its payment state before offering any
+transaction. `UNKNOWN` and `PREPARING` must keep the attempt locked. Only
+`PREPARATION_FAILED` proves the server never authorized that attempt and permits
+starting a new checkout. Do not infer failure from a missing Order in history,
+an unavailable catalog page, or a network error.
+
 For cards, call `rare.cart.checkout.coinflow` with the delivery draft and an
 idempotency key. It returns the provider session and prepared Cart Order for the
 card UI. Card checkout requires USDC as its payment currency. Keep card setup
