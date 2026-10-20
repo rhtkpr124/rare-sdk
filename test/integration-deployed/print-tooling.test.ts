@@ -29,6 +29,7 @@ describe('print tooling through deployed Rare API', () => {
   it('publishes quantity-limited and gated prints, quotes copies, and reserves an earned claim', async () => {
     const { wallet, accountClient, rare } = setup();
     const addressId = randomUUID();
+    let addressNeedsCleanup = false;
     let dropId: string | undefined;
     await accountClient.auth.loginWithWallet({ address: wallet.address, chainId: sepolia.id,
       signMessage: message => wallet.signMessage({ message }) });
@@ -42,6 +43,7 @@ describe('print tooling through deployed Rare API', () => {
         addressLine1: '123 Test Street', addressLine2: '', townOrCity: 'New York', stateOrCounty: 'NY',
         postalOrZipCode: '10001', countryCode: 'US' };
       const saved = await accountClient.shippingAddresses.save({ id: addressId, label: 'SDK integration', details, makeDefault: false });
+      addressNeedsCleanup = true;
       expect(saved.find(address => address.id === addressId)?.details).toEqual(details);
       expect((await accountClient.shippingAddresses.list()).find(address => address.id === addressId)?.details).toEqual(details);
       const bytes = Uint8Array.from(Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jio8AAAAASUVORK5CYII=', 'base64'));
@@ -171,10 +173,11 @@ describe('print tooling through deployed Rare API', () => {
       expect((await rare.prints.drops.archive(created.id)).status).toBe('ARCHIVED');
       dropId = undefined;
       const remaining = await accountClient.shippingAddresses.delete(addressId);
+      addressNeedsCleanup = false;
       expect(remaining).toEqual(addressesBefore);
     } finally {
       if (dropId !== undefined) await rare.prints.drops.archive(dropId);
-      await accountClient.shippingAddresses.delete(addressId);
+      if (addressNeedsCleanup) await accountClient.shippingAddresses.delete(addressId);
       await accountClient.auth.logout();
     }
   }, 600_000);
