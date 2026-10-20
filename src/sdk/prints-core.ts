@@ -1,6 +1,17 @@
 import { getAddress, isAddress, isHex } from 'viem';
 import type { CartListing, CartFulfillmentKind } from './types/cart.js';
-import type { PrintListingPreparation } from './types/prints.js';
+import type { PreparePrintListing, PrintListingPreparation } from './types/prints.js';
+
+export function validatePrintListingQuantityLimit(input: PreparePrintListing): { valid: true } | { valid: false; message: string } {
+  const quantity = input.maxQuantityPerCheckout ?? '1';
+  if (typeof quantity !== 'string' || !/^[1-9][0-9]*$/u.test(quantity) || quantity.length > 4 || BigInt(quantity) > 1000n) {
+    return { valid: false, message: 'Print checkout quantity limits must be positive integer strings from 1 to 1000.' };
+  }
+  if (input.fulfillmentKind === 2 && quantity !== '1') {
+    return { valid: false, message: 'An ERC-721 transfer print Listing can allow only one copy per checkout.' };
+  }
+  return { valid: true };
+}
 
 const record = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value);
 const hex = (value: unknown) => {

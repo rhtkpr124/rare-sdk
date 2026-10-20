@@ -1,11 +1,13 @@
 import { randomUUID } from 'node:crypto';
-import { createPublicClient, createWalletClient, getAddress, http, isHex, keccak256, toHex } from 'viem';
+import { createPublicClient, createWalletClient, getAddress, http, isAddressEqual, isHex, keccak256, toHex, zeroAddress } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { sepolia } from 'viem/chains';
 import { describe, expect, it } from 'vitest';
 import { createRareAccountClient, createRareClient } from '../../dist/sdk/index.js';
 import type { CreatePrintDrop } from '../../dist/sdk/index.js';
 import { loadDotEnv } from '../helpers/env.js';
+import { createCreatorCartScenario } from '../helpers/cart-creator-fixture.js';
+import { getTestRpcUrl } from '../helpers/liveViem.js';
 
 loadDotEnv();
 
@@ -24,7 +26,7 @@ const setup = () => {
 };
 
 describe('print tooling through deployed Rare API', () => {
-  it('saves opted-in shipping details and creates a draft from a private production upload', async () => {
+  it('publishes quantity-limited and gated prints, quotes copies, and reserves an earned claim', async () => {
     const { wallet, accountClient, rare } = setup();
     const addressId = randomUUID();
     let dropId: string | undefined;
@@ -60,17 +62,24 @@ describe('print tooling through deployed Rare API', () => {
       const option = await rare.prints.options.configure(created.id, { displayPriceUsdCents: '10000' });
       const frozen = await rare.prints.listings.prepare({ optionId: option.id, seller: wallet.address,
         listingSalt: keccak256(toHex(randomUUID())), deadline: String(Math.floor(Date.now() / 1000) + 86_400),
-        availableQuantity: '10', fulfillmentKind: 1 });
+        availableQuantity: '10', maxQuantityPerCheckout: '2', fulfillmentKind: 1 });
       const published = await rare.prints.listings.signAndPublish(frozen, { autoApprove: false });
       expect(published.approvalTxHash).toBeUndefined();
       const entry = published.signedArtifact.entries[0];
       if (!entry) throw new Error('Published print Listing returned no Cart entry.');
       const publicDrop = await rare.prints.drops.get(created.id);
-      expect(publicDrop.options.some(candidate => candidate.listingDigest === entry.listingDigest)).toBe(true);
+      expect(publicDrop.options.find(candidate => candidate.listingDigest === entry.listingDigest)).toMatchObject({
+        maxQuantityPerCheckout: '2', eligibilityRuleId: null,
+      });
       expect('productionUploadKey' in publicDrop.metadata).toBe(false);
       expect((await rare.prints.drops.activity(created.id)).events).toEqual([]);
       const checkout = await rare.cart.checkout.prepare({ paymentCurrency: getAddress(entry.listing.settlementCurrency),
-        items: [{ listingDigest: entry.listingDigest, quantity: 1n, recipient: wallet.address }], delivery: { savedAddressId: addressId } });
+        items: [{ listingDigest: entry.listingDigest, quantity: 2n, recipient: wallet.address }], delivery: { savedAddressId: addressId } });
+      expect(checkout.breakdown?.displayPrice).toBe(200_000_000n);
+      expect(checkout.lines.find(line => line.listingDigest === entry.listingDigest)?.quantity).toBe(2n);
+      await expect(rare.cart.checkout.prepare({ paymentCurrency: getAddress(entry.listing.settlementCurrency),
+        items: [{ listingDigest: entry.listingDigest, quantity: 3n, recipient: wallet.address }],
+        delivery: { savedAddressId: addressId } })).rejects.toMatchObject({ status: 422 });
       expect(checkout.breakdown?.shipping).toBeGreaterThanOrEqual(0n);
       expect(checkout.breakdown?.total).toBe(checkout.paymentAmount);
       if (!checkout.idempotencyKey || !checkout.intent.delivery) throw new Error('Delivery quote did not retain its idempotency key and delivery intent.');
@@ -78,9 +87,82 @@ describe('print tooling through deployed Rare API', () => {
       const signed = await rare.cart.api.checkout.prepare(request);
       expect((await rare.cart.api.checkout.prepare(request)).executePurchase.order.orderId).toBe(signed.executePurchase.order.orderId);
       expect(signed.executePurchase.order.paymentAmount).toBe(checkout.paymentAmount);
+      expect(signed.executePurchase.actions.find(action => action.quantity === 2n)).toBeDefined();
+      await expect(rare.cart.api.checkout.prepare({ ...request,
+        items: [{ listingDigest: entry.listingDigest, quantity: 1n, recipient: wallet.address }],
+      })).rejects.toMatchObject({ status: 409 });
       const orderId = signed.executePurchase.order.orderId;
       expect((await accountClient.orders.get(orderId)).id).toBe(orderId);
       expect((await accountClient.orders.list()).data.some(order => order.id === orderId)).toBe(true);
+      const source = await createCreatorCartScenario({ tokenCount: 1, eligibility: true });
+      try {
+        const nft = source.listings[0];
+        if (!nft) throw new Error('Gated print fixture requires a qualifying NFT.');
+        const rule = await rare.eligibility.createRule({ definition: {
+          kind: 'EVERY_SALE', source: { chainId: '11155111', tokenContract: nft.tokenContract },
+          targets: [{ sku: option.sku }],
+        } });
+        try {
+          const gated = await rare.prints.listings.prepare({ optionId: option.id, seller: wallet.address,
+            listingSalt: keccak256(toHex(randomUUID())), deadline: String(Math.floor(Date.now() / 1000) + 86_400),
+            availableQuantity: '10', maxQuantityPerCheckout: '2', eligibilityRuleId: rule.id, fulfillmentKind: 1 });
+          const gatedPublication = await rare.prints.listings.signAndPublish(gated, { autoApprove: false });
+          const gatedEntry = gatedPublication.signedArtifact.entries[0];
+          if (!gatedEntry) throw new Error('Gated print publication returned no Listing.');
+          expect((await rare.prints.drops.get(created.id)).options.find(candidate => candidate.listingDigest === gatedEntry.listingDigest))
+            .toMatchObject({ maxQuantityPerCheckout: '2', eligibilityRuleId: rule.id });
+          const gatedQuote = await rare.cart.checkout.prepare({ paymentCurrency: getAddress(gatedEntry.listing.settlementCurrency),
+            items: [{ listingDigest: gatedEntry.listingDigest, quantity: 1n, recipient: wallet.address }],
+            delivery: { savedAddressId: addressId } });
+          if (!gatedQuote.intent.delivery || !gatedQuote.idempotencyKey) throw new Error('Gated quote lost its delivery identity.');
+          await expect(rare.cart.api.checkout.prepare({ ...gatedQuote.intent, delivery: gatedQuote.intent.delivery,
+            idempotencyKey: gatedQuote.idempotencyKey })).rejects.toMatchObject({ status: 409 });
+          expect(await rare.eligibility.listClaims({ ruleId: rule.id })).toEqual([]);
+          const buyerKey = process.env.E2E_BUYER_PRIVATE_KEYS?.split(/[,\s]+/u).find(Boolean);
+          if (!buyerKey || !isHex(buyerKey) || buyerKey.length !== 66) throw new Error('Set a registered, funded Sepolia E2E_BUYER_PRIVATE_KEYS wallet.');
+          const buyer = privateKeyToAccount(buyerKey);
+          if (isAddressEqual(buyer.address, wallet.address)) throw new Error('The print eligibility buyer must differ from the creator.');
+          const buyerAccount = createRareAccountClient({ apiBaseUrl: source.apiBaseUrl });
+          await buyerAccount.auth.loginWithWallet({ address: buyer.address, chainId: sepolia.id,
+            signMessage: message => buyer.signMessage({ message }) });
+          try {
+            const buyerRare = createRareClient({ apiBaseUrl: source.apiBaseUrl, accountClient: buyerAccount,
+              publicClient: source.publicClient, walletClient: createWalletClient({ account: buyer,
+                chain: sepolia, transport: http(getTestRpcUrl()) }) });
+            const sourceListing = source.createdListings[0];
+            if (!sourceListing) throw new Error('Qualifying NFT has no published Listing.');
+            const sourceQuote = await buyerRare.cart.checkout.prepare({ paymentCurrency: zeroAddress,
+              items: [{ listingDigest: sourceListing.listingDigest, quantity: 1n, recipient: buyer.address }] });
+            expect(sourceQuote.paymentAmount).toBeLessThanOrEqual(1_000_000_000_000_000n);
+            expect((await buyerRare.cart.checkout.purchase({ preparation: sourceQuote })).receipt.status).toBe('success');
+            const claims = () => buyerRare.eligibility.listClaims({ ruleId: rule.id });
+            await expect.poll(claims, { timeout: 180_000, interval: 2_000 }).toMatchObject([{ status: 'AVAILABLE' }]);
+            const twoCopies = await buyerRare.cart.checkout.prepare({ paymentCurrency: getAddress(gatedEntry.listing.settlementCurrency),
+              items: [{ listingDigest: gatedEntry.listingDigest, quantity: 2n, recipient: buyer.address }],
+              delivery: { recipientDetails: details } });
+            if (!twoCopies.intent.delivery || !twoCopies.idempotencyKey) throw new Error('Multi-copy quote lost its delivery identity.');
+            await expect(buyerRare.cart.api.checkout.prepare({ ...twoCopies.intent, delivery: twoCopies.intent.delivery,
+              idempotencyKey: twoCopies.idempotencyKey })).rejects.toMatchObject({ status: 409 });
+            expect(await claims()).toMatchObject([{ status: 'AVAILABLE' }]);
+            const buyerQuote = await buyerRare.cart.checkout.prepare({ paymentCurrency: getAddress(gatedEntry.listing.settlementCurrency),
+              items: [{ listingDigest: gatedEntry.listingDigest, quantity: 1n, recipient: buyer.address }],
+              delivery: { recipientDetails: details } });
+            if (!buyerQuote.intent.delivery || !buyerQuote.idempotencyKey) throw new Error('Eligible print quote lost its delivery identity.');
+            const buyerRequest = { ...buyerQuote.intent, delivery: buyerQuote.intent.delivery, idempotencyKey: buyerQuote.idempotencyKey };
+            const reserved = await buyerRare.cart.api.checkout.prepare(buyerRequest);
+            expect((await buyerRare.cart.api.checkout.prepare(buyerRequest)).executePurchase.order.orderId)
+              .toBe(reserved.executePurchase.order.orderId);
+            expect(await claims()).toMatchObject([{ status: 'RESERVED' }]);
+            // The qualifying NFT was purchased; the print Order remains unpaid and expires safely.
+          } finally {
+            await buyerAccount.auth.logout();
+          }
+        } finally {
+          await rare.eligibility.disableRule(rule.id);
+        }
+      } finally {
+        await source.accountClient.auth.logout();
+      }
       // No purchase call: the prepared order expires without payment or provider submission.
       const anonymous = createRareClient({ publicClient: createPublicClient({ chain: sepolia, transport: http() }),
         apiBaseUrl: process.env.RARE_ACCOUNT_TEST_API_URL ?? process.env.RARE_API_BASE_URL });
@@ -94,5 +176,5 @@ describe('print tooling through deployed Rare API', () => {
       await accountClient.shippingAddresses.delete(addressId);
       await accountClient.auth.logout();
     }
-  }, 180_000);
+  }, 600_000);
 });

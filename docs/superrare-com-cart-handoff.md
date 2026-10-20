@@ -277,6 +277,12 @@ configuration out of creator controls.
    this does not restrict the buyer's supported payment currencies.
 6. Prepare the frozen terms with `rare.prints.listings.prepare`, then call
    `rare.prints.listings.signAndPublish(preparation, { autoApprove: false })`.
+   Set `eligibilityRuleId` here to publish a claim-gated Listing atomically.
+   The rule must belong to the creator and target this print option's SKU.
+   Set `maxQuantityPerCheckout` to the maximum copies in one purchase.
+   It defaults to `"1"` and accepts positive integer strings up to `"1000"`.
+   ERC-721 transfer fulfillment requires a limit of `"1"`.
+   `availableQuantity` remains the total edition supply, not the checkout limit.
    One UI action can await both signing and publication, then redirect to the
    public print page.
 
@@ -297,6 +303,13 @@ Production file and specification edits are allowed only before pricing is
 configured. Later physical changes require a replacement drop and SKU. Price
 changes require freshly prepared and signed Listing terms. Existing paid Orders
 keep their original fulfillment snapshots.
+
+Use `quantity` on the generic Cart draft item for multiple copies of one print.
+Read each public print option's `maxQuantityPerCheckout` and `eligibilityRuleId`
+to present quantity controls and eligibility. Rare API enforces the limit again
+before signing. Changing quantity requires a new checkout idempotency key and
+a fresh quote. Claims are reserved per copy, not once per Order. Delivery carts
+still support one Listing at a time.
 
 NFT transfer fulfillments can require collection approval. Handle
 `NftApprovalRequiredError` with explicit consent before retrying
@@ -379,14 +392,6 @@ fulfillment Order methods above now exist. The high-level Cart catalog interface
 remains read-oriented; do not assume it exposes Product mutations or saved carts.
 Mixed delivery carts and shipment tracking remain unsupported.
 
-The print-specific Listing preparation request does not currently expose
-`eligibilityRuleId`. Do not bypass its fulfillment preparation by publishing
-through the generic Listing path, or publish an open print Listing and attach
-its gate afterward. Extend print preparation and publication in Rare API and the
-SDK before offering atomic claim-gated print publication. The generic gated
-Listing example above does not establish that this print authoring method
-already supports that option.
-
 For each missing capability, inspect the generated Rare API contract first.
 If the endpoint exists, add a typed SDK method using the existing transport and
 error handling. If it does not exist, add it in the owning backend layer before
@@ -429,10 +434,11 @@ explicitly for the CLI. Use registered dedicated test accounts and Sepolia RPC
 configuration. Do not rely on an environment file's default deployment.
 
 The SDK print suite covers address storage, private/public uploads, creator edits,
-configuration, publication, generic delivery quotes, idempotent signed Order
+configuration, atomic gated publication, quantity limits, multi-copy delivery
+quotes, idempotent signed Order
 preparation, and account Order reads. The CLI suite covers its corresponding
-commands through delivery preview. Neither suite pays or submits a physical
-Order. A separate funded sandbox fulfillment run is required to prove provider
+commands through delivery preview and signed Order preparation. Neither suite
+pays or submits a physical Order. A separate funded sandbox fulfillment run is required to prove provider
 submission and the private signed download end to end.
 
 At handoff, report the SDK revision, API deployment, chain, test commands and

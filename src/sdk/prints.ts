@@ -3,7 +3,7 @@ import { toCartListingRootArtifactWire } from './cart-api.js';
 import type { RareClientConfig } from './types/client.js';
 import type { PrintsNamespace } from './types/prints.js';
 import { buildCartListingRootArtifact, cartDomain, hashCartListing } from './cart-core.js';
-import { parsePrintListingTerms } from './prints-core.js';
+import { parsePrintListingTerms, validatePrintListingQuantityLimit } from './prints-core.js';
 import { requireWallet } from './wallet-shell.js';
 import { cartAbi } from '../contracts/abis/cart.js';
 import { erc721Abi, erc1155Abi, getAddress, isAddressEqual } from 'viem';
@@ -37,7 +37,11 @@ export function createPrintsNamespace(config: RareClientConfig): PrintsNamespace
     releases: { list: input => data(publicClient.GET('/v1/prints/releases', { params: { query: input } })) },
     options: { configure: (id, input) => data(client.PUT('/v1/prints/drops/{id}/options/standard', { params: { path: { id } }, body: input })) },
     listings: {
-      prepare: input => data(client.POST('/v1/prints/listings/prepare', { body: input })),
+      prepare: input => {
+        const validation = validatePrintListingQuantityLimit(input);
+        if (!validation.valid) return Promise.reject(new Error(validation.message));
+        return data(client.POST('/v1/prints/listings/prepare', { body: input }));
+      },
       publish,
       async signAndPublish(preparation, options = {}) {
         const { listing, deadline, dropId } = parsePrintListingTerms(preparation);

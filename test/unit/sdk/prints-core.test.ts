@@ -1,7 +1,7 @@
 import { describe, expect, expectTypeOf, it } from 'vitest';
 import { zeroAddress, zeroHash } from 'viem';
-import { parsePrintListingTerms } from '../../../src/sdk/prints-core.js';
-import type { CreatePrintDrop, PrintListingPreparation } from '../../../src/sdk/types/prints.js';
+import { parsePrintListingTerms, validatePrintListingQuantityLimit } from '../../../src/sdk/prints-core.js';
+import type { CreatePrintDrop, PreparePrintListing, PrintListingPreparation } from '../../../src/sdk/types/prints.js';
 
 const listing = { listingSalt: zeroHash, seller: zeroAddress, sku: zeroHash, fulfillmentKind: 1,
   tokenContract: zeroAddress, tokenId: '0', settlementCurrency: zeroAddress, minimumUnitPrice: '15000000',
@@ -14,6 +14,22 @@ const preparation = (snapshot: PrintListingPreparation['snapshot']): PrintListin
 });
 
 describe('frozen print Listing terms', () => {
+  const input: PreparePrintListing = { optionId: dropId, seller: zeroAddress, listingSalt: zeroHash,
+    deadline: '2000000000', availableQuantity: '10', fulfillmentKind: 1 };
+  it('validates copy limits before remote preparation and preserves the one-copy default', () => {
+    expect(validatePrintListingQuantityLimit(input)).toEqual({ valid: true });
+    expect(validatePrintListingQuantityLimit({ ...input, maxQuantityPerCheckout: '1000' })).toEqual({ valid: true });
+    for (const maxQuantityPerCheckout of ['0', '-1', '1.5', '01', '1001', '999999999999999999999']) {
+      expect(validatePrintListingQuantityLimit({ ...input, maxQuantityPerCheckout }).valid).toBe(false);
+    }
+  });
+  it('does not offer multi-copy ERC-721 transfer fulfillment', () => {
+    expect(validatePrintListingQuantityLimit({ ...input, fulfillmentKind: 2 })).toEqual({ valid: true });
+    expect(validatePrintListingQuantityLimit({ ...input, fulfillmentKind: 2, maxQuantityPerCheckout: '2' }).valid).toBe(false);
+    for (const fulfillmentKind of [1, 3, 5] as const) {
+      expect(validatePrintListingQuantityLimit({ ...input, fulfillmentKind, maxQuantityPerCheckout: '2' })).toEqual({ valid: true });
+    }
+  });
   it('requires private upload keys rather than public master URLs for new standalone prints', () => {
     expectTypeOf<NonNullable<CreatePrintDrop['print']>>().toHaveProperty('productionUploadKey').toEqualTypeOf<string>();
     expectTypeOf<NonNullable<CreatePrintDrop['print']>>().not.toHaveProperty('productionImageUri');
