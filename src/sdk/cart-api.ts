@@ -143,6 +143,7 @@ export function createCartApiNamespace(
             settlementCurrency: item.settlementCurrency,
             displayUnitPrice: item.unitPrice.toString(),
             availableQuantity: item.quantity.toString(),
+            ...(item.maxQuantityPerCheckout === undefined ? {} : { maxQuantityPerCheckout: item.maxQuantityPerCheckout.toString() }),
             ...(item.paymentRecipient === undefined ? {} : { paymentRecipient: item.paymentRecipient }),
           })),
         },
