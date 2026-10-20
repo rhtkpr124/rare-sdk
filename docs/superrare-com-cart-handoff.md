@@ -462,8 +462,12 @@ to an already-published standalone print:
 
 - `create` records the source collection, `CURRENT_HOLDER` or `PRIMARY_SALE`
   policy, optional closing time and optional preconfigured ERC-1155 receipt token.
+  Holder campaigns require both the closing date and receipt.
 - `setSource` binds a source token ID to its own private production upload,
-  public photos, specification and price. Production files stay private.
+  public photos, specification and price. First review `getSourceArtwork`
+  and supply its digest as `sourceMetadataDigest` with `confirmRevealed: true`.
+  The backend freezes that artwork review with the production file.
+  Production files stay private.
 - `getMine` and paginated `listMine` support creator management; `get` returns
   published public campaign details. Public
   `list({ sourceUniversalTokenId, page, perPage })` supplies artwork-page
@@ -475,6 +479,8 @@ to an already-published standalone print:
 - Authenticated, paginated `listSources` returns source token identity, public
   artwork, Listing readiness and the account's claim status. Readiness is not
   a print-quality certification. The backend rechecks eligibility at checkout.
+  The optional comma-separated `tokenIds` filter loads up to five selected
+  sources; `configurationLocked` controls whether creator edits are allowed.
 
 An optional receipt token must already be defined and Cart-approved for minting,
 with the seller as both token creator and collection owner. Use the existing

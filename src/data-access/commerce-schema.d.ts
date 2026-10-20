@@ -382,6 +382,15 @@ export interface paths {
                                     /** @enum {string} */
                                     status: "PENDING" | "PROCESSING" | "RETRY" | "COMPLETED" | "FAILED";
                                     providerOrderId: string | null;
+                                    source?: {
+                                        /** Format: uuid */
+                                        campaignId: string;
+                                        sourceTokenId: string;
+                                        sourceUniversalTokenId: string;
+                                        title: string;
+                                        images: string[];
+                                        specificationId: string;
+                                    };
                                     /** Format: date-time */
                                     createdAt: string;
                                     /** Format: date-time */
@@ -463,6 +472,15 @@ export interface paths {
                                     /** @enum {string} */
                                     status: "PENDING" | "PROCESSING" | "RETRY" | "COMPLETED" | "FAILED";
                                     providerOrderId: string | null;
+                                    source?: {
+                                        /** Format: uuid */
+                                        campaignId: string;
+                                        sourceTokenId: string;
+                                        sourceUniversalTokenId: string;
+                                        title: string;
+                                        images: string[];
+                                        specificationId: string;
+                                    };
                                     /** Format: date-time */
                                     createdAt: string;
                                     /** Format: date-time */
@@ -2841,6 +2859,106 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/prints/campaigns/mine/{id}/sources/{tokenId}/artwork": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Review indexed artwork before approving a production file */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                    tokenId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Creator artwork review */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                sourceUniversalTokenId: string;
+                                title: string;
+                                imageUri: string;
+                                metadataDigest: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Invalid campaign request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CartErrorResponse"];
+                    };
+                };
+                /** @description Account authentication required */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CartErrorResponse"];
+                    };
+                };
+                /** @description Campaign unavailable */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CartErrorResponse"];
+                    };
+                };
+                /** @description Campaign state changed */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CartErrorResponse"];
+                    };
+                };
+                /** @description Campaign configuration unsupported */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CartErrorResponse"];
+                    };
+                };
+                /** @description Campaign dependency unavailable */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CartErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/prints/campaigns/{id}/sources/{tokenId}": {
         parameters: {
             query?: never;
@@ -2866,6 +2984,9 @@ export interface paths {
                         title: string;
                         images: string[];
                         productionUploadKey: string;
+                        sourceMetadataDigest: string;
+                        /** @enum {boolean} */
+                        confirmRevealed: true;
                         specificationId: string;
                         displayPriceUsdCents: string;
                     };
@@ -2891,6 +3012,7 @@ export interface paths {
                                 sizing: "fitPrintArea" | "fillPrintArea";
                                 displayPriceUsdCents: string;
                                 sku: string;
+                                configurationLocked: boolean;
                                 /** @enum {string} */
                                 readiness: "READY" | "UNPUBLISHED" | "UNAVAILABLE";
                                 /** @enum {string} */
@@ -2980,6 +3102,7 @@ export interface paths {
                 query?: {
                     page?: number;
                     perPage?: number;
+                    tokenIds?: string;
                 };
                 header?: never;
                 path: {
@@ -3008,6 +3131,7 @@ export interface paths {
                                 sizing: "fitPrintArea" | "fillPrintArea";
                                 displayPriceUsdCents: string;
                                 sku: string;
+                                configurationLocked: boolean;
                                 /** @enum {string} */
                                 readiness: "READY" | "UNPUBLISHED" | "UNAVAILABLE";
                                 /** @enum {string} */

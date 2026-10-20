@@ -22,6 +22,9 @@ export function createPrintCampaignsNamespace(config: RareClientConfig): PrintCa
     listSources: (id, options = {}) => response(client.GET('/v1/prints/campaigns/{id}/sources', {
       params: { path: { id }, query: options },
     })),
+    getSourceArtwork: (id, tokenId) => data(client.GET('/v1/prints/campaigns/mine/{id}/sources/{tokenId}/artwork', {
+      params: { path: { id, tokenId } },
+    })),
     setSource: (id, tokenId, input) => data(client.PUT('/v1/prints/campaigns/{id}/sources/{tokenId}', {
       params: { path: { id, tokenId } }, body: input,
     })),

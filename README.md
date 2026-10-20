@@ -985,7 +985,11 @@ physical changes require a new drop and SKU so existing signed terms stay intact
 benefit. `create` sets the source collection, eligibility policy, optional closing
 time and optional preconfigured ERC-1155 receipt token. Use `setSource` with each
 source token ID, its private production upload, public photos, specification and
-price. `getMine` and paginated `listMine` are creator reads; `get` returns the
+price. First review `getSourceArtwork(id, tokenId)` and pass its
+`metadataDigest` as `sourceMetadataDigest`, with `confirmRevealed: true`.
+The backend binds that review to the selected source artwork and production file.
+Holder campaigns require both a closing date and a receipt token.
+`getMine` and paginated `listMine` are creator reads; `get` returns the
 published public campaign. Use `list({ sourceUniversalTokenId, page, perPage })`
 to discover published benefits from an artwork page.
 
@@ -999,6 +1003,8 @@ The campaign methods do not deploy a collection or grant mint approval.
 
 Authenticated `campaigns.listSources` returns a paginated source list with source
 token identity, public artwork, Listing readiness and the caller's claim status.
+Use the optional comma-separated `tokenIds` filter for up to five selected
+sources, and respect `configurationLocked` in creator controls.
 Readiness describes checkout availability, not an image-quality certification.
 The backend rechecks rights and owns reservation/consumption; an `AVAILABLE`
 response is display information, not a browser authorization.

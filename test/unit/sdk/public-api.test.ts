@@ -90,7 +90,7 @@ describe('public SDK API surface', () => {
     expect(rare.cart.routing.quote).toBeTypeOf('function');
     expect(rare.cart.routing.assertFresh).toBeTypeOf('function');
     expect(Object.keys(rare.prints.campaigns).sort()).toEqual([
-      'create', 'get', 'getMine', 'list', 'listMine', 'listSources', 'prepare', 'setSource',
+      'create', 'get', 'getMine', 'getSourceArtwork', 'list', 'listMine', 'listSources', 'prepare', 'setSource',
     ]);
   });
 

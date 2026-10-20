@@ -18,6 +18,7 @@ export type PrintCampaign = paths['/v1/prints/campaigns/{id}']['get']['responses
 export type PrintCampaignPage = paths['/v1/prints/campaigns/mine']['get']['responses'][200]['content']['application/json'];
 export type PrintCampaignSourcePage = paths['/v1/prints/campaigns/{id}/sources']['get']['responses'][200]['content']['application/json'];
 export type PrintCampaignSource = PrintCampaignSourcePage['data'][number];
+export type PrintCampaignArtwork = paths['/v1/prints/campaigns/mine/{id}/sources/{tokenId}/artwork']['get']['responses'][200]['content']['application/json']['data'];
 export type ConfigurePrintCampaignSource = paths['/v1/prints/campaigns/{id}/sources/{tokenId}']['put']['requestBody']['content']['application/json'];
 export type PreparePrintCampaign = paths['/v1/prints/campaigns/{id}/prepare']['post']['requestBody']['content']['application/json'];
 export type PrintCampaignPreparation = paths['/v1/prints/campaigns/{id}/prepare']['post']['responses'][200]['content']['application/json']['data'];
@@ -34,6 +35,7 @@ export type PrintCampaignsNamespace = {
   listMine: (options?: PrintCampaignListOptions) => Promise<PrintCampaignPage>;
   /** Account-specific source rights, including unavailable and previously consumed claims. */
   listSources: (id: string, options?: PrintCampaignSourceListOptions) => Promise<PrintCampaignSourcePage>;
+  getSourceArtwork: (id: string, tokenId: string) => Promise<PrintCampaignArtwork>;
   setSource: (id: string, tokenId: string, input: ConfigurePrintCampaignSource) => Promise<PrintCampaignSource>;
   /** Publish returned preparations with prints.listings.signAndPublish; checkout remains Cart. */
   prepare: (id: string, input: PreparePrintCampaign) => Promise<PrintCampaignPreparation>;
