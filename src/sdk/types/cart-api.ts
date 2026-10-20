@@ -182,6 +182,8 @@ type CartListingIntentTerms = {
   settlementCurrency: Address;
   unitPrice: bigint;
   quantity: bigint;
+  /** Maximum copies of this Listing in one checkout, separate from total supply. */
+  maxQuantityPerCheckout?: bigint;
   paymentRecipient?: Address;
 };
 
