@@ -425,6 +425,9 @@ export interface paths {
                                     cartAddress: string;
                                     displayUnitPrice: string;
                                     settlementCurrency: string;
+                                    maxQuantityPerCheckout: string;
+                                    /** Format: uuid */
+                                    eligibilityRuleId: string | null;
                                 }[];
                             };
                         };
@@ -1349,6 +1352,9 @@ export interface paths {
                         listingSalt: string;
                         deadline: string;
                         availableQuantity: string;
+                        /** Format: uuid */
+                        eligibilityRuleId?: string;
+                        maxQuantityPerCheckout?: string;
                         fulfillmentKind: 1 | 2 | 3 | 5;
                     };
                 };
@@ -1648,6 +1654,7 @@ export interface paths {
                         idempotencyKey: string;
                         paymentCurrency: string;
                         nftRecipient: string;
+                        quantity?: string;
                         recipientDetails: {
                             name: string;
                             /** Format: email */
@@ -1850,6 +1857,7 @@ export interface paths {
                         idempotencyKey: string;
                         paymentCurrency: string;
                         nftRecipient: string;
+                        quantity?: string;
                         recipientDetails: {
                             name: string;
                             /** Format: email */
@@ -2044,6 +2052,7 @@ export interface paths {
                         idempotencyKey: string;
                         paymentCurrency: string;
                         nftRecipient: string;
+                        quantity?: string;
                         recipientDetails: {
                             name: string;
                             /** Format: email */
@@ -2449,6 +2458,9 @@ export interface paths {
                                     cartAddress: string;
                                     displayUnitPrice: string;
                                     settlementCurrency: string;
+                                    maxQuantityPerCheckout: string;
+                                    /** Format: uuid */
+                                    eligibilityRuleId: string | null;
                                 }[];
                             }[];
                         };
