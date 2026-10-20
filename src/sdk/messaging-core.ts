@@ -93,7 +93,7 @@ export function parseMessagingPreview(value: unknown): MessagingDraftPreview { c
 export function parseMessagingSuccess(value: unknown): void { if (record(value).success !== true) invalid(); }
 
 /** Query planning preserves opaque cursors and omits absent options. */
-export function messagingQuery(input: Readonly<Record<string, string | boolean | undefined>>): string {
+export function messagingQuery(input: Readonly<Record<string, string | number | boolean | undefined>>): string {
   return new URLSearchParams(Object.entries(input).flatMap(([key, value]) => value === undefined ? [] : [[key, String(value)]])).toString();
 }
 
@@ -122,7 +122,7 @@ export function parseMessagingPublicRoom(value: unknown): MessagingPublicRoom {
 }
 export function parseMessagingPublicMessage(value: unknown): MessagingPublicMessage {
   const row = record(value);
-  const base = { id: messagingId(text(row.id)), conversationId: messagingId(text(row.conversationId)), sequence: messagingSequence(text(row.sequence)), body: text(row.body), createdAt: text(row.createdAt), replyToId: row.replyToId === null ? null : messagingId(text(row.replyToId)) };
+  const base = { id: messagingId(text(row.id)), conversationId: messagingId(text(row.conversationId)), sequence: messagingSequence(text(row.sequence)), body: text(row.body), createdAt: text(row.createdAt), replyToId: row.replyToId === null ? null : messagingId(text(row.replyToId)), reactions: row.reactions === undefined ? [] : list(row.reactions, value => { const reaction = record(value); return { emoji: text(reaction.emoji), count: number(reaction.count), reacted: boolean(reaction.reacted) }; }), collapsed: row.collapsed === undefined ? false : boolean(row.collapsed), reported: row.reported === undefined ? false : boolean(row.reported) };
   if (row.type === 'user') {
     const reply = row.replyTo == null ? null : record(row.replyTo);
     return { ...base, type: 'user', author: parseMessagingUser(row.author), mentions: list(row.mentions, parseMessagingUser), replyTo: reply === null ? null : { id: messagingId(text(reply.id)), authorUsername: nullable(reply.authorUsername), authorAddress: text(reply.authorAddress), bodySnippet: text(reply.bodySnippet) } };

@@ -8,6 +8,7 @@ export type PublicMessagingClient = {
   history: (roomId: string, options?: RareAuthRequestOptions & { before?: string; after?: string; limit?: number }) => Promise<MessagingPublicPage>;
 };
 export type RareMessagingClient = {
+  historyPublic: (roomId: string, options?: RareAuthRequestOptions & { before?: string; after?: string; limit?: number }) => Promise<MessagingPublicPage>;
   sendPublic: (roomId: string, input: MessagingPublicSend, options?: RareAuthRequestOptions) => Promise<MessagingPublicMessage>;
   session: (options?: RareAuthRequestOptions) => Promise<MessagingSession>;
   inbox: (options?: RareAuthRequestOptions & { search?: string; cursor?: string }) => Promise<MessagingInbox>;

@@ -5735,6 +5735,14 @@ export interface components {
                 createdAt: string;
                 /** Format: uuid */
                 replyToId: string | null;
+                reactions: {
+                    /** @description Exactly one complete Unicode emoji sequence, including supported skin-tone or joined sequences; plain text and multiple emoji are rejected. */
+                    emoji: string;
+                    count: number;
+                    reacted: boolean;
+                }[];
+                collapsed: boolean;
+                reported: boolean;
                 /** @enum {string} */
                 type: "user";
                 author: {
@@ -5769,6 +5777,14 @@ export interface components {
                 createdAt: string;
                 /** Format: uuid */
                 replyToId: string | null;
+                reactions: {
+                    /** @description Exactly one complete Unicode emoji sequence, including supported skin-tone or joined sequences; plain text and multiple emoji are rejected. */
+                    emoji: string;
+                    count: number;
+                    reacted: boolean;
+                }[];
+                collapsed: boolean;
+                reported: boolean;
                 /** @enum {string} */
                 type: "system";
                 author: unknown;
@@ -5797,6 +5813,14 @@ export interface components {
             createdAt: string;
             /** Format: uuid */
             replyToId: string | null;
+            reactions: {
+                /** @description Exactly one complete Unicode emoji sequence, including supported skin-tone or joined sequences; plain text and multiple emoji are rejected. */
+                emoji: string;
+                count: number;
+                reacted: boolean;
+            }[];
+            collapsed: boolean;
+            reported: boolean;
             /** @enum {string} */
             type: "user";
             author: {
@@ -5831,6 +5855,14 @@ export interface components {
             createdAt: string;
             /** Format: uuid */
             replyToId: string | null;
+            reactions: {
+                /** @description Exactly one complete Unicode emoji sequence, including supported skin-tone or joined sequences; plain text and multiple emoji are rejected. */
+                emoji: string;
+                count: number;
+                reacted: boolean;
+            }[];
+            collapsed: boolean;
+            reported: boolean;
             /** @enum {string} */
             type: "system";
             author: unknown;

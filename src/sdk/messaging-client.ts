@@ -1,5 +1,5 @@
 import { RareAuthError } from './account-auth-core.js';
-import { messagingAccountId, messagingErrorCode, messagingId, messagingSequence, messagingQuery, parseMessagingAttachment, parseMessagingChanges, parseMessagingConversation, parseMessagingCreatedDirect, parseMessagingInbox, parseMessagingMessage, parseMessagingPage, parseMessagingParticipants, parseMessagingPeople, parseMessagingPreview, parseMessagingSession, parseMessagingSuccess, parseMessagingUsers, parseMessagingPublicMessage } from './messaging-core.js';
+import { messagingAccountId, messagingErrorCode, messagingId, messagingSequence, messagingQuery, parseMessagingAttachment, parseMessagingChanges, parseMessagingConversation, parseMessagingCreatedDirect, parseMessagingInbox, parseMessagingMessage, parseMessagingPage, parseMessagingParticipants, parseMessagingPeople, parseMessagingPreview, parseMessagingSession, parseMessagingSuccess, parseMessagingUsers, parseMessagingPublicMessage, parseMessagingPublicPage, messagingPublicHistoryQuery } from './messaging-core.js';
 import type { RareAuthRequestOptions } from './types/account.js';
 import type { RareMessagingClient } from './types/messaging.js';
 
@@ -15,6 +15,7 @@ export function createMessagingClient(request: MessagingTransport, json: (respon
   const conversation = (id: string) => `conversations/${messagingId(id)}`;
   const changeBlock = async (id: string, blocked: boolean, options?: RareAuthRequestOptions) => parseMessagingSuccess(await call('POST', `blocks/${messagingAccountId(id)}`, { blocked }, options));
   return {
+    async historyPublic(roomId, options = {}) { return parseMessagingPublicPage(await call('GET', `public/rooms/${messagingId(roomId)}/messages?${messagingQuery(messagingPublicHistoryQuery(options))}`, undefined, options)); },
     async sendPublic(roomId, input, options) { return parseMessagingPublicMessage(await call('POST', `public/rooms/${messagingId(roomId)}/messages`, input, options)); },
     async session(options) { return parseMessagingSession(await call('GET', 'session', undefined, options)); },
     async inbox(options = {}) { return parseMessagingInbox(await call('GET', `conversations?${messagingQuery({ includePublic: true, search: options.search, cursor: options.cursor })}`, undefined, options)); },

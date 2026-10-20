@@ -141,3 +141,23 @@ node test/cross-repo/public-boundaries.mjs
 ```
 
 The check exercises the actual Rare API auth route handlers and actual Auth service. A stalled HTTP listener deliberately injects an RPC transport failure; it never returns a fabricated signature-verification result. The check verifies that a supported large hex-signature envelope reaches Auth, RPC timeout fails closed within the public deadline, oversized bodies are rejected, private introspection remains unexposed, trusted introspection survives anonymous quota exhaustion, wrong credentials cannot bypass that quota, and logout invalidates access after 100 refresh rotations. It reports retained-record memory and TTL without printing credentials. This does not prove successful large ERC-1271 contract verification or deployed Redis configuration. No CI job is added.
+
+### Public messaging regression coverage
+
+`npm run test:integration:messaging:public` uses deployed Rare API/Auth and the
+existing dedicated account wallets. Set `RARE_ACCOUNT_TEST_API_URL`,
+`RARE_ACCOUNT_TEST_PRIVATE_KEY`, `RARE_ACCOUNT_TEST_SECOND_PRIVATE_KEY`, and
+`RARE_MESSAGING_TEST_PUBLIC_CONTEXTS` with auction, liquid-edition and
+announcement fixtures. The trusted-producer case also requires
+`RARE_MESSAGING_TEST_INTERNAL_API_KEY` from the paired non-production service.
+It creates and deletes its own announcement fixture.
+
+The suite checks anonymous history, liquid-edition address normalization,
+subscription visibility in the authenticated inbox, persisted reaction totals,
+per-viewer reactions, report-and-hide isolation, and canonical system-message
+retries. Changed array order must conflict even when object key order does not.
+
+Use `account.messaging.historyPublic(roomId, options)` for a signed-in public
+view. `api.messaging.history(roomId, options)` stays anonymous. CLI users can
+select the signed-in view with `rare messaging public history <room-id>
+--authenticated` or the equivalent flag on `watch`.

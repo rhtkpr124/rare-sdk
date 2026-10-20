@@ -23,7 +23,7 @@ describe('messaging pure contract parsing', () => {
     expect(() => parseMessagingPeople([{ ...user, blocked: false }])).toThrow();
   });
   it('parses user and flexible trusted system entries without inventing authors', () => {
-    const base = { id, conversationId: id, sequence: '1', body: 'Bid received', createdAt: conversation.updatedAt, replyToId: null };
+    const base = { id, conversationId: id, sequence: '1', body: 'Bid received', createdAt: conversation.updatedAt, replyToId: null, reactions: [], collapsed: false, reported: false };
     const system = { ...base, type: 'system', author: null, system: { sourceId: 'tx:1', type: 'auction.bid', summary: 'Bid received', payload: { amount: '123', future: { field: true } }, occurredAt: conversation.updatedAt } };
     expect(parseMessagingPublicMessage(system)).toEqual(system);
     expect(() => parseMessagingPublicMessage({ ...system, author: user })).toThrow();
@@ -31,6 +31,12 @@ describe('messaging pure contract parsing', () => {
     expect(parseMessagingPublicMessage(userMessage)).toEqual(userMessage);
     const page = { room: { id, context: { type: 'auction', id: 'auction-1', universalTokenId: '1-0x1234567890123456789012345678901234567890-1' }, title: 'Auction', latestSequence: '1' }, messages: [userMessage, system], nextCursor: null };
     expect(parseMessagingPublicPage(page)).toEqual(page);
+  });
+  it('preserves public reaction totals and viewer-specific hide state without leaking extra data', () => {
+    const value = { id, conversationId: id, sequence: '1', body: 'Public', createdAt: conversation.updatedAt, replyToId: null, type: 'user', author: user, mentions: [], replyTo: null, reactions: [{ emoji: '❤️', count: 2, reacted: true, userIds: ['private'] }], collapsed: true, reported: true };
+    expect(parseMessagingPublicMessage(value)).toEqual({ ...value, reactions: [{ emoji: '❤️', count: 2, reacted: true }] });
+    expect(() => parseMessagingPublicMessage({ ...value, collapsed: 'yes' })).toThrow();
+    expect(() => parseMessagingPublicMessage({ ...value, reactions: [{ emoji: '❤️', count: '2', reacted: true }] })).toThrow();
   });
   it('keeps public inbox context and nullable system ownership', () => {
     const room = { ...conversation, access: 'public', contextId: 'auction:1', publicContext: { type: 'auction', id: '1' }, owner: null };
