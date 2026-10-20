@@ -13,9 +13,35 @@ export type PreparePrintListing = paths['/v1/prints/listings/prepare']['post']['
 export type PrintListingPreparation = paths['/v1/prints/listings/prepare']['post']['responses'][201]['content']['application/json']['data'];
 export type PrintActivity = paths['/v1/prints/drops/{id}/activity']['get']['responses'][200]['content']['application/json']['data'];
 export type PrintSpecification = paths['/v1/prints/specifications']['get']['responses'][200]['content']['application/json']['data'][number];
+export type CreatePrintCampaign = paths['/v1/prints/campaigns']['post']['requestBody']['content']['application/json'];
+export type PrintCampaign = paths['/v1/prints/campaigns/{id}']['get']['responses'][200]['content']['application/json']['data'];
+export type PrintCampaignPage = paths['/v1/prints/campaigns/mine']['get']['responses'][200]['content']['application/json'];
+export type PrintCampaignSourcePage = paths['/v1/prints/campaigns/{id}/sources']['get']['responses'][200]['content']['application/json'];
+export type PrintCampaignSource = PrintCampaignSourcePage['data'][number];
+export type ConfigurePrintCampaignSource = paths['/v1/prints/campaigns/{id}/sources/{tokenId}']['put']['requestBody']['content']['application/json'];
+export type PreparePrintCampaign = paths['/v1/prints/campaigns/{id}/prepare']['post']['requestBody']['content']['application/json'];
+export type PrintCampaignPreparation = paths['/v1/prints/campaigns/{id}/prepare']['post']['responses'][200]['content']['application/json']['data'];
+export type PublicPrintCampaignListOptions = NonNullable<paths['/v1/prints/campaigns']['get']['parameters']['query']>;
+export type PrintCampaignListOptions = NonNullable<paths['/v1/prints/campaigns/mine']['get']['parameters']['query']>;
+export type PrintCampaignSourceListOptions = NonNullable<paths['/v1/prints/campaigns/{id}/sources']['get']['parameters']['query']>;
+
+export type PrintCampaignsNamespace = {
+  create: (input: CreatePrintCampaign) => Promise<PrintCampaign>;
+  /** Published benefits associated with an artwork; does not reveal account claim status. */
+  list: (options: PublicPrintCampaignListOptions) => Promise<PrintCampaignPage>;
+  get: (id: string) => Promise<PrintCampaign>;
+  getMine: (id: string) => Promise<PrintCampaign>;
+  listMine: (options?: PrintCampaignListOptions) => Promise<PrintCampaignPage>;
+  /** Account-specific source rights, including unavailable and previously consumed claims. */
+  listSources: (id: string, options?: PrintCampaignSourceListOptions) => Promise<PrintCampaignSourcePage>;
+  setSource: (id: string, tokenId: string, input: ConfigurePrintCampaignSource) => Promise<PrintCampaignSource>;
+  /** Publish returned preparations with prints.listings.signAndPublish; checkout remains Cart. */
+  prepare: (id: string, input: PreparePrintCampaign) => Promise<PrintCampaignPreparation>;
+};
 
 /** Print authoring uses the account session; purchasing uses rare.cart.checkout. */
 export type PrintsNamespace = {
+  campaigns: PrintCampaignsNamespace;
   specifications: { list: () => Promise<PrintSpecification[]> };
   drops: {
     create: (input: CreatePrintDrop) => Promise<Omit<PrintDrop, 'options'>>;

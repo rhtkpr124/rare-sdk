@@ -981,12 +981,40 @@ Use `rare.prints.drops.update` for presentation edits. Production file and
 specification changes are allowed only before pricing is configured. Later
 physical changes require a new drop and SKU so existing signed terms stay intact.
 
+`rare.prints.campaigns` groups token-specific prints under a holder or primary-sale
+benefit. `create` sets the source collection, eligibility policy, optional closing
+time and optional preconfigured ERC-1155 receipt token. Use `setSource` with each
+source token ID, its private production upload, public photos, specification and
+price. `getMine` and paginated `listMine` are creator reads; `get` returns the
+published public campaign. Use `list({ sourceUniversalTokenId, page, perPage })`
+to discover published benefits from an artwork page.
+
+`campaigns.prepare(id, { seller, deadline })` returns frozen Listing preparations.
+Publish each with `prints.listings.signAndPublish`. Each source has a distinct SKU
+and a backend-owned eligibility requirement. Retain preparation IDs and publication
+results so a partial publication can resume without silently creating new terms.
+An optional receipt token must already exist, its seller must be both the token
+creator and collection owner, and the collection must authorize Cart as a minter.
+The campaign methods do not deploy a collection or grant mint approval.
+
+Authenticated `campaigns.listSources` returns a paginated source list with source
+token identity, public artwork, Listing readiness and the caller's claim status.
+Readiness describes checkout availability, not an image-quality certification.
+The backend rechecks rights and owns reservation/consumption; an `AVAILABLE`
+response is display information, not a browser authorization.
+
 Purchases use `rare.cart.checkout`. Add `delivery: { savedAddressId }` or
 `delivery: { recipientDetails }` to the usual checkout intent. The returned
 preparation includes an idempotency key and an optional price breakdown. Retain
 that preparation for retries. `purchase({ preparation })` submits the delivery
 draft through generic Cart checkout. `rare.cart.checkout.coinflow` prepares a card
 session without a separate print payment flow.
+
+Campaign checkout accepts up to five distinct source prints, one copy of each,
+with one recipient and delivery address. The Cart payment aggregates the frozen
+per-source shipping quotes. Each source has its own fulfillment record and
+provider order; this does not promise a combined shipment. Arbitrary mixed carts
+and multiple copies of one source print remain unsupported.
 
 Saving an address is a separate, explicit operation. Use
 `accountClient.shippingAddresses.list`, `save`, and `delete`. Checkout does not

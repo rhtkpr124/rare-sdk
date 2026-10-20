@@ -457,6 +457,32 @@ fulfillment Order methods above now exist. The Cart catalog supports the creator
 operations listed above, but does not provide saved carts or every Product edit.
 Mixed physical/non-physical delivery carts and shipment tracking remain unsupported.
 
+For token-specific benefits, use `rare.prints.campaigns` rather than adding a gate
+to an already-published standalone print:
+
+- `create` records the source collection, `CURRENT_HOLDER` or `PRIMARY_SALE`
+  policy, optional closing time and optional preconfigured ERC-1155 receipt token.
+- `setSource` binds a source token ID to its own private production upload,
+  public photos, specification and price. Production files stay private.
+- `getMine` and paginated `listMine` support creator management; `get` returns
+  published public campaign details. Public
+  `list({ sourceUniversalTokenId, page, perPage })` supplies artwork-page
+  discovery without exposing account claim status.
+- `prepare` returns frozen print Listing preparations. Publish those with
+  `prints.listings.signAndPublish`; the backend binds each source's eligibility
+  requirement during publication. Keep preparation IDs and successful results
+  so partial publication can resume with the original terms.
+- Authenticated, paginated `listSources` returns source token identity, public
+  artwork, Listing readiness and the account's claim status. Readiness is not
+  a print-quality certification. The backend rechecks eligibility at checkout.
+
+An optional receipt token must already be defined and Cart-approved for minting,
+with the seller as both token creator and collection owner. Use the existing
+ERC-1155 collection methods for that explicit setup; campaign creation does not
+deploy contracts or grant approvals. Purchases continue through
+`rare.cart.checkout`, retaining the original signed Order and idempotency key for
+recovery. Do not publish an open Listing and attach its claim gate afterward.
+
 For each missing capability, inspect the generated Rare API contract first.
 If the endpoint exists, add a typed SDK method using the existing transport and
 error handling. If it does not exist, add it in the owning backend layer before

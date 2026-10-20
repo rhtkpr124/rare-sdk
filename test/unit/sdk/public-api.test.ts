@@ -35,6 +35,7 @@ describe('public SDK API surface', () => {
       'createMemoryAccountSessionStore',
       'createRareApi',
       'createRareClient',
+      'createRareUploader',
     ]);
     expect(client.cartFulfillmentKinds).toEqual({
       none: 0,
@@ -88,6 +89,9 @@ describe('public SDK API surface', () => {
     expect(rare.cart.listing).not.toHaveProperty('buildAuthorization');
     expect(rare.cart.routing.quote).toBeTypeOf('function');
     expect(rare.cart.routing.assertFresh).toBeTypeOf('function');
+    expect(Object.keys(rare.prints.campaigns).sort()).toEqual([
+      'create', 'get', 'getMine', 'list', 'listMine', 'listSources', 'prepare', 'setSource',
+    ]);
   });
 
   it('exposes contract building blocks from the contracts subpath', () => {

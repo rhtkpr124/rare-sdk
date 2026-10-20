@@ -11,6 +11,7 @@ import { getContractAddresses } from '../contracts/addresses.js';
 import { resolveChainFromPublicClient } from './wallet-shell.js';
 import { approvalAbi, NftApprovalRequiredError, runWithApprovalSideEffectAlert } from './approvals-shell.js';
 import { createCartNamespace } from './cart.js';
+import { createPrintCampaignsNamespace } from './print-campaigns.js';
 
 export function createPrintsNamespace(config: RareClientConfig): PrintsNamespace {
   const publicClient = createApiClient(config.apiBaseUrl, config.apiFetch);
@@ -24,6 +25,7 @@ export function createPrintsNamespace(config: RareClientConfig): PrintsNamespace
     params: { path: { id } }, body: { artifact: toCartListingRootArtifactWire(artifact) },
   }));
   return {
+    campaigns: createPrintCampaignsNamespace(config),
     specifications: { list: () => data(publicClient.GET('/v1/prints/specifications')) },
     drops: {
       create: input => data(client.POST('/v1/prints/drops', { body: input })),

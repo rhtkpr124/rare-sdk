@@ -2370,6 +2370,954 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/prints/campaigns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Find published print campaigns for source artwork */
+        get: {
+            parameters: {
+                query: {
+                    page?: number;
+                    perPage?: number;
+                    /** @description Canonical NFT identifier in chainId-contractAddress-tokenId format. */
+                    sourceUniversalTokenId: components["schemas"]["UniversalTokenId"];
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Matching print campaigns */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                description: string;
+                                /** @enum {string} */
+                                status: "DRAFT" | "PUBLISHED" | "ARCHIVED";
+                                chainId: string;
+                                source: {
+                                    chainId: string;
+                                    tokenContract: string;
+                                };
+                                /** @enum {string} */
+                                eligibility: "CURRENT_HOLDER" | "PRIMARY_SALE";
+                                /** Format: date-time */
+                                closesAt: string | null;
+                                receipt: {
+                                    tokenContract: string;
+                                    tokenId: string;
+                                } | null;
+                                sourceCount: number;
+                            }[];
+                            pagination: components["schemas"]["Pagination"];
+                        };
+                    };
+                };
+                /** @description Invalid campaign request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CartErrorResponse"];
+                    };
+                };
+                /** @description Account authentication required */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CartErrorResponse"];
+                    };
+                };
+                /** @description Campaign unavailable */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CartErrorResponse"];
+                    };
+                };
+                /** @description Campaign state changed */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CartErrorResponse"];
+                    };
+                };
+                /** @description Campaign configuration unsupported */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CartErrorResponse"];
+                    };
+                };
+                /** @description Campaign dependency unavailable */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CartErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Create a token-specific print campaign */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        source: {
+                            chainId: string;
+                            tokenContract: string;
+                        };
+                        /** @enum {string} */
+                        eligibility: "CURRENT_HOLDER" | "PRIMARY_SALE";
+                        /** Format: date-time */
+                        closesAt?: string;
+                        receipt?: {
+                            tokenContract: string;
+                            tokenId: string;
+                        };
+                        /** Format: uuid */
+                        idempotencyKey: string;
+                        name: string;
+                        /** @default  */
+                        description?: string;
+                        chainId: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Creator campaign */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                description: string;
+                                /** @enum {string} */
+                                status: "DRAFT" | "PUBLISHED" | "ARCHIVED";
+                                chainId: string;
+                                source: {
+                                    chainId: string;
+                                    tokenContract: string;
+                                };
+                                /** @enum {string} */
+                                eligibility: "CURRENT_HOLDER" | "PRIMARY_SALE";
+                                /** Format: date-time */
+                                closesAt: string | null;
+                                receipt: {
+                                    tokenContract: string;
+                                    tokenId: string;
+                                } | null;
+                                sourceCount: number;
+                            };
+                        };
+                    };
+                };
+                /** @description Invalid campaign request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CartErrorResponse"];
+                    };
+                };
+                /** @description Account authentication required */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CartErrorResponse"];
+                    };
+                };
+                /** @description Campaign unavailable */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CartErrorResponse"];
+                    };
+                };
+                /** @description Campaign state changed */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CartErrorResponse"];
+                    };
+                };
+                /** @description Campaign configuration unsupported */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CartErrorResponse"];
+                    };
+                };
+                /** @description Campaign dependency unavailable */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CartErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/prints/campaigns/mine": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List your print campaigns */
+        get: {
+            parameters: {
+                query?: {
+                    page?: number;
+                    perPage?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Creator campaigns */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                description: string;
+                                /** @enum {string} */
+                                status: "DRAFT" | "PUBLISHED" | "ARCHIVED";
+                                chainId: string;
+                                source: {
+                                    chainId: string;
+                                    tokenContract: string;
+                                };
+                                /** @enum {string} */
+                                eligibility: "CURRENT_HOLDER" | "PRIMARY_SALE";
+                                /** Format: date-time */
+                                closesAt: string | null;
+                                receipt: {
+                                    tokenContract: string;
+                                    tokenId: string;
+                                } | null;
+                                sourceCount: number;
+                            }[];
+                            pagination: components["schemas"]["Pagination"];
+                        };
+                    };
+                };
+                /** @description Invalid campaign request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CartErrorResponse"];
+                    };
+                };
+                /** @description Account authentication required */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CartErrorResponse"];
+                    };
+                };
+                /** @description Campaign unavailable */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CartErrorResponse"];
+                    };
+                };
+                /** @description Campaign state changed */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CartErrorResponse"];
+                    };
+                };
+                /** @description Campaign configuration unsupported */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CartErrorResponse"];
+                    };
+                };
+                /** @description Campaign dependency unavailable */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CartErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/prints/campaigns/mine/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read your print campaign */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Creator campaign */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                description: string;
+                                /** @enum {string} */
+                                status: "DRAFT" | "PUBLISHED" | "ARCHIVED";
+                                chainId: string;
+                                source: {
+                                    chainId: string;
+                                    tokenContract: string;
+                                };
+                                /** @enum {string} */
+                                eligibility: "CURRENT_HOLDER" | "PRIMARY_SALE";
+                                /** Format: date-time */
+                                closesAt: string | null;
+                                receipt: {
+                                    tokenContract: string;
+                                    tokenId: string;
+                                } | null;
+                                sourceCount: number;
+                            };
+                        };
+                    };
+                };
+                /** @description Invalid campaign request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CartErrorResponse"];
+                    };
+                };
+                /** @description Account authentication required */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CartErrorResponse"];
+                    };
+                };
+                /** @description Campaign unavailable */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CartErrorResponse"];
+                    };
+                };
+                /** @description Campaign state changed */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CartErrorResponse"];
+                    };
+                };
+                /** @description Campaign configuration unsupported */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CartErrorResponse"];
+                    };
+                };
+                /** @description Campaign dependency unavailable */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CartErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/prints/campaigns/{id}/sources/{tokenId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Map one source NFT to its approved production file */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                    tokenId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        title: string;
+                        images: string[];
+                        productionUploadKey: string;
+                        specificationId: string;
+                        displayPriceUsdCents: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Configured source */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                sourceTokenId: string;
+                                sourceUniversalTokenId: string;
+                                title: string;
+                                images: string[];
+                                specificationId: string;
+                                /** @enum {string} */
+                                sizing: "fitPrintArea" | "fillPrintArea";
+                                displayPriceUsdCents: string;
+                                sku: string;
+                                /** @enum {string} */
+                                readiness: "READY" | "UNPUBLISHED" | "UNAVAILABLE";
+                                /** @enum {string} */
+                                claimStatus: "AVAILABLE" | "RESERVED" | "CONSUMED" | "REVOKED" | "INELIGIBLE";
+                                /** Format: uuid */
+                                preparationId: string | null;
+                                listingDigest: string | null;
+                                cartAddress: string | null;
+                                chainId: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Invalid campaign request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CartErrorResponse"];
+                    };
+                };
+                /** @description Account authentication required */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CartErrorResponse"];
+                    };
+                };
+                /** @description Campaign unavailable */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CartErrorResponse"];
+                    };
+                };
+                /** @description Campaign state changed */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CartErrorResponse"];
+                    };
+                };
+                /** @description Campaign configuration unsupported */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CartErrorResponse"];
+                    };
+                };
+                /** @description Campaign dependency unavailable */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CartErrorResponse"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/prints/campaigns/{id}/sources": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read source artwork, readiness and account eligibility */
+        get: {
+            parameters: {
+                query?: {
+                    page?: number;
+                    perPage?: number;
+                };
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Source prints without private files or claimant identities */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                sourceTokenId: string;
+                                sourceUniversalTokenId: string;
+                                title: string;
+                                images: string[];
+                                specificationId: string;
+                                /** @enum {string} */
+                                sizing: "fitPrintArea" | "fillPrintArea";
+                                displayPriceUsdCents: string;
+                                sku: string;
+                                /** @enum {string} */
+                                readiness: "READY" | "UNPUBLISHED" | "UNAVAILABLE";
+                                /** @enum {string} */
+                                claimStatus: "AVAILABLE" | "RESERVED" | "CONSUMED" | "REVOKED" | "INELIGIBLE";
+                                /** Format: uuid */
+                                preparationId: string | null;
+                                listingDigest: string | null;
+                                cartAddress: string | null;
+                                chainId: string;
+                            }[];
+                            pagination: components["schemas"]["Pagination"];
+                        };
+                    };
+                };
+                /** @description Invalid campaign request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CartErrorResponse"];
+                    };
+                };
+                /** @description Account authentication required */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CartErrorResponse"];
+                    };
+                };
+                /** @description Campaign unavailable */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CartErrorResponse"];
+                    };
+                };
+                /** @description Campaign state changed */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CartErrorResponse"];
+                    };
+                };
+                /** @description Campaign configuration unsupported */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CartErrorResponse"];
+                    };
+                };
+                /** @description Campaign dependency unavailable */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CartErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/prints/campaigns/{id}/prepare": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Freeze source rights and prepare gated print Listings */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        seller: string;
+                        deadline: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Immutable Listings for creator signature and publication */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                preparations: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    fulfillment_kind: string;
+                                    user_id: string;
+                                    /** Format: uuid */
+                                    option_id: string | null;
+                                    chain_id: string;
+                                    cart_address: string;
+                                    listing_digest: string;
+                                    listing_id: string | null;
+                                    snapshot: components["schemas"]["CartJsonObject"];
+                                    /** Format: date-time */
+                                    created_at: string;
+                                }[];
+                            };
+                        };
+                    };
+                };
+                /** @description Invalid campaign request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CartErrorResponse"];
+                    };
+                };
+                /** @description Account authentication required */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CartErrorResponse"];
+                    };
+                };
+                /** @description Campaign unavailable */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CartErrorResponse"];
+                    };
+                };
+                /** @description Campaign state changed */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CartErrorResponse"];
+                    };
+                };
+                /** @description Campaign configuration unsupported */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CartErrorResponse"];
+                    };
+                };
+                /** @description Campaign dependency unavailable */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CartErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/prints/campaigns/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read a published print campaign */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Public campaign */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                description: string;
+                                /** @enum {string} */
+                                status: "DRAFT" | "PUBLISHED" | "ARCHIVED";
+                                chainId: string;
+                                source: {
+                                    chainId: string;
+                                    tokenContract: string;
+                                };
+                                /** @enum {string} */
+                                eligibility: "CURRENT_HOLDER" | "PRIMARY_SALE";
+                                /** Format: date-time */
+                                closesAt: string | null;
+                                receipt: {
+                                    tokenContract: string;
+                                    tokenId: string;
+                                } | null;
+                                sourceCount: number;
+                            };
+                        };
+                    };
+                };
+                /** @description Invalid campaign request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CartErrorResponse"];
+                    };
+                };
+                /** @description Account authentication required */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CartErrorResponse"];
+                    };
+                };
+                /** @description Campaign unavailable */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CartErrorResponse"];
+                    };
+                };
+                /** @description Campaign state changed */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CartErrorResponse"];
+                    };
+                };
+                /** @description Campaign configuration unsupported */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CartErrorResponse"];
+                    };
+                };
+                /** @description Campaign dependency unavailable */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CartErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/prints/drops/{id}/activity": {
         parameters: {
             query?: never;
@@ -2694,6 +3642,343 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/prints/internal/availability/reconcile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reconcile bounded fulfillment availability and search projections */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** @default 25 */
+                        take?: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Reconciliation summary */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            selected: number;
+                            completed: number;
+                            failed: number;
+                        };
+                    };
+                };
+                /** @description Internal authentication required */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                        };
+                    };
+                };
+                /** @description Availability persistence unavailable */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/prints/internal/fulfillments/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        operation: "dueOrders";
+                        /** @default 25 */
+                        take?: number;
+                    } | {
+                        /** @enum {string} */
+                        operation: "getOrder";
+                        /** Format: uuid */
+                        id: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Internal fulfillment records */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** Format: uuid */
+                            id: string;
+                            order_id: string;
+                            order_line_index: number;
+                            fulfillment_kind: string;
+                            /** Format: uuid */
+                            preparation_id: string;
+                            user_id: string;
+                            snapshot: {
+                                [key: string]: unknown;
+                            };
+                            /** @enum {string} */
+                            status: "PENDING" | "PROCESSING" | "RETRY" | "COMPLETED" | "FAILED";
+                            /** Format: date-time */
+                            due_at: string;
+                            /** Format: uuid */
+                            lease_token: string | null;
+                            /** Format: date-time */
+                            lease_until: string | null;
+                            attempts: number;
+                            provider_order_id: string | null;
+                            last_error: string | null;
+                            /** Format: date-time */
+                            created_at: string;
+                            /** Format: date-time */
+                            updated_at: string;
+                        }[] | {
+                            /** Format: uuid */
+                            id: string;
+                            order_id: string;
+                            order_line_index: number;
+                            fulfillment_kind: string;
+                            /** Format: uuid */
+                            preparation_id: string;
+                            user_id: string;
+                            snapshot: {
+                                [key: string]: unknown;
+                            };
+                            /** @enum {string} */
+                            status: "PENDING" | "PROCESSING" | "RETRY" | "COMPLETED" | "FAILED";
+                            /** Format: date-time */
+                            due_at: string;
+                            /** Format: uuid */
+                            lease_token: string | null;
+                            /** Format: date-time */
+                            lease_until: string | null;
+                            attempts: number;
+                            provider_order_id: string | null;
+                            last_error: string | null;
+                            /** Format: date-time */
+                            created_at: string;
+                            /** Format: date-time */
+                            updated_at: string;
+                        } | unknown;
+                    };
+                };
+                /** @description Operation unavailable */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                        };
+                    };
+                };
+                /** @description Operation unavailable */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                        };
+                    };
+                };
+                /** @description Operation unavailable */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/prints/internal/fulfillments/write": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        operation: "claimOrder";
+                        /** Format: uuid */
+                        id: string;
+                        /** Format: uuid */
+                        leaseToken: string;
+                        leaseSeconds: number;
+                    } | {
+                        /** @enum {string} */
+                        operation: "completeOrder";
+                        /** Format: uuid */
+                        id: string;
+                        /** Format: uuid */
+                        leaseToken: string;
+                        providerOrderId: string;
+                    } | {
+                        /** @enum {string} */
+                        operation: "retryOrder";
+                        /** Format: uuid */
+                        id: string;
+                        /** Format: uuid */
+                        leaseToken: string;
+                        delaySeconds: number;
+                        errorCode: string;
+                    } | {
+                        /** @enum {string} */
+                        operation: "failOrder";
+                        /** Format: uuid */
+                        id: string;
+                        /** Format: uuid */
+                        leaseToken: string;
+                        errorCode: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Leased fulfillment state */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** Format: uuid */
+                            id: string;
+                            order_id: string;
+                            order_line_index: number;
+                            fulfillment_kind: string;
+                            /** Format: uuid */
+                            preparation_id: string;
+                            user_id: string;
+                            snapshot: {
+                                [key: string]: unknown;
+                            };
+                            /** @enum {string} */
+                            status: "PENDING" | "PROCESSING" | "RETRY" | "COMPLETED" | "FAILED";
+                            /** Format: date-time */
+                            due_at: string;
+                            /** Format: uuid */
+                            lease_token: string | null;
+                            /** Format: date-time */
+                            lease_until: string | null;
+                            attempts: number;
+                            provider_order_id: string | null;
+                            last_error: string | null;
+                            /** Format: date-time */
+                            created_at: string;
+                            /** Format: date-time */
+                            updated_at: string;
+                        } | null;
+                    };
+                };
+                /** @description Operation unavailable */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                        };
+                    };
+                };
+                /** @description Operation unavailable */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                        };
+                    };
+                };
+                /** @description Operation unavailable */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/prints/orders/{id}": {
         parameters: {
             query?: never;
@@ -2797,6 +4082,16 @@ export interface components {
          * @example 1-0xb932a70a57673d89f4acffbe830e8ed7f75fb9e0-12345
          */
         UniversalTokenId: string;
+        Pagination: {
+            /** @example 1 */
+            page: number;
+            /** @example 20 */
+            perPage: number;
+            /** @example 100 */
+            totalCount: number;
+            /** @example 5 */
+            totalPages: number;
+        };
     };
     responses: never;
     parameters: never;
