@@ -62,7 +62,7 @@ export function validateCartCheckoutIntent(intent: CartCheckoutIntent): CartVali
       if (item.quantity <= 0n) issues.push(issue('non_positive', `items[${index}].quantity`, 'Checkout item quantity must be positive.'));
     } else if (item.kind === 'swap') {
       if (!isAddress(item.outputCurrency) || item.outputCurrency === zeroAddress) issues.push(issue('invalid_address', `items[${index}].outputCurrency`, 'Swap output currency must be an ERC20 address.'));
-      if (item.outputCurrency.toLowerCase() === intent.paymentCurrency.toLowerCase()) issues.push(issue('same_currency', `items[${index}].outputCurrency`, 'Swap output must differ from payment currency.'));
+      if (isAddress(item.outputCurrency) && isAddress(intent.paymentCurrency) && isAddressEqual(item.outputCurrency, intent.paymentCurrency)) issues.push(issue('same_currency', `items[${index}].outputCurrency`, 'Swap output must differ from payment currency.'));
       const amount = item.mode === 'exact-input' ? item.inputAmount : item.outputAmount;
       if (amount <= 0n) issues.push(issue('non_positive', `items[${index}]`, 'Swap amount must be positive.'));
     } else issues.push(issue('invalid_kind', `items[${index}].kind`, 'Checkout item kind must be listing or swap.'));
@@ -113,8 +113,8 @@ export function validateCartCheckoutPreparationForPurchase(
   swaps.forEach((item, index) => {
     const matching = swapLines.filter((line) => isAddressEqual(line.settlementCurrency, item.outputCurrency) &&
       (item.recipient === undefined || isAddressEqual(line.paymentRecipient, item.recipient)));
-    const matchingRequests = swaps.filter((other) => other.outputCurrency.toLowerCase() === item.outputCurrency.toLowerCase() &&
-      other.recipient?.toLowerCase() === item.recipient?.toLowerCase());
+    const matchingRequests = swaps.filter((other) => isAddressEqual(other.outputCurrency, item.outputCurrency) &&
+      (other.recipient === undefined ? item.recipient === undefined : item.recipient !== undefined && isAddressEqual(other.recipient, item.recipient)));
     if (matching.length === 0) issues.push(issue('missing_swap', `intent.items[${index}]`, 'Checkout preparation is missing the requested token output.'));
     if (matchingRequests.every((request) => request.mode === 'exact-output')) {
       const requested = matchingRequests.reduce((amount, request) => amount + (request.mode === 'exact-output' ? request.outputAmount : 0n), 0n);
