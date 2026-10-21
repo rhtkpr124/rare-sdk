@@ -18,6 +18,7 @@ import {
   validateCartSettledOrderLines,
 } from '../../../src/sdk/cart-core.js';
 import { cartFulfillmentKinds, type CartFulfillmentAction, type CartListing, type CartOrderLine } from '../../../src/sdk/types/cart.js';
+import type { CartCheckoutPreparation } from '../../../src/sdk/types/cart-api.js';
 import {
   buildCartEip712Domain,
   computeCartListingMerkleRoot,
@@ -61,6 +62,37 @@ describe('Cart functional core', () => {
     expect(validateCartCheckoutIntent({ paymentCurrency: zeroAddress, items: [
       { kind: 'swap', mode: 'exact-input', outputCurrency: seller, inputAmount: 0n },
     ] }).isValid).toBe(false);
+    expect(validateCartCheckoutIntent({ paymentCurrency: seller, items: [
+      { kind: 'swap', mode: 'exact-output', outputCurrency: zeroAddress, outputAmount: 1n },
+    ] }).isValid).toBe(false);
+    expect(validateCartCheckoutIntent({ paymentCurrency: zeroAddress, items: [
+      { kind: 'swap', mode: 'exact-output', outputCurrency: seller, outputAmount: 1n, recipient: zeroAddress },
+    ] }).isValid).toBe(false);
+  });
+
+  it('binds each mixed-mode token output and rejects unsigned extra outputs or excessive budgets', () => {
+    const preparation: CartCheckoutPreparation = {
+      schemaVersion: 1, chainId: 11155111n, cartAddress: cart,
+      preparedAt: '2026-08-28T12:00:00.000Z', expiresAt: '2026-08-28T12:05:00.000Z',
+      intent: { paymentCurrency: zeroAddress, items: [
+        { kind: 'swap', mode: 'exact-input', outputCurrency: seller, inputAmount: 100n, recipient: cart },
+        { kind: 'swap', mode: 'exact-output', outputCurrency: seller, outputAmount: 25n, recipient: cart },
+      ] },
+      paymentAmount: 125n, fees: [], settlements: [], route: { commands: '0x', inputs: [], routerValue: 0n },
+      lines: [50n, 25n].map(amount => ({ sku: bytes32('a'), listingDigest: bytes32('0'), fulfillmentKind: 6,
+        quantity: 1n, settlementCurrency: seller, amount, paymentRecipient: cart })),
+    };
+    const expected = { chainId: 11155111n, cart, nowMs: Date.parse('2026-08-28T12:01:00.000Z') };
+    expect(validateCartCheckoutPreparationForPurchase(preparation, expected).isValid).toBe(true);
+    expect(validateCartCheckoutPreparationForPurchase({ ...preparation,
+      lines: preparation.lines.map(line => ({ ...line, amount: 50n })),
+    }, expected).isValid).toBe(false);
+    expect(validateCartCheckoutPreparationForPurchase({ ...preparation,
+      intent: { ...preparation.intent, items: preparation.intent.items.slice(0, 1) }, lines: preparation.lines.slice(0, 1),
+    }, expected).isValid).toBe(false);
+    expect(validateCartCheckoutPreparationForPurchase({ ...preparation,
+      lines: [...preparation.lines, ...preparation.lines],
+    }, expected).isValid).toBe(false);
   });
   it('rejects invalid checkout intent before calling Rare API', () => {
     expect(validateCartCheckoutIntent({ paymentCurrency: zeroAddress, items: [
