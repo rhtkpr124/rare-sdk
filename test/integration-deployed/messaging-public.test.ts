@@ -57,9 +57,13 @@ describe('public durable messaging against deployed services', () => {
       try {
         expect(sent.type).toBe('user');
         const nextInput = { clientMessageId: randomUUID(), body: `SDK cooldown retry ${randomUUID()}`, mentionUserIds: [] };
-        await expect(account.messaging.sendPublic(room.id, nextInput)).rejects.toMatchObject({ status: 429, code: 'rate_limited' });
-        const next = await retryPublicSend(() => account.messaging.sendPublic(room.id, nextInput));
+        const next = await account.messaging.sendPublic(room.id, nextInput).catch(async (error: unknown) => {
+          expect(error).toMatchObject({ status: 429, code: 'rate_limited' });
+          return retryPublicSend(() => account.messaging.sendPublic(room.id, nextInput));
+        });
         try {
+          // A slow request may naturally arrive after the cooldown expires.
+          expect(Date.parse(next.createdAt) - Date.parse(sent.createdAt)).toBeGreaterThanOrEqual(1000);
           expect((await retryPublicSend(() => account.messaging.sendPublic(room.id, nextInput))).id).toBe(next.id);
           const thread = await api.messaging.history(room.id);
           for (const id of [sent.id, next.id]) expect(thread.messages.filter(row => row.id === id)).toHaveLength(1);
