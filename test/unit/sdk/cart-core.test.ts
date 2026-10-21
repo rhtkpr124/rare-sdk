@@ -16,6 +16,7 @@ import {
   validateCartListingIntent,
   validateCartListingRootArtifact,
   validateCartSettledOrderLines,
+  validateCartApprovedSwapOutputs,
 } from '../../../src/sdk/cart-core.js';
 import { cartFulfillmentKinds, type CartFulfillmentAction, type CartListing, type CartOrderLine } from '../../../src/sdk/types/cart.js';
 import type { CartCheckoutPreparation } from '../../../src/sdk/types/cart-api.js';
@@ -50,6 +51,16 @@ const listings: CartListing[] = [
 ];
 
 describe('Cart functional core', () => {
+  it('keeps finalized swap promises fixed while allowing unrelated listing fee changes', () => {
+    const swap: CartOrderLine = { sku: bytes32('a'), listingDigest: bytes32('0'), fulfillmentKind: 6,
+      quantity: 1n, settlementCurrency: seller, amount: 100n, paymentRecipient: cart };
+    const fee: CartOrderLine = { ...swap, fulfillmentKind: 0 };
+    expect(validateCartApprovedSwapOutputs([swap, fee], [swap, { ...fee, amount: 50n }]).isValid).toBe(true);
+    const changes: Partial<CartOrderLine>[] = [ { amount: 99n }, { quantity: 2n }, { sku: bytes32('b') },
+      { listingDigest: bytes32('c') }, { settlementCurrency: cart }, { paymentRecipient: seller }, { fulfillmentKind: 0 } ];
+    for (const change of changes) expect(validateCartApprovedSwapOutputs([swap], [{ ...swap, ...change }]).isValid).toBe(false);
+    expect(validateCartApprovedSwapOutputs([swap], [swap, swap]).isValid).toBe(false);
+  });
   it('accepts both swap quote directions and mixed checkout items', () => {
     expect(validateCartCheckoutIntent({ paymentCurrency: zeroAddress, items: [
       { kind: 'listing', listingDigest: bytes32('1'), quantity: 1n },

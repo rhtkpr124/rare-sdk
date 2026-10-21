@@ -329,6 +329,16 @@ export type CartSettledOrderLine = Omit<CartOrderLine, 'fulfillmentKind'> & {
   fulfillmentKind: number;
 };
 
+export function validateCartApprovedSwapOutputs(
+  approvedLines: readonly CartOrderLine[],
+  finalizedLines: readonly CartOrderLine[],
+): CartValidationResult<readonly CartSettledOrderLine[]> {
+  return validateCartSettledOrderLines(
+    approvedLines.filter(line => line.fulfillmentKind === 6),
+    finalizedLines.filter(line => line.fulfillmentKind === 6).map((line, index) => ({ ...line, lineIndex: BigInt(index) })),
+  );
+}
+
 export function validateCartSettledOrderLines(
   expectedLines: readonly CartOrderLine[],
   settledLines: readonly CartSettledOrderLine[],
