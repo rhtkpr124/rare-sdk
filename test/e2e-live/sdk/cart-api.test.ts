@@ -103,6 +103,7 @@ describeRareApi('SDK Cart rare-api integration', () => {
     const draft = {
       paymentCurrency: zeroAddress,
       items: createdListings.map((listing) => ({
+        kind: 'listing' as const,
         listingDigest: listing.listingDigest,
         quantity: 1n,
         recipient,

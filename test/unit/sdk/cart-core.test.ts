@@ -49,12 +49,25 @@ const listings: CartListing[] = [
 ];
 
 describe('Cart functional core', () => {
+  it('accepts both swap quote directions and mixed checkout items', () => {
+    expect(validateCartCheckoutIntent({ paymentCurrency: zeroAddress, items: [
+      { kind: 'listing', listingDigest: bytes32('1'), quantity: 1n },
+      { kind: 'swap', mode: 'exact-input', outputCurrency: seller, inputAmount: 100n, recipient: cart },
+      { kind: 'swap', mode: 'exact-output', outputCurrency: seller, outputAmount: 50n, recipient: cart },
+    ] }).isValid).toBe(true);
+    expect(validateCartCheckoutIntent({ paymentCurrency: seller, items: [
+      { kind: 'swap', mode: 'exact-output', outputCurrency: seller, outputAmount: 50n },
+    ] }).isValid).toBe(false);
+    expect(validateCartCheckoutIntent({ paymentCurrency: zeroAddress, items: [
+      { kind: 'swap', mode: 'exact-input', outputCurrency: seller, inputAmount: 0n },
+    ] }).isValid).toBe(false);
+  });
   it('rejects invalid checkout intent before calling Rare API', () => {
     expect(validateCartCheckoutIntent({ paymentCurrency: zeroAddress, items: [
-      { listingDigest: bytes32('1'), quantity: 1n, recipient: seller },
+      { kind: 'listing', listingDigest: bytes32('1'), quantity: 1n, recipient: seller },
     ] }).isValid).toBe(true);
     const invalid = validateCartCheckoutIntent({ paymentCurrency: 'invalid' as Address, items: [
-      { listingDigest: '0x12', quantity: 0n, recipient: 'invalid' as Address },
+      { kind: 'listing', listingDigest: '0x12', quantity: 0n, recipient: 'invalid' as Address },
     ] });
     expect(invalid.isValid).toBe(false);
     if (!invalid.isValid) expect(invalid.issues.map((issue) => issue.code)).toEqual([
@@ -69,7 +82,7 @@ describe('Cart functional core', () => {
       cartAddress: cart,
       preparedAt: '2026-08-28T12:00:00.000Z',
       expiresAt: '2026-08-28T12:05:00.000Z',
-      intent: { paymentCurrency: zeroAddress, items: [{ listingDigest: bytes32('1'), quantity: 1n }] },
+      intent: { paymentCurrency: zeroAddress, items: [{ kind: 'listing' as const, listingDigest: bytes32('1'), quantity: 1n }] },
       paymentAmount: 100n,
       fees: [],
       settlements: [{ currency: zeroAddress, amount: 100n }],
