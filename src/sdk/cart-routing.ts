@@ -53,7 +53,8 @@ export function createCartRoutingNamespace(
           const response = await requestUniswapQuote({ apiKey, chainId: plan.chainId, tokenIn: plan.paymentCurrency,
             tokenOut: params.outputCurrency, amount: params.inputAmount, swapper: cart,
             slippageBps: cartRoutingDefaultSlippageBps, tradeType: 'EXACT_INPUT', permit2Disabled: false });
-          if (response.quote.tradeType !== 'EXACT_INPUT' || !isAddressEqual(response.quote.input.token, plan.paymentCurrency) ||
+          if (response.quote.chainId !== plan.chainId || !isAddressEqual(response.quote.swapper, cart) ||
+            !isAddressEqual(response.quote.output.recipient, cart) || response.quote.tradeType !== 'EXACT_INPUT' || !isAddressEqual(response.quote.input.token, plan.paymentCurrency) ||
             !isAddressEqual(response.quote.output.token, params.outputCurrency) || BigInt(response.quote.input.amount) !== params.inputAmount) {
             throw new CartRoutingCoreError('invalid_response', 'Input quote does not match the requested currencies and budget.');
           }
