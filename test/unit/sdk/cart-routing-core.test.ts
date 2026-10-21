@@ -7,6 +7,7 @@ import {
   CartRoutingCoreError,
   planCartRoutingQuote,
   protectCartRoutingExactInput,
+  protectCartInputQuoteOutput,
   resolveCartRoutingMaximumInput,
   type CartRoutingForeignObligation,
   type CartRoutingPlan,
@@ -29,6 +30,13 @@ const executeAbi = [{
 }] as const;
 
 describe('Cart routing functional core', () => {
+  it('protects input-budget outputs using integer arithmetic across token decimals', () => {
+    expect(protectCartInputQuoteOutput(1_005_000n)).toBe(1_000_000n);
+    expect(protectCartInputQuoteOutput(1_005_000_000_000_000_000n)).toBe(1_000_000_000_000_000_000n);
+    expect(protectCartInputQuoteOutput(1_006n)).toBe(1_000n);
+    expect(() => protectCartInputQuoteOutput(0n)).toThrow('positive');
+    expect(() => protectCartInputQuoteOutput(1n)).toThrow('too small');
+  });
   it('packages opaque compiled routes for every supported Sepolia currency direction', () => {
     for (const paymentCurrency of currencies) {
       for (const settlementCurrency of currencies) {

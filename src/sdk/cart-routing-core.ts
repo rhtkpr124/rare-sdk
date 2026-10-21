@@ -23,6 +23,14 @@ export const cartRoutingDefaultSlippageBps = 50;
 export const cartRoutingDefaultQuoteLifetimeMs = 60_000;
 export const cartRoutingMaxCommands = 32;
 
+/** Floor the promised output so execution movement is absorbed by protocol spread. */
+export function protectCartInputQuoteOutput(quotedOutput: bigint): bigint {
+  if (quotedOutput <= 0n) throw new CartRoutingCoreError('invalid_response', 'Input quote output must be positive.');
+  const output = quotedOutput * 10_000n / (10_000n + BigInt(cartRoutingDefaultSlippageBps));
+  if (output === 0n) throw new CartRoutingCoreError('insufficient_liquidity', 'Input budget is too small to produce a protected token output.');
+  return output;
+}
+
 const universalRouterExecuteAbi = [
   {
     type: 'function', name: 'execute', stateMutability: 'payable',

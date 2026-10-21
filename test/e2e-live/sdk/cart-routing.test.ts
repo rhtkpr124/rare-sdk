@@ -16,6 +16,15 @@ const liquidEdition = '0x7AEaB936a2D6217E100b4dcfCFcE14E056B386fA' as Address;
 const liquidEditionHooks = '0xB32eC4b5eC46fBd8E68a39308b8569538d0620CC' as Address;
 
 describeLive('SDK Cart routing integration', () => {
+  it.each(currencies.slice(0, 2))('quotes a fixed RARE output within an input budget of $amount', async ({ address, amount }) => {
+    const rare = createRareClient({ publicClient: createTestSepoliaPublicClient(), uniswapApiKey: process.env.UNISWAP_API_KEY });
+    const quote = await rare.cart.routing.quoteInput({ paymentCurrency: address, outputCurrency: currencies[2].address, inputAmount: amount });
+    expect(quote.inputAmount).toBe(amount);
+    expect(quote.outputAmount).toBeGreaterThan(0n);
+    const fixed = await rare.cart.routing.quote({ paymentCurrency: address,
+      obligations: [{ settlementCurrency: currencies[2].address, amount: quote.outputAmount }] });
+    expect(BigInt(fixed.maximumPaymentInput)).toBeLessThanOrEqual(amount);
+  }, 120_000);
   it('strictly quotes one canonical Sepolia USDC to ETH route', async () => {
     const publicClient = createTestSepoliaPublicClient();
     const cart = getCartAddress('sepolia');

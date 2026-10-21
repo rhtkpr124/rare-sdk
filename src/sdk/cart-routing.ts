@@ -1,4 +1,4 @@
-import { getAddress, zeroAddress, type Address } from 'viem';
+import { getAddress, isAddressEqual, zeroAddress, type Address } from 'viem';
 import { cartAbi } from '../contracts/abis/cart.js';
 import type { SupportedChain } from '../contracts/addresses.js';
 import { requestUniswapQuote, requestUniswapSwap, UniswapApiError } from '../swap/uniswap-api.js';
@@ -10,8 +10,9 @@ import {
   planCartRoutingQuote,
   protectCartRoutingExactInput,
   resolveCartRoutingMaximumInput,
+  protectCartInputQuoteOutput,
 } from './cart-routing-core.js';
-import { buildKnownPoolCartRoutingQuote } from './cart-routing-local.js';
+import { buildKnownPoolCartRoutingQuote, quoteKnownPoolCartInput } from './cart-routing-local.js';
 import type { RareClientConfig } from './types/client.js';
 import type {
   CartRoutingErrorCode,
@@ -39,7 +40,39 @@ export function createCartRoutingNamespace(
   chain: SupportedChain,
   cart: Address | undefined,
 ): CartRoutingNamespace {
-  return {
+  const namespace: CartRoutingNamespace = {
+    async quoteInput(params) {
+      if (cart === undefined) throw new CartRoutingError('unsupported_chain', `Cart routing is not configured on ${chain}.`);
+      if (params.inputAmount <= 0n) throw new CartRoutingError('invalid_response', 'Swap input budget must be positive.');
+      if (params.outputCurrency === zeroAddress || isAddressEqual(params.paymentCurrency, params.outputCurrency)) throw new CartRoutingError('unsupported_pair', 'Swap output must be a different ERC20 currency.');
+      const plan = createPlan(chain, cart, { paymentCurrency: params.paymentCurrency, obligations: [{ settlementCurrency: params.outputCurrency, amount: 1n }] });
+      const apiKey = config.uniswapApiKey ?? await config.resolveUniswapApiKey?.();
+      const estimate = async () => {
+        if (!apiKey) return quoteKnownPoolCartInput(config.publicClient, plan, params.outputCurrency, params.inputAmount);
+        try {
+          const response = await requestUniswapQuote({ apiKey, chainId: plan.chainId, tokenIn: plan.paymentCurrency,
+            tokenOut: params.outputCurrency, amount: params.inputAmount, swapper: cart,
+            slippageBps: cartRoutingDefaultSlippageBps, tradeType: 'EXACT_INPUT', permit2Disabled: false });
+          if (response.quote.tradeType !== 'EXACT_INPUT' || !isAddressEqual(response.quote.input.token, plan.paymentCurrency) ||
+            !isAddressEqual(response.quote.output.token, params.outputCurrency) || BigInt(response.quote.input.amount) !== params.inputAmount) {
+            throw new CartRoutingCoreError('invalid_response', 'Input quote does not match the requested currencies and budget.');
+          }
+          return BigInt(response.quote.output.amount);
+        } catch (cause) {
+          if (!(cause instanceof UniswapApiError)) throw cause;
+          return quoteKnownPoolCartInput(config.publicClient, plan, params.outputCurrency, params.inputAmount);
+        }
+      };
+      try {
+        const quotedOutput = await estimate();
+        if (quotedOutput === null) throw new CartRoutingCoreError('no_route', 'No configured route supports this input quote.');
+        const outputAmount = protectCartInputQuoteOutput(quotedOutput);
+        const fixedQuote = await namespace.quote({ paymentCurrency: params.paymentCurrency,
+          obligations: [{ settlementCurrency: params.outputCurrency, amount: outputAmount }], mode: 'exact-output' });
+        if (BigInt(fixedQuote.maximumPaymentInput) > params.inputAmount) throw new CartRoutingCoreError('quote_unavailable', 'Routing cannot honor this fixed output within the input budget. Please request a fresh quote.');
+        return { inputAmount: params.inputAmount, outputAmount, quotedAt: fixedQuote.quotedAt, expiresAt: fixedQuote.expiresAt };
+      } catch (cause) { throw toCartRoutingError(cause, params.paymentCurrency); }
+    },
     assertFresh(quote, nowMs) {
       try {
         return assertCartRoutingQuoteFresh(quote, nowMs);
@@ -122,6 +155,7 @@ export function createCartRoutingNamespace(
       }
     },
   };
+  return namespace;
 }
 
 function createPlan(chain: SupportedChain, cart: Address, params: CartRoutingQuoteParams) {

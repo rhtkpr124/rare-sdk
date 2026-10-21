@@ -14,6 +14,19 @@ export type CartRoutingQuoteParams = {
   mode?: CartRoutingMode;
 };
 
+export type CartRoutingInputQuoteParams = {
+  paymentCurrency: Address;
+  outputCurrency: Address;
+  inputAmount: bigint;
+};
+
+export type CartRoutingInputQuoteResult = {
+  inputAmount: bigint;
+  outputAmount: bigint;
+  quotedAt: string;
+  expiresAt: string;
+};
+
 export type CartRoutingSettlement = {
   settlementCurrency: Address;
   amount: string;
@@ -77,6 +90,8 @@ export type CartRoutingErrorDetails = {
 };
 
 export type CartRoutingNamespace = {
+  /** Convert an input budget into a fixed output, including protocol spread protection. */
+  quoteInput: (params: CartRoutingInputQuoteParams) => Promise<CartRoutingInputQuoteResult>;
   quote: (params: CartRoutingQuoteParams) => Promise<CartRoutingQuoteResult>;
   assertFresh: (quote: CartRoutingQuoteResult, nowMs?: number) => CartRoutingQuoteResult;
 };
