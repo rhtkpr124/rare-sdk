@@ -110,7 +110,7 @@ describe('public room notification delivery and trusted system messages', () => 
               const systemBefore = (await notifications(recipient, room.id)).map(row => row.id);
               const system = { sourceId: `integration:${randomUUID()}`, type: 'integration.notice', summary: 'Live SDK system notification fixture', payload: { fixture: true, values: [1, 2] }, occurredAt: new Date().toISOString() };
               const endpoint = `${apiBaseUrl}/v1/messaging/internal/public/rooms/${room.id}/system`;
-              const append = (token?: string, body: unknown = system) => fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(token === undefined ? {} : { Authorization: `Bearer ${token}` }) }, body: JSON.stringify(body), signal: AbortSignal.timeout(30_000) });
+              const append = (token?: string, body: unknown = system) => fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Messaging-Request': '1', ...(token === undefined ? {} : { Authorization: `Bearer ${token}` }) }, body: JSON.stringify(body), signal: AbortSignal.timeout(30_000) });
               const session = await owner.account.auth.getSession();
               if (!session) throw new Error('Missing owner session');
               for (const token of [undefined, 'forged']) expect([401, 404]).toContain((await append(token)).status);
