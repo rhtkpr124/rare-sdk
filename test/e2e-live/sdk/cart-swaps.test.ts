@@ -48,7 +48,7 @@ describe.sequential('SDK standalone Cart swap purchases', () => {
     const readOutputBalance = () => publicClient.readContract({ address: outputCurrency, abi: erc20Abi,
       functionName: 'balanceOf', args: [buyer.address] });
     const before = await readOutputBalance();
-    const result = await rare.cart.checkout.purchase({ preparation });
+    const result = await rare.cart.checkout.purchase({ preparation, autoApprove: true });
     expect(result.receipt.status).toBe('success');
     expect(await readOutputBalance() - before).toBe(outputLine.amount);
   }, 180_000);
