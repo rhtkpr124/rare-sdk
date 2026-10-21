@@ -84,6 +84,7 @@ describe('Cart functional core', () => {
   it('binds each mixed-mode token output and rejects unsigned extra outputs or excessive budgets', () => {
     const preparation: CartCheckoutPreparation = {
       schemaVersion: 1, chainId: 11155111n, cartAddress: cart,
+      preparationReference: 'swap-preview-reference',
       preparedAt: '2026-08-28T12:00:00.000Z', expiresAt: '2026-08-28T12:05:00.000Z',
       intent: { paymentCurrency: zeroAddress, items: [
         { kind: 'swap', mode: 'exact-input', outputCurrency: seller, inputAmount: 100n, recipient: cart },
