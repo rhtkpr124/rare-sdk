@@ -11,6 +11,7 @@ import {
   protectCartRoutingExactInput,
   resolveCartRoutingMaximumInput,
   protectCartInputQuoteOutput,
+  refineCartInputQuoteOutput,
 } from './cart-routing-core.js';
 import { buildKnownPoolCartRoutingQuote, quoteKnownPoolCartInput } from './cart-routing-local.js';
 import type { RareClientConfig } from './types/client.js';
@@ -67,11 +68,15 @@ export function createCartRoutingNamespace(
       try {
         const quotedOutput = await estimate();
         if (quotedOutput === null) throw new CartRoutingCoreError('no_route', 'No configured route supports this input quote.');
-        const outputAmount = protectCartInputQuoteOutput(quotedOutput);
-        const fixedQuote = await namespace.quote({ paymentCurrency: params.paymentCurrency,
-          obligations: [{ settlementCurrency: params.outputCurrency, amount: outputAmount }], mode: 'exact-output' });
-        if (BigInt(fixedQuote.maximumPaymentInput) > params.inputAmount) throw new CartRoutingCoreError('quote_unavailable', 'Routing cannot honor this fixed output within the input budget. Please request a fresh quote.');
-        return { inputAmount: params.inputAmount, outputAmount, quotedAt: fixedQuote.quotedAt, expiresAt: fixedQuote.expiresAt };
+        const resolveOutput = async (outputAmount: bigint, attempt: number): Promise<{ outputAmount: bigint; quotedAt: string; expiresAt: string }> => {
+          const fixedQuote = await namespace.quote({ paymentCurrency: params.paymentCurrency,
+            obligations: [{ settlementCurrency: params.outputCurrency, amount: outputAmount }], mode: 'exact-output' });
+          const requiredInput = BigInt(fixedQuote.maximumPaymentInput);
+          if (requiredInput <= params.inputAmount) return { outputAmount, quotedAt: fixedQuote.quotedAt, expiresAt: fixedQuote.expiresAt };
+          if (attempt >= 2) throw new CartRoutingCoreError('quote_unavailable', `Routing requires ${requiredInput} input units, exceeding the ${params.inputAmount} input budget. Please request a fresh quote.`);
+          return resolveOutput(refineCartInputQuoteOutput(outputAmount, params.inputAmount, requiredInput), attempt + 1);
+        };
+        return { inputAmount: params.inputAmount, ...await resolveOutput(protectCartInputQuoteOutput(quotedOutput), 0) };
       } catch (cause) { throw toCartRoutingError(cause, params.paymentCurrency); }
     },
     assertFresh(quote, nowMs) {

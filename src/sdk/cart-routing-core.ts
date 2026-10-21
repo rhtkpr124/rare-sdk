@@ -31,6 +31,14 @@ export function protectCartInputQuoteOutput(quotedOutput: bigint): bigint {
   return output;
 }
 
+/** Reconcile forward/reverse quote rounding without raising the customer's budget. */
+export function refineCartInputQuoteOutput(outputAmount: bigint, budget: bigint, requiredInput: bigint): bigint {
+  if (outputAmount <= 0n || budget <= 0n || requiredInput <= budget) throw new CartRoutingCoreError('invalid_response', 'Input quote refinement requires a positive output and an exceeded positive budget.');
+  const adjustedOutput = outputAmount * budget / requiredInput;
+  if (adjustedOutput === 0n) throw new CartRoutingCoreError('insufficient_liquidity', 'Input budget is too small to produce a protected token output.');
+  return adjustedOutput;
+}
+
 const universalRouterExecuteAbi = [
   {
     type: 'function', name: 'execute', stateMutability: 'payable',
