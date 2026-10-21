@@ -1,3 +1,5 @@
+import { setTimeout as delay } from 'node:timers/promises';
+import { RareAuthError } from '../../src/sdk/account-auth-core.js';
 import { privateKeyToAccount } from 'viem/accounts';
 import { createRareAccountClient } from '../../src/sdk/account-client.js';
 import { isPrivateKeyString } from '../../src/sdk/validation.js';
@@ -44,4 +46,13 @@ export const withMessagingActors = async (operation: (owner: MessagingActor, mem
       } finally { await outsider.account.auth.logout(); }
     } finally { await member.account.auth.logout(); }
   } finally { await owner.account.auth.logout(); }
+};
+
+/** Retry only the public sender cooldown; callers retain the same message input. */
+export const retryPublicSend = async <T>(send: () => Promise<T>, retries = 2): Promise<T> => {
+  try { return await send(); } catch (error) {
+    if (!(error instanceof RareAuthError) || error.status !== 429 || error.code !== 'rate_limited' || retries === 0) throw error;
+    await delay(1100);
+    return retryPublicSend(send, retries - 1);
+  }
 };

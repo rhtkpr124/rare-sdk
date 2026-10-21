@@ -8,7 +8,7 @@ import { createRareApi } from '../../src/sdk/api.js';
 import { parseMessagingPublicContext } from '../../src/sdk/messaging-core.js';
 import { isPrivateKeyString } from '../../src/sdk/validation.js';
 import type { RareNotification } from '../../src/sdk/types/notifications.js';
-import { messagingOrigin, required, withMessagingActors, type MessagingActor } from './messaging-live.js';
+import { messagingOrigin, required, withMessagingActors, retryPublicSend, type MessagingActor } from './messaging-live.js';
 
 const notifications = async (actor: MessagingActor, room: string, cursor?: string, pages = 0): Promise<RareNotification[]> => {
   if (pages >= 100) throw new Error('Notification traversal exceeded 100 pages');
@@ -56,7 +56,7 @@ describe('public room notification delivery and trusted system messages', () => 
           const sent: { actor: MessagingActor; id: string }[] = [];
           const send = async (actor: MessagingActor, body: string, mentionUserIds: string[] = []) => {
             const input = { clientMessageId: randomUUID(), body, mentionUserIds };
-            const message = await actor.account.messaging.sendPublic(room.id, input);
+            const message = await retryPublicSend(() => actor.account.messaging.sendPublic(room.id, input));
             // eslint-disable-next-line functional/immutable-data
             sent.push({ actor, id: message.id });
             expect((await api.messaging.history(room.id)).messages.find(row => row.id === message.id)).toMatchObject({ body, type: 'user', author: { id: actor.user.id } });
@@ -74,7 +74,7 @@ describe('public room notification delivery and trusted system messages', () => 
             await recipient.account.messaging.command(room.id, { action: 'read', sequence: (await api.messaging.history(room.id)).room.latestSequence });
             const before = (await notifications(recipient, room.id)).map(row => row.id);
             const ordinary = await send(owner, `SDK public delivery ${randomUUID()}`);
-            await owner.account.messaging.sendPublic(room.id, ordinary.input);
+            await retryPublicSend(() => owner.account.messaging.sendPublic(room.id, ordinary.input));
             const notice = await delivered(recipient, room.id, before);
             expect(notice.readAt).toBeNull();
             expect((await notifications(recipient, room.id)).filter(row => !before.includes(row.id))).toHaveLength(1);
