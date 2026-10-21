@@ -118,12 +118,22 @@ rare.cart.routing.assertFresh(routingQuote);
 // persistence, or transaction.
 const preparation = await rare.cart.checkout.prepare({
   paymentCurrency,
-  items: [{ listingDigest, quantity: 1n, recipient: buyerAddress }],
+  items: [{ kind: 'listing', listingDigest, quantity: 1n, recipient: buyerAddress }],
 });
 
 // Purchase revalidates, obtains the platform-signed immutable order, performs
 // preflight, optionally approves, executes, and verifies the receipt.
 const purchase = await rare.cart.checkout.purchase({ preparation, autoApprove: true });
+
+// Listing-less swaps use the same quote, signing, and purchase flow.
+// exact-input fixes the spending budget; exact-output fixes the tokens received.
+const swap = await rare.cart.checkout.prepare({ paymentCurrency,
+  items: [{ kind: 'swap', mode: 'exact-input', outputCurrency,
+    inputAmount: 1_000_000n, recipient: buyerAddress }],
+});
+// Both quote directions produce fixed signed input and output amounts.
+// Execution movement changes protocol spread, not the promised token output.
+const swapPurchase = await rare.cart.checkout.purchase({ preparation: swap, autoApprove: true });
 ```
 
 `autoApprove` defaults to `false`. Cart collects the exact platform-signed

@@ -8,6 +8,7 @@ import {
   planCartRoutingQuote,
   protectCartRoutingExactInput,
   protectCartInputQuoteOutput,
+  refineCartInputQuoteOutput,
   resolveCartRoutingMaximumInput,
   type CartRoutingForeignObligation,
   type CartRoutingPlan,
@@ -36,6 +37,16 @@ describe('Cart routing functional core', () => {
     expect(protectCartInputQuoteOutput(1_006n)).toBe(1_000n);
     expect(() => protectCartInputQuoteOutput(0n)).toThrow('positive');
     expect(() => protectCartInputQuoteOutput(1n)).toThrow('too small');
+  });
+
+  it('refines forward/reverse rounding with a strictly smaller output and unchanged budget', () => {
+    const promised = 1_000_000_000_000_000_000n;
+    const refined = refineCartInputQuoteOutput(promised, 1_000_000n, 1_000_001n);
+    expect(refined).toBe(999_999_000_000_999_999n);
+    expect(refined).toBeLessThan(promised);
+    expect(refineCartInputQuoteOutput(2n, 1n, 2n)).toBe(1n);
+    expect(() => refineCartInputQuoteOutput(1n, 1n, 2n)).toThrow('too small');
+    expect(() => refineCartInputQuoteOutput(promised, 1n, 1n)).toThrow('exceeded');
   });
   it('packages opaque compiled routes for every supported Sepolia currency direction', () => {
     for (const paymentCurrency of currencies) {
