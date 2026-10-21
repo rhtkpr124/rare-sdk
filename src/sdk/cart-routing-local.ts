@@ -18,6 +18,18 @@ import {
 } from './cart-routing-local-core.js';
 import type { CartRoutingQuoteResult } from './types/cart-routing.js';
 
+export async function quoteKnownPoolCartInput(
+  publicClient: PublicClient,
+  plan: CartRoutingPlan,
+  outputCurrency: Address,
+  inputAmount: bigint,
+): Promise<bigint | null> {
+  const known = resolveKnownCartRoute(plan, outputCurrency);
+  const liquidPool = known === null ? await getLiquidEditionPoolKey(publicClient, outputCurrency) : null;
+  const steps = known ?? (liquidPool === null ? null : resolveKnownCartRoute(plan, outputCurrency, liquidPool));
+  return steps === null ? null : quoteKnownCartRouteExactInput(publicClient, getV4Quoter(plan.chain), steps, inputAmount);
+}
+
 export async function buildKnownPoolCartRoutingQuote(
   publicClient: PublicClient,
   plan: CartRoutingPlan,
