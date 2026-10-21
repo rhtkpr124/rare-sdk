@@ -63,6 +63,7 @@ export function validateCartCheckoutIntent(intent: CartCheckoutIntent): CartVali
     } else if (item.kind === 'swap') {
       if (!isAddress(item.outputCurrency) || item.outputCurrency === zeroAddress) issues.push(issue('invalid_address', `items[${index}].outputCurrency`, 'Swap output currency must be an ERC20 address.'));
       if (isAddress(item.outputCurrency) && isAddress(intent.paymentCurrency) && isAddressEqual(item.outputCurrency, intent.paymentCurrency)) issues.push(issue('same_currency', `items[${index}].outputCurrency`, 'Swap output must differ from payment currency.'));
+      if (item.recipient === zeroAddress) issues.push(issue('invalid_address', `items[${index}].recipient`, 'Swap recipient cannot be the zero address.'));
       const amount = item.mode === 'exact-input' ? item.inputAmount : item.outputAmount;
       if (amount <= 0n) issues.push(issue('non_positive', `items[${index}]`, 'Swap amount must be positive.'));
     } else issues.push(issue('invalid_kind', `items[${index}].kind`, 'Checkout item kind must be listing or swap.'));
@@ -110,16 +111,13 @@ export function validateCartCheckoutPreparationForPurchase(
   if (!intentValidation.isValid) issues.push(...intentValidation.issues);
   const swaps = preparation.intent.items.filter((item) => item.kind === 'swap');
   const swapLines = preparation.lines.filter((line) => line.fulfillmentKind === 6);
+  if (swaps.length !== swapLines.length) issues.push(issue('swap_count_mismatch', 'lines', 'Checkout token output count differs from the requested swaps.'));
   swaps.forEach((item, index) => {
-    const matching = swapLines.filter((line) => isAddressEqual(line.settlementCurrency, item.outputCurrency) &&
-      (item.recipient === undefined || isAddressEqual(line.paymentRecipient, item.recipient)));
-    const matchingRequests = swaps.filter((other) => isAddressEqual(other.outputCurrency, item.outputCurrency) &&
-      (other.recipient === undefined ? item.recipient === undefined : item.recipient !== undefined && isAddressEqual(other.recipient, item.recipient)));
-    if (matching.length === 0) issues.push(issue('missing_swap', `intent.items[${index}]`, 'Checkout preparation is missing the requested token output.'));
-    if (matchingRequests.every((request) => request.mode === 'exact-output')) {
-      const requested = matchingRequests.reduce((amount, request) => amount + (request.mode === 'exact-output' ? request.outputAmount : 0n), 0n);
-      if (matching.reduce((amount, line) => amount + line.amount, 0n) !== requested) issues.push(issue('swap_output_mismatch', `intent.items[${index}]`, 'Checkout token output differs from the requested amount.'));
-    }
+    const line = swapLines[index];
+    if (line === undefined || !isAddressEqual(line.settlementCurrency, item.outputCurrency) ||
+      (item.recipient !== undefined && !isAddressEqual(line.paymentRecipient, item.recipient)) || line.listingDigest !== zeroHash || line.amount <= 0n) {
+      issues.push(issue('missing_swap', `intent.items[${index}]`, 'Checkout preparation is missing the requested token output.'));
+    } else if (item.mode === 'exact-output' && line.amount !== item.outputAmount) issues.push(issue('swap_output_mismatch', `intent.items[${index}]`, 'Checkout token output differs from the requested amount.'));
   });
   if (swaps.length === preparation.intent.items.length && swaps.every((item) => item.mode === 'exact-input')) {
     const budget = swaps.reduce((amount, item) => amount + (item.mode === 'exact-input' ? item.inputAmount : 0n), 0n);
