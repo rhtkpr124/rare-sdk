@@ -57,8 +57,15 @@ export function validateCartCheckoutIntent(intent: CartCheckoutIntent): CartVali
   if (!isAddress(intent.paymentCurrency)) issues.push(issue('invalid_address', 'paymentCurrency', 'Checkout payment currency must be an address.'));
   if (intent.items.length === 0 || intent.items.length > 20) issues.push(issue('invalid_length', 'items', 'Checkout must contain between 1 and 20 items.'));
   intent.items.forEach((item, index) => {
-    if (!isHex(item.listingDigest) || item.listingDigest.length !== 66) issues.push(issue('invalid_digest', `items[${index}].listingDigest`, 'Checkout listing digest must be bytes32.'));
-    if (item.quantity <= 0n) issues.push(issue('non_positive', `items[${index}].quantity`, 'Checkout item quantity must be positive.'));
+    if (item.kind === 'listing') {
+      if (!isHex(item.listingDigest) || item.listingDigest.length !== 66) issues.push(issue('invalid_digest', `items[${index}].listingDigest`, 'Checkout listing digest must be bytes32.'));
+      if (item.quantity <= 0n) issues.push(issue('non_positive', `items[${index}].quantity`, 'Checkout item quantity must be positive.'));
+    } else if (item.kind === 'swap') {
+      if (!isAddress(item.outputCurrency) || item.outputCurrency === zeroAddress) issues.push(issue('invalid_address', `items[${index}].outputCurrency`, 'Swap output currency must be an ERC20 address.'));
+      if (item.outputCurrency.toLowerCase() === intent.paymentCurrency.toLowerCase()) issues.push(issue('same_currency', `items[${index}].outputCurrency`, 'Swap output must differ from payment currency.'));
+      const amount = item.mode === 'exact-input' ? item.inputAmount : item.outputAmount;
+      if (amount <= 0n) issues.push(issue('non_positive', `items[${index}]`, 'Swap amount must be positive.'));
+    } else issues.push(issue('invalid_kind', `items[${index}].kind`, 'Checkout item kind must be listing or swap.'));
     if (item.recipient !== undefined && !isAddress(item.recipient)) issues.push(issue('invalid_address', `items[${index}].recipient`, 'Checkout recipient must be an address.'));
   });
   return issues.length === 0 ? { isValid: true, value: intent } : { isValid: false, issues };
@@ -99,9 +106,25 @@ export function validateCartCheckoutPreparationForPurchase(
   else if (expiresAt <= (expected.nowMs ?? Date.now())) issues.push(issue('expired', 'expiresAt', 'Checkout preparation has expired.'));
   if (preparation.intent.items.length === 0) issues.push(issue('empty', 'intent.items', 'Checkout preparation must contain at least one item.'));
   if (preparation.paymentAmount < 0n) issues.push(issue('negative', 'paymentAmount', 'Checkout payment amount cannot be negative.'));
-  preparation.intent.items.forEach((item, index) => {
-    if (item.quantity <= 0n) issues.push(issue('non_positive', `intent.items[${index}].quantity`, 'Checkout item quantity must be positive.'));
+  const intentValidation = validateCartCheckoutIntent(preparation.intent);
+  if (!intentValidation.isValid) issues.push(...intentValidation.issues);
+  const swaps = preparation.intent.items.filter((item) => item.kind === 'swap');
+  const swapLines = preparation.lines.filter((line) => line.fulfillmentKind === 6);
+  swaps.forEach((item, index) => {
+    const matching = swapLines.filter((line) => isAddressEqual(line.settlementCurrency, item.outputCurrency) &&
+      (item.recipient === undefined || isAddressEqual(line.paymentRecipient, item.recipient)));
+    const matchingRequests = swaps.filter((other) => other.outputCurrency.toLowerCase() === item.outputCurrency.toLowerCase() &&
+      other.recipient?.toLowerCase() === item.recipient?.toLowerCase());
+    if (matching.length === 0) issues.push(issue('missing_swap', `intent.items[${index}]`, 'Checkout preparation is missing the requested token output.'));
+    if (matchingRequests.every((request) => request.mode === 'exact-output')) {
+      const requested = matchingRequests.reduce((amount, request) => amount + (request.mode === 'exact-output' ? request.outputAmount : 0n), 0n);
+      if (matching.reduce((amount, line) => amount + line.amount, 0n) !== requested) issues.push(issue('swap_output_mismatch', `intent.items[${index}]`, 'Checkout token output differs from the requested amount.'));
+    }
   });
+  if (swaps.length === preparation.intent.items.length && swaps.every((item) => item.mode === 'exact-input')) {
+    const budget = swaps.reduce((amount, item) => amount + (item.mode === 'exact-input' ? item.inputAmount : 0n), 0n);
+    if (preparation.paymentAmount > budget) issues.push(issue('swap_budget_exceeded', 'paymentAmount', 'Checkout payment exceeds the requested input budget.'));
+  }
   return issues.length === 0 ? { isValid: true, value: preparation } : { isValid: false, issues };
 }
 

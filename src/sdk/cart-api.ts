@@ -7,7 +7,7 @@ import type {
   CartListingRoot,
   CartListingRootArtifact,
 } from './types/cart.js';
-import { buildCartVariantSearchQuery, type CartChainId } from './cart-core.js';
+import { buildCartVariantSearchQuery, validateCartCheckoutIntent, type CartChainId } from './cart-core.js';
 import { generateCartListingSalt } from './cart-listing-shell.js';
 import type {
   CartCheckoutIntentItem,
@@ -137,6 +137,8 @@ export function createCartApiNamespace(
 
   const checkout = {
     preview: async (intent: CartCheckoutIntent): Promise<CartCheckoutPreparation> => {
+      const validation = validateCartCheckoutIntent(intent);
+      if (!validation.isValid) throw new Error(`Invalid Cart checkout intent: ${validation.issues.map((issue) => issue.message).join(' ')}`);
       const wire = await getWrappedData<CartApiPreparedPurchaseWire>(
         client.POST('/v1/cart/checkout/preview', {
           params: { query: { chainId, cartAddress: cartAddress() } },
@@ -150,6 +152,8 @@ export function createCartApiNamespace(
       return checkoutPreparationFromPreparedPurchase(normalizePreparedPurchase(wire), intent);
     },
     prepare: async (intent: CartCheckoutIntent): Promise<CartApiPreparedPurchase> => {
+      const validation = validateCartCheckoutIntent(intent);
+      if (!validation.isValid) throw new Error(`Invalid Cart checkout intent: ${validation.issues.map((issue) => issue.message).join(' ')}`);
       const wire = await getWrappedData<CartApiPreparedPurchaseWire>(
         protectedClient.POST('/v1/cart/checkout/prepare', {
           params: { query: { chainId, cartAddress: cartAddress() } },
@@ -190,11 +194,20 @@ export function toCartListingRootArtifactWire(
   };
 }
 
-function toWireDraftItem(item: CartCheckoutIntentItem): { listingDigest: Hex; quantity: string; recipient?: Address } {
+function toWireDraftItem(item: CartCheckoutIntentItem) {
+  const recipient = item.recipient === undefined ? {} : { recipient: getAddress(item.recipient) };
+  if (item.kind === 'swap') return {
+    kind: item.kind,
+    mode: item.mode,
+    outputCurrency: getAddress(item.outputCurrency),
+    ...(item.mode === 'exact-input' ? { inputAmount: item.inputAmount.toString() } : { outputAmount: item.outputAmount.toString() }),
+    ...recipient,
+  };
   return {
+    kind: item.kind,
     listingDigest: item.listingDigest,
     quantity: item.quantity.toString(),
-    ...(item.recipient === undefined ? {} : { recipient: getAddress(item.recipient) }),
+    ...recipient,
   };
 }
 

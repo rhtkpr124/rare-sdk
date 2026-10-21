@@ -214,8 +214,21 @@ export type CartListingPreviewWire = {
 };
 
 export type CartCheckoutIntentItem = {
+  kind: 'listing';
   listingDigest: Hex;
   quantity: bigint;
+  recipient?: Address;
+} | {
+  kind: 'swap';
+  mode: 'exact-output';
+  outputCurrency: Address;
+  outputAmount: bigint;
+  recipient?: Address;
+} | {
+  kind: 'swap';
+  mode: 'exact-input';
+  outputCurrency: Address;
+  inputAmount: bigint;
   recipient?: Address;
 };
 
