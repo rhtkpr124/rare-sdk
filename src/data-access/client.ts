@@ -26,14 +26,27 @@ const errorMiddleware: Middleware = {
 export function createApiClient(
   baseUrl?: string,
   fetch?: typeof globalThis.fetch,
-): ReturnType<typeof createClient<paths & CartPaths>> {
-  const client = createClient<paths & CartPaths>({
+): ReturnType<typeof createClient<paths>> {
+  const client = createClient<paths>({
     baseUrl: resolveRareApiBaseUrl(baseUrl),
     ...(fetch === undefined ? {} : { fetch }),
   });
 
   client.use(errorMiddleware);
 
+  return client;
+}
+
+/** Keep Cart request inference separate from unrelated public API paths. */
+export function createCartApiClient(
+  baseUrl?: string,
+  fetch?: typeof globalThis.fetch,
+): ReturnType<typeof createClient<CartPaths>> {
+  const client = createClient<CartPaths>({
+    baseUrl: resolveRareApiBaseUrl(baseUrl),
+    ...(fetch === undefined ? {} : { fetch }),
+  });
+  client.use(errorMiddleware);
   return client;
 }
 

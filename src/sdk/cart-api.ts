@@ -1,5 +1,5 @@
 import { getAddress, isAddress, isHex, type Address, type Hex } from 'viem';
-import { createApiClient } from '../data-access/index.js';
+import { createCartApiClient } from '../data-access/client.js';
 import type { RareApiOptions } from './api.js';
 import type {
   CartFulfillmentKind,
@@ -45,10 +45,10 @@ export function createCartApiNamespace(
   scope: CartApiScope,
   authenticatedFetch?: typeof globalThis.fetch,
 ): CartApiNamespace {
-  const client = createApiClient(options.baseUrl, options.fetch) as unknown as CartApiTransport;
+  const client = createCartApiClient(options.baseUrl, options.fetch) as unknown as CartApiTransport;
   const protectedClient = authenticatedFetch === undefined
     ? client
-    : createApiClient(options.baseUrl, authenticatedFetch) as unknown as CartApiTransport;
+    : createCartApiClient(options.baseUrl, authenticatedFetch) as unknown as CartApiTransport;
   const chainId = chainIdString(scope.chainId);
   const cartAddress = (): Address => {
     if (scope.cartAddress === undefined) {
