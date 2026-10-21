@@ -3,7 +3,7 @@ import { cartAbi } from '../contracts/abis/cart.js';
 import { cartLensAbi } from '../contracts/abis/cart-lens.js';
 import { ETH_ADDRESS, type SupportedChain } from '../contracts/addresses.js';
 import { approvalAbi, NftApprovalRequiredError, runWithApprovalSideEffectAlert, waitForApprovalState } from './approvals-shell.js';
-import { buildCartListingRootArtifact, cartDomain, hashCartListing, hashCartListingRoot, hashCartOrder, validateCartCheckoutIntent, validateCartCheckoutPreparationForPurchase, validateCartListingIntent, validateCartListingRootArtifact, validateCartSettledOrderLines } from './cart-core.js';
+import { buildCartListingRootArtifact, cartDomain, hashCartListing, hashCartListingRoot, hashCartOrder, validateCartCheckoutIntent, validateCartCheckoutPreparationForPurchase, validateCartListingIntent, validateCartListingRootArtifact, validateCartSettledOrderLines, validateCartApprovedSwapOutputs } from './cart-core.js';
 import { assertSufficientPaymentBalance, PaymentApprovalRequiredError, preparePaymentAmountForSpender } from './payments-shell.js';
 import { waitForSuccessfulTransactionReceipt } from './transaction-receipt.js';
 import type { RareClientConfig } from './types/client.js';
@@ -209,6 +209,10 @@ async function purchaseCartCheckout(
   }
 
   const preparedPurchase = await api.checkout.prepare(params.preparation.intent);
+  const swapValidation = validateCartApprovedSwapOutputs(params.preparation.lines, preparedPurchase.executePurchase.lines);
+  if (!swapValidation.isValid) {
+    throw new CartPreparationError('quote_changed', 'The quoted token outputs changed. Review a fresh quote before purchasing.', swapValidation.issues);
+  }
   const execution = await executeCartCheckout(publicClient, config, chainId, cart, lens, {
     ...preparedPurchase.executePurchase,
     autoApprove: params.autoApprove,
