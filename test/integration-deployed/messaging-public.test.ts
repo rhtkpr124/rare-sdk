@@ -1,9 +1,10 @@
+import { appendSystemFixture } from './messaging-system-fixture.js';
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { privateKeyToAccount } from 'viem/accounts';
 import { createRareAccountClient } from '../../src/sdk/account-client.js';
 import { createRareApi } from '../../src/sdk/api.js';
-import { parseMessagingPublicContext, parseMessagingPublicMessage } from '../../src/sdk/messaging-core.js';
+import { parseMessagingPublicContext } from '../../src/sdk/messaging-core.js';
 import { isPrivateKeyString } from '../../src/sdk/validation.js';
 const required = (name: string): string => { const value = process.env[name]; if (!value) throw new Error(`Missing ${name}`); return value; };
 const origin = () => { const url = new URL(required('RARE_ACCOUNT_TEST_API_URL')); if (url.protocol !== 'https:' || url.hostname === 'api.superrare.com' || url.pathname !== '/' || url.search || url.hash || url.username || url.password) throw new Error('Use a non-production HTTPS API origin'); return url.origin; };
@@ -13,7 +14,6 @@ describe('public durable messaging against deployed services', () => {
     const apiBaseUrl = origin();
     const key = required('RARE_ACCOUNT_TEST_PRIVATE_KEY');
     if (!isPrivateKeyString(key)) throw new Error('Invalid dedicated test wallet');
-    const internalKey = required('RARE_MESSAGING_TEST_INTERNAL_API_KEY');
     const wallet = privateKeyToAccount(key);
     const account = createRareAccountClient({ apiBaseUrl });
     const api = createRareApi({ baseUrl: apiBaseUrl });
@@ -24,15 +24,11 @@ describe('public durable messaging against deployed services', () => {
       const drop = await account.drops.create({ type: 'NONE', startsAt: new Date(Date.now() + 86400000).toISOString(), metadata: { headline: `Producer retry fixture ${randomUUID()}`, description: 'Dedicated SDK integration fixture', destinationUrl: '', imageUrl } });
       try {
         const room = await api.messaging.resolveRoom({ type: 'drop-announcement', id: drop.id });
-        const input = { sourceId: randomUUID(), type: 'integration.notice', summary: 'Producer retry fixture', payload: { z: 1, nested: { b: 2, a: 1 }, values: [1, 2] }, occurredAt: new Date().toISOString() };
-        const append = (body: unknown) => fetch(`${apiBaseUrl}/v1/messaging/internal/public/rooms/${room.id}/system`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${internalKey}` }, body: JSON.stringify(body), signal: AbortSignal.timeout(30_000) });
-        const first = await append(input);
-        expect(first.status).toBe(200);
-        const message = parseMessagingPublicMessage(await first.json());
-        const retry = await append({ ...input, payload: { values: [1, 2], nested: { a: 1, b: 2 }, z: 1 } });
-        expect(retry.status).toBe(200);
-        expect(parseMessagingPublicMessage(await retry.json()).id).toBe(message.id);
-        expect((await append({ ...input, payload: { ...input.payload, values: [2, 1] } })).status).toBe(409);
+        const input = { sourceId: `integration:${randomUUID()}`, type: 'integration.notice', summary: 'Producer retry fixture', payload: { z: 1, nested: { b: 2, a: 1 }, values: [1, 2] }, occurredAt: new Date().toISOString() };
+        const message = await appendSystemFixture(room.context, input);
+        const retry = await appendSystemFixture(room.context, { ...input, payload: { values: [1, 2], nested: { a: 1, b: 2 }, z: 1 } });
+        expect(retry.id).toBe(message.id);
+        await expect(appendSystemFixture(room.context, { ...input, payload: { ...input.payload, values: [2, 1] } })).rejects.toThrow('reused');
         expect((await api.messaging.history(room.id)).messages.filter(row => row.id === message.id)).toHaveLength(1);
       } finally { await account.drops.delete(drop.id); }
     } finally { await account.auth.logout(); }

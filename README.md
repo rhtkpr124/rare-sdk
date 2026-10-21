@@ -495,14 +495,16 @@ variables plus `RARE_MESSAGING_TEST_PUBLIC_CONTEXTS`, a JSON array containing on
 existing context of each type: `auction` with `id`, `liquid-edition` with `chainId`
 and `contractAddress`, and `drop-announcement` with `id`. Use dedicated fixture rooms
 where the test account is not already subscribed. The suite deletes its messages
-and leaves each room afterward. Also set `RARE_MESSAGING_TEST_INTERNAL_API_KEY` to
-the non-production deployment's internal producer credential. Public delivery tests
+and leaves each room afterward. Set `RARE_MESSAGING_TEST_PIPELINES_DIR` to the
+monorepo's `services/pipelines` directory and `RARE_MESSAGING_TEST_DATABASE_URL`
+to the matching non-production deployment database connection. System fixtures
+invoke the production Pipelines writer directly; no internal HTTP producer key is used. Public delivery tests
 verify delivery for all three room types, default subscriptions in a new room, mentions-only and muted
 preferences, and actual app-inbox delivery. A positive control confirms that the
 worker is running during muted-delivery checks. System-message fixtures use a new
 temporary drop room, then verify anonymous thread reads, producer retry deduplication,
 one notification per event, and rejection of user writes/edits/deletes. The SDK does
-not expose the internal producer endpoint. Deleting the fixture drop leaves its
+not expose a system-message write endpoint. Deleting the fixture drop leaves its
 unadvertised durable system history; tests do not put synthetic events into an
 existing auction or liquid-edition history.
 
