@@ -153,7 +153,13 @@ export function createCartNamespace(
       prepare(intent) {
         const validation = validateCartCheckoutIntent(intent);
         if (!validation.isValid) throw new CartPreparationError('invalid_intent', 'Cart checkout intent is invalid.', validation.issues);
-        return api.checkout.preview(validation.value);
+        const defaultRecipient = config.account ?? config.walletClient?.account?.address;
+        const items = validation.value.items.map((item) => {
+          if (item.kind !== 'swap' || item.recipient !== undefined) return item;
+          if (defaultRecipient === undefined) throw new CartPreparationError('invalid_intent', 'Swap checkout requires an explicit recipient or a configured wallet account.');
+          return { ...item, recipient: defaultRecipient };
+        });
+        return api.checkout.preview({ ...validation.value, items });
       },
       purchase(params) { return purchaseCartCheckout(publicClient, config, api, chainId, requireCart(), addresses.cartLens, params); },
     },
