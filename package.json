@@ -82,6 +82,7 @@
     "build": "tsdown --config-loader unrun",
     "typecheck": "tsc --noEmit",
     "generate:types": "tsx scripts/generate-openapi-types.ts",
+    "generate:cart-types": "tsx scripts/generate-cart-types.ts",
     "docs:build": "typedoc",
     "package:check": "tsx scripts/validate-package.ts",
     "prepare": "npm run build",
