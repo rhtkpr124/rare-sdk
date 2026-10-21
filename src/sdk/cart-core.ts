@@ -108,7 +108,7 @@ export function validateCartCheckoutPreparationForPurchase(
   if (preparation.intent.items.length === 0) issues.push(issue('empty', 'intent.items', 'Checkout preparation must contain at least one item.'));
   if (preparation.paymentAmount < 0n) issues.push(issue('negative', 'paymentAmount', 'Checkout payment amount cannot be negative.'));
   const intentValidation = validateCartCheckoutIntent(preparation.intent);
-  if (!intentValidation.isValid) issues.push(...intentValidation.issues);
+  if (!intentValidation.isValid) return { isValid: false, issues: [...issues, ...intentValidation.issues] };
   const swaps = preparation.intent.items.filter((item) => item.kind === 'swap');
   const swapLines = preparation.lines.filter((line) => line.fulfillmentKind === 6);
   if (swaps.length !== swapLines.length) issues.push(issue('swap_count_mismatch', 'lines', 'Checkout token output count differs from the requested swaps.'));
