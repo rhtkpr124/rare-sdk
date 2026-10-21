@@ -117,6 +117,19 @@ Listing cancellation, root cancellation, and nonce invalidation under
 
 For buyers:
 
+Checkout intents use typed `items`. Listing purchases use
+`{ kind: 'listing', listingDigest, quantity, recipient }`. Token swaps use
+`{ kind: 'swap', mode: 'exact-output', outputCurrency, outputAmount, recipient }`
+or `{ kind: 'swap', mode: 'exact-input', outputCurrency, inputAmount, recipient }`.
+Amounts are base-unit `bigint` values; input budgets use the payment currency's
+decimals, while output amounts use the output token's decimals. Swap-only and
+mixed Listing/swap orders share the same preparation and purchase methods.
+Both modes produce fixed signed payment and output amounts. Execution movement
+changes protocol spread rather than reducing the promised output. A connected
+wallet supplies a missing swap recipient; wallet-independent callers must pass
+the recipient explicitly. Physical-delivery checkout still supports print
+Listing items only.
+
 1. Call `rare.cart.checkout.prepare(intent)` for an unsigned preview.
 2. Display its payment amount, settlement details, fees, and expiration.
 3. After approval, call `rare.cart.checkout.purchase({ preparation, autoApprove })`.
