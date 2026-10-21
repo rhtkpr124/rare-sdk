@@ -76,11 +76,11 @@ describe('print tooling through deployed Rare API', () => {
       expect('productionUploadKey' in publicDrop.metadata).toBe(false);
       expect((await rare.prints.drops.activity(created.id)).events).toEqual([]);
       const checkout = await rare.cart.checkout.prepare({ paymentCurrency: getAddress(entry.listing.settlementCurrency),
-        items: [{ listingDigest: entry.listingDigest, quantity: 2n, recipient: wallet.address }], delivery: { savedAddressId: addressId } });
+        items: [{ kind: 'listing', listingDigest: entry.listingDigest, quantity: 2n, recipient: wallet.address }], delivery: { savedAddressId: addressId } });
       expect(checkout.breakdown?.displayPrice).toBe(200_000_000n);
       expect(checkout.lines.find(line => line.listingDigest === entry.listingDigest)?.quantity).toBe(2n);
       await expect(rare.cart.checkout.prepare({ paymentCurrency: getAddress(entry.listing.settlementCurrency),
-        items: [{ listingDigest: entry.listingDigest, quantity: 3n, recipient: wallet.address }],
+        items: [{ kind: 'listing', listingDigest: entry.listingDigest, quantity: 3n, recipient: wallet.address }],
         delivery: { savedAddressId: addressId } })).rejects.toMatchObject({ status: 422 });
       expect(checkout.breakdown?.shipping).toBeGreaterThanOrEqual(0n);
       expect(checkout.breakdown?.total).toBe(checkout.paymentAmount);
@@ -92,7 +92,7 @@ describe('print tooling through deployed Rare API', () => {
       expect(signed.executePurchase.lines.find(line => line.listingDigest === entry.listingDigest)?.quantity).toBe(2n);
       expect(signed.executePurchase.actions).toEqual([]);
       await expect(rare.cart.api.checkout.prepare({ ...request,
-        items: [{ listingDigest: entry.listingDigest, quantity: 1n, recipient: wallet.address }],
+        items: [{ kind: 'listing', listingDigest: entry.listingDigest, quantity: 1n, recipient: wallet.address }],
       })).rejects.toMatchObject({ status: 409 });
       const orderId = signed.executePurchase.order.orderId;
       expect((await accountClient.orders.get(orderId)).id).toBe(orderId);
@@ -115,7 +115,7 @@ describe('print tooling through deployed Rare API', () => {
           expect((await rare.prints.drops.get(created.id)).options.find(candidate => candidate.listingDigest === gatedEntry.listingDigest))
             .toMatchObject({ maxQuantityPerCheckout: '2', eligibilityRuleId: rule.id });
           const gatedQuote = await rare.cart.checkout.prepare({ paymentCurrency: getAddress(gatedEntry.listing.settlementCurrency),
-            items: [{ listingDigest: gatedEntry.listingDigest, quantity: 1n, recipient: wallet.address }],
+            items: [{ kind: 'listing', listingDigest: gatedEntry.listingDigest, quantity: 1n, recipient: wallet.address }],
             delivery: { savedAddressId: addressId } });
           if (!gatedQuote.intent.delivery || !gatedQuote.idempotencyKey) throw new Error('Gated quote lost its delivery identity.');
           await expect(rare.cart.api.checkout.prepare({ ...gatedQuote.intent, delivery: gatedQuote.intent.delivery,
@@ -135,20 +135,20 @@ describe('print tooling through deployed Rare API', () => {
             const sourceListing = source.createdListings[0];
             if (!sourceListing) throw new Error('Qualifying NFT has no published Listing.');
             const sourceQuote = await buyerRare.cart.checkout.prepare({ paymentCurrency: zeroAddress,
-              items: [{ listingDigest: sourceListing.listingDigest, quantity: 1n, recipient: buyer.address }] });
+              items: [{ kind: 'listing', listingDigest: sourceListing.listingDigest, quantity: 1n, recipient: buyer.address }] });
             expect(sourceQuote.paymentAmount).toBeLessThanOrEqual(1_000_000_000_000_000n);
             expect((await buyerRare.cart.checkout.purchase({ preparation: sourceQuote })).receipt.status).toBe('success');
             const claims = () => buyerRare.eligibility.listClaims({ ruleId: rule.id });
             await expect.poll(claims, { timeout: 180_000, interval: 2_000 }).toMatchObject([{ status: 'AVAILABLE' }]);
             const twoCopies = await buyerRare.cart.checkout.prepare({ paymentCurrency: getAddress(gatedEntry.listing.settlementCurrency),
-              items: [{ listingDigest: gatedEntry.listingDigest, quantity: 2n, recipient: buyer.address }],
+              items: [{ kind: 'listing', listingDigest: gatedEntry.listingDigest, quantity: 2n, recipient: buyer.address }],
               delivery: { recipientDetails: details } });
             if (!twoCopies.intent.delivery || !twoCopies.idempotencyKey) throw new Error('Multi-copy quote lost its delivery identity.');
             await expect(buyerRare.cart.api.checkout.prepare({ ...twoCopies.intent, delivery: twoCopies.intent.delivery,
               idempotencyKey: twoCopies.idempotencyKey })).rejects.toMatchObject({ status: 409 });
             expect(await claims()).toMatchObject([{ status: 'AVAILABLE' }]);
             const buyerQuote = await buyerRare.cart.checkout.prepare({ paymentCurrency: getAddress(gatedEntry.listing.settlementCurrency),
-              items: [{ listingDigest: gatedEntry.listingDigest, quantity: 1n, recipient: buyer.address }],
+              items: [{ kind: 'listing', listingDigest: gatedEntry.listingDigest, quantity: 1n, recipient: buyer.address }],
               delivery: { recipientDetails: details } });
             if (!buyerQuote.intent.delivery || !buyerQuote.idempotencyKey) throw new Error('Eligible print quote lost its delivery identity.');
             const buyerRequest = { ...buyerQuote.intent, delivery: buyerQuote.intent.delivery, idempotencyKey: buyerQuote.idempotencyKey };
