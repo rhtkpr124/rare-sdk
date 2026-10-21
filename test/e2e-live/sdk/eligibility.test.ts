@@ -36,7 +36,7 @@ describe.sequential('SDK eligibility against the deployed Rare API', () => {
       const gated = published.signedArtifact.entries[0];
       if (gated === undefined) throw new Error('Gated publication returned no Listing.');
       const preview = await scenario.rare.cart.api.checkout.preview({ paymentCurrency: zeroAddress,
-        items: [{ listingDigest: gated.listingDigest, quantity: 1n, recipient: scenario.seller.address }] });
+        items: [{ kind: 'listing', listingDigest: gated.listingDigest, quantity: 1n, recipient: scenario.seller.address }] });
       await expect(scenario.rare.cart.api.checkout.prepare(preview.preparationReference)).rejects.toThrow();
       const scope = { chainId: String(scenario.chainId), cartAddress: scenario.cart,
         listingDigest: created.listingDigest };
@@ -86,7 +86,7 @@ describe.sequential('SDK eligibility against the deployed Rare API', () => {
         }
         const claims = () => rare.eligibility.listClaims({ ruleId: rule.id });
         const preview = (listingDigest: typeof rewardListing.listingDigest) => rare.cart.checkout.prepare({
-          paymentCurrency: zeroAddress, items: [{ listingDigest, quantity: 1n, recipient: buyer.address }],
+          paymentCurrency: zeroAddress, items: [{ kind: 'listing', listingDigest, quantity: 1n, recipient: buyer.address }],
         });
         expect(await claims()).toEqual([]);
         const denied = await preview(rewardListing.listingDigest);
