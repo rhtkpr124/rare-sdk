@@ -198,6 +198,36 @@ describe('account authentication over HTTP', () => {
     expect(await sdk.profile.update({ profile: { bio: 'Updated bio' } })).toMatchObject({ profile: { bio: 'Updated bio' } });
   });
 
+  it.each(['bearer', 'application'])('shares address and order methods through %s authentication', async (mode) => {
+    const storage = createMemoryAccountSessionStore();
+    await storage.set(session());
+    const sdk = mode === 'bearer' ? client(storage) : createRareClient({
+      transport: (path, init) => fetch(`${origin}${path}`, {
+        ...init, headers: { ...Object.fromEntries(new Headers(init.headers)), Cookie: 'sr-session=application-owned' },
+      }),
+    });
+    const details = { name: 'SDK fixture', email: 'sdk@example.test', phoneNumber: '+12025550100', addressLine1: '123 Test Street',
+      townOrCity: 'New York', postalOrZipCode: '10001', countryCode: 'US' };
+    const input = { id: '11111111-1111-4111-8111-111111111111', label: 'Studio', details, makeDefault: false };
+    handler = async (request, response, body) => {
+      expect(request.headers.authorization).toBe(mode === 'bearer' ? 'Bearer access-1' : undefined);
+      expect(request.headers.cookie).toBe(mode === 'application' ? 'sr-session=application-owned' : undefined);
+      if (request.url === '/v1/account/orders?take=2') return reply(response, { data: [], pagination: {} });
+      if (request.url === '/v1/account/shipping-addresses') {
+        if (request.method === 'PUT') expect(JSON.parse(body)).toEqual(input);
+        else expect(request.method).toBe('GET');
+        return reply(response, { data: [] });
+      }
+      expect(request.url).toBe('/v1/account/shipping-addresses/fixture');
+      expect(request.method).toBe('DELETE');
+      return reply(response, { data: [] });
+    };
+    expect(await sdk.shippingAddresses.list()).toEqual([]);
+    expect(await sdk.shippingAddresses.save(input)).toEqual([]);
+    expect(await sdk.shippingAddresses.delete('fixture')).toEqual([]);
+    expect((await sdk.orders.list({ take: 2 })).data).toEqual([]);
+  });
+
   it('shares unified-client refresh and session locking with Cart, keeping public reads anonymous', async () => {
     const storage = createMemoryAccountSessionStore();
     await storage.set(session(Date.now() - 1));
