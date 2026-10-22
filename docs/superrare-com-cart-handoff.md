@@ -17,27 +17,29 @@ Check the public interfaces in these files rather than importing SDK internals:
 - [`src/sdk/types/shipping-addresses.ts`](../src/sdk/types/shipping-addresses.ts)
 - [`src/sdk/types/orders.ts`](../src/sdk/types/orders.ts)
 
-## Share account authentication with the chain client
+## Configure one client with the application's transport
 
-Use the application's existing viem public and wallet clients. Supply the same
-Rare API base URL to its account and chain clients:
+Use the application's existing viem clients and authenticated API transport:
 
 ```typescript
-import { createRareAccountClient, createRareClient } from '@rareprotocol/rare-sdk';
+import { createRareClient } from '@rareprotocol/rare-sdk';
 
-const accountClient = createRareAccountClient({ apiBaseUrl, sessionStore });
 const rare = createRareClient({
 	publicClient,
 	walletClient,
 	apiBaseUrl,
-	accountClient,
+	transport: (path, init) => fetch(`/api/rare${path}`, {
+		...init,
+		credentials: 'same-origin',
+		redirect: 'error',
+	}),
 });
 ```
 
-Both constructors are public SDK exports. Reuse the existing session store
-instead of prompting for a second login. Wallet connection alone does not
-authenticate an account. Account identity and the wallet used for transaction
-signatures are separate inputs.
+The application owns login, logout, refresh, and account switching. This client
+does not expose `auth` methods or start another SDK session. Wallet connection
+alone does not authenticate an account. Account identity and the transaction
+signing wallet remain separate inputs.
 
 Pass the original viem wallet client to `createRareClient`. SDK namespace writes
 apply wallet compatibility handling automatically. For direct viem writes outside
@@ -45,15 +47,15 @@ SDK namespaces, use `createRareWalletClient({ publicClient, walletClient })` fro
 `@rareprotocol/rare-sdk/wallet`. Do not import private SDK modules or apply a
 second compatibility wrapper to SDK namespace writes.
 
-`accountClient.authenticatedFetch` supplies protected API requests with account
-credentials and handles session renewal. It is restricted to its configured
-API authority and does not automatically replay mutations. See
-[Account integration](auth/integration.md) for the authentication contract.
+The transport receives API-relative paths. Its server proxy must validate
+cookie-authenticated writes against CSRF and forward credentials only to the
+configured Rare API. Do not expose HttpOnly cookies or service credentials to
+browser code. Signed storage transfers bypass the authenticated API transport.
+Use `rare.uploads.upload` for both private masters and public display images.
 
-For an existing first-party cookie session, retain a thin server-side adapter
-where necessary. The SDK also accepts `apiFetch` for existing cookie-based
-integrations. Do not expose HttpOnly cookies or service credentials to browser
-code, and do not silently substitute one authentication mode for another.
+For SDK-managed bearer authentication, omit `transport`, supply `sessionStore`,
+and use `rare.auth`. Cart shares that client's session and renewal lock. See
+[Account integration](auth/integration.md) for the authentication contract.
 
 Keep SDK instances and private query caches scoped to the account, chain, and
 environment. Do not share account-bound clients between server requests.
@@ -261,7 +263,7 @@ configuration out of creator controls.
 
 1. Load paper and size choices with `rare.prints.specifications.list()`.
 2. Upload the master with
-   `accountClient.uploads.upload(file, filename, { access: 'private' })`.
+   `rare.uploads.upload(file, filename, { access: 'private' })`.
 3. Upload display photos through the same uploader with `access: 'public'`.
 4. Create the standalone draft with `rare.prints.drops.create`. Supply
    `print.productionUploadKey` from the private result and `print.images` from
@@ -366,7 +368,7 @@ The older NFT-linked print-release implementation remains separate.
 
 ## Reuse account shipping and generic checkout
 
-Use the same `accountClient` that exposes `profile.get/update`:
+Use the same `rare` client that exposes `profile.get/update`:
 
 - `shippingAddresses.list()` retrieves the private address book.
 - `shippingAddresses.save({ id, label, details, makeDefault })` creates or updates
@@ -375,7 +377,7 @@ Use the same `accountClient` that exposes `profile.get/update`:
 
 Saving requires explicit user consent. Passing delivery details to checkout does
 not save them. Load the default saved address into an editable summary and offer
-a change action. Use `accountClient.profile.get()` to prefill contact email when
+a change action. Use `rare.profile.get()` to prefill contact email when
 available; never expose that private email through public profile data.
 
 Prints use `rare.cart.checkout`, not a separate print payment engine. Add either
@@ -390,7 +392,7 @@ Each print has a separate fulfillment record and provider order. Shipping quotes
 are summed; they do not promise consolidated shipping. Pipelines owns submission
 and retries. Do not resubmit a physical order from the SDK or frontend.
 
-Read `accountClient.orders.get(orderId)` for payment status and `fulfillments`.
+Read `rare.orders.get(orderId)` for payment status and `fulfillments`.
 Each fulfillment includes `orderLineIndex`, status, and nullable `providerOrderId`.
 `COMPLETED` means provider acceptance, not shipment or delivery. Poll this read
 when useful; it does not initiate work.
@@ -428,8 +430,8 @@ credentials in logs.
 
 ## Recover Orders and display fulfillment progress
 
-Use `accountClient.orders.list({ after, take })` for `{ data, nextCursor }` pages,
-and `accountClient.orders.get(cartOrderId)` for one account-owned fulfillment
+Use `rare.orders.list({ after, take })` for `{ data, nextCursor }` pages,
+and `rare.orders.get(cartOrderId)` for one account-owned fulfillment
 Order. The identifier is the Cart Order's bytes32 ID, not an internal fulfillment
 UUID or provider Order ID. These methods do not include legacy NFT purchase
 history and do not return private postal snapshots.
@@ -461,7 +463,8 @@ error handling. If it does not exist, add it in the owning backend layer before
 wiring the frontend. Preserve the user's task scope when proposing those changes.
 
 `createApiClient` from `@rareprotocol/rare-sdk/data-access` is the public typed
-lower-level transport. It can use `accountClient.authenticatedFetch`. Prefer a
+lower-level transport. A bearer-managed client exposes `rare.authenticatedFetch`;
+an application-managed client uses the application's transport. Prefer a
 named reusable SDK method when the operation is needed by several consumers.
 Do not import private SDK modules or replace a missing method with another
 component-local request client.
