@@ -151,7 +151,7 @@ describe('account authentication over HTTP', () => {
     expect(await sdk.profile.update({ profile: { bio: 'Updated bio' } })).toMatchObject({ profile: { bio: 'Updated bio' } });
   });
 
-  it('shares account refresh and session locking with protected Cart operations, keeping public reads anonymous', async () => {
+  it.each(['existing account', 'unified client'])('shares %s refresh and session locking with Cart, keeping public reads anonymous', async (mode) => {
     const storage = createMemoryAccountSessionStore();
     await storage.set(session(Date.now() - 1));
     const received: string[] = [];
@@ -173,7 +173,8 @@ describe('account authentication over HTTP', () => {
     };
     const rare = createRareClient({
       publicClient: createPublicClient({ chain: sepolia, transport: http() }),
-      apiBaseUrl: origin, accountClient: client(storage),
+      apiBaseUrl: origin,
+      ...(mode === 'existing account' ? { accountClient: client(storage) } : { sessionStore: storage, clientId: 'rare-cli' }),
     });
     await rare.cart.api.listing.search();
     const intent = { seller: account.address, deadline: 9999999999n, listings: [{ sku: `0x${'12'.repeat(32)}` as const,
