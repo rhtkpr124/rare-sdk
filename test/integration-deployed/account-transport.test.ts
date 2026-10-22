@@ -28,6 +28,8 @@ describe('external account transport with deployed services', () => {
       expect(profile).toEqual(expected);
       expect(messaging.user.id).toBe(expected.accountId);
       expect(messaging.address.toLowerCase()).toBe(wallet.address.toLowerCase());
+      expect(await external.shippingAddresses.list()).toEqual(await managed.shippingAddresses.list());
+      expect(await external.orders.list()).toEqual(await managed.orders.list());
       await managed.auth.logout();
       await expect(external.profile.get()).rejects.toMatchObject({ status: 401 });
       await expect(external.messaging.session()).rejects.toMatchObject({ status: 401 });

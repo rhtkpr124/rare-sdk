@@ -59,6 +59,28 @@ const uploadRequest = (api: string, bytes: Uint8Array, authorization?: string, f
 });
 
 describe('uploads through deployed API and real GCS', () => {
+  it('uses the existing uploader with application-owned authentication for public and private files', async () => {
+    await withLiveAccount(async ({ api, client }, track) => {
+      const session = await client.auth.getSession();
+      if (!session) throw new Error('Missing live session');
+      const external = createRareAccountClient({
+        transport: (path, init) => fetch(`${api}${path}`, {
+          ...init, credentials: 'omit', redirect: 'error',
+          headers: { ...Object.fromEntries(new Headers(init.headers)), Authorization: `Bearer ${session.accessToken}` },
+        }),
+      });
+      expect('auth' in external).toBe(false);
+      const accessModes: readonly ('public' | 'private')[] = ['public', 'private'];
+      for (const access of accessModes) {
+        const bytes = randomBytes(1024);
+        track(bytes);
+        const uploaded = await external.uploads.upload(bytes, 'artwork.bin', { access });
+        expect(uploaded).toMatchObject({ access, key: objectKey(bytes), size: bytes.length });
+        expect(await client.uploads.upload(bytes, 'same-artwork.bin', { access })).toEqual(uploaded);
+      }
+    });
+  }, 180_000);
+
   it('deduplicates concurrent uploads, preserves stored metadata, and does not edit profiles', async () => {
     await withLiveAccount(async ({ client }, track) => {
       const bytes = randomBytes(1024);
