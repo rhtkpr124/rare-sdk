@@ -123,7 +123,7 @@
     "lint": "eslint src test",
     "test": "npm run build && vitest run --exclude 'test/integration-deployed/**'",
     "test:integration:uploads": "vitest run test/integration-deployed/uploads.test.ts",
-    "test:integration:account": "vitest run test/integration-deployed/account-auth.test.ts",
+    "test:integration:account": "vitest run test/integration-deployed/account-auth.test.ts test/integration-deployed/account-origins.test.ts test/integration-deployed/account-transport.test.ts --no-file-parallelism",
     "test:integration": "RARE_API_INTEGRATION=1 vitest run test/integration",
     "prepare": "npm run build",
     "test:integration:follows": "vitest run test/integration-deployed/follows.test.ts",
@@ -133,7 +133,8 @@
     "test:integration:messaging": "vitest run test/integration-deployed/messaging.test.ts test/integration-deployed/messaging-browser.test.ts test/integration-deployed/messaging-authorization.test.ts test/integration-deployed/messaging-public.test.ts test/integration-deployed/messaging-public-delivery.test.ts --no-file-parallelism",
     "test:integration:messaging:public": "vitest run test/integration-deployed/messaging-public.test.ts test/integration-deployed/messaging-public-delivery.test.ts --no-file-parallelism",
     "test:integration:nfts": "vitest run test/integration-deployed/nft-search.test.ts",
-    "test:integration:notifications": "vitest run test/integration-deployed/notifications.test.ts"
+    "test:integration:notifications": "vitest run test/integration-deployed/notifications.test.ts",
+    "test:integration:account:browser": "vitest run test/integration-deployed/account-browser.test.ts --no-file-parallelism"
   },
   "dependencies": {
     "merkletreejs": "0.6.0",
@@ -147,6 +148,7 @@
     "eslint-plugin-functional": "^9.0.4",
     "globals": "17.6.0",
     "openapi-typescript": "7.13.0",
+    "playwright": "1.64.1",
     "tsdown": "^0.22.2",
     "typescript": "5.9.3",
     "typescript-eslint": "8.59.2",

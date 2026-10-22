@@ -554,3 +554,58 @@ Each request uses native Typesense random ordering. Random pages do not form a
 stable traversal; use another sort order when paging through a complete result set.
 Run the public live integration with
 `RARE_ACCOUNT_TEST_API_URL=https://your-feature-api npm run test:integration:nfts`.
+
+## Application-owned authentication transport
+
+Applications with an existing server-managed session can configure one API transport.
+Feature methods keep the same request and response types. This client has no `auth`
+methods and never acquires or refreshes an SDK bearer session.
+
+```ts
+const account = createRareAccountClient({
+  transport: (path, init) => fetch(`/api/rare${path}`, {
+    ...init,
+    credentials: 'same-origin',
+    redirect: 'error',
+  }),
+});
+const inbox = await account.messaging.inbox();
+```
+
+The transport receives API-relative paths such as `/v1/messaging/conversations`,
+request headers/body, and an abort signal combining the caller's cancellation with
+an SDK deadline. The application owns authentication, logout, refresh and account
+switching, including clearing account-specific caches. Its server proxy must
+validate cookie-authenticated writes against CSRF and forward credentials only to
+its configured Rare API. Do not put session cookies or internal keys in browser
+JavaScript. Authenticated API errors retain the SDK's normal error handling.
+
+Signed storage uploads bypass this API transport and use the optional `fetch`
+implementation with `credentials: 'omit'`, without authentication headers.
+Without a transport, `createRareAccountClient` retains its existing bearer-token
+login, session storage and refresh behavior.
+
+Third-party browser applications use that default bearer client independently of
+SuperRare's website cookies. Direct wallet login binds SIWE to `window.location.origin`;
+non-browser applications may supply `signingOrigin`. Valid third-party HTTPS origins
+do not require manual registration in the new Auth flow. Hosted Connect login is
+available through `account.auth.startDeviceAuthorization()` and supports its
+wallet/email/social login choices. Every application receives its own approved
+session. Manually run `npm run test:integration:account` against a deployment with
+the arbitrary-origin Auth update to verify independent third-party sessions and
+origin-mismatch rejection. These HTTP tests do not substitute for browser CORS checks.
+
+Run real-browser authentication checks manually with
+`npm run test:integration:account:browser` after `npx playwright install chromium`.
+They use the same existing test wallet and deployed API variables as the account
+suite. Chromium performs the actual cross-origin fetches and preflights; only the
+empty third-party application document is supplied by the test. Auth/API responses
+are never intercepted. The suite checks unregistered origins, independent bearer
+sessions, hosted authorization initiation, SIWE tampering, origin mismatch, replay
+and actual challenge expiration. The expiration case takes about five minutes.
+
+For a disposable real Auth service backed by Redis, set
+`RARE_ACCOUNT_BROWSER_API_URL=http://127.0.0.1:<port>`. This mode serves genuine
+loopback application pages and checks Auth's complete browser/session behavior;
+account profile reads still require the deployed Rare API and run in HTTPS mode.
+No browser CORS or address-space security settings are disabled.

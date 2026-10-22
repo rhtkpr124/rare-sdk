@@ -63,6 +63,17 @@ export type RareWalletLoginOptions = {
   signMessage: (message: string) => Promise<string>;
 };
 
+/** Sends API-relative paths using authentication owned by the application. */
+export type RareAccountTransport = (path: string, init: RequestInit) => Promise<Response>;
+
+export type RareAccountTransportOptions = {
+  transport: RareAccountTransport;
+  /** Used only for signed storage transfers, never for authenticated API requests. */
+  fetch?: typeof globalThis.fetch;
+};
+
+export type RareAccountFeatures = Omit<RareAccountClient, 'auth'>;
+
 export type RareAccountClientOptions = {
   /** Public API base; auth uses its /auth/v2 routes. Defaults to https://api.superrare.com. */
   apiBaseUrl?: string;
