@@ -31,7 +31,6 @@ import type { OfferNamespace } from './offer.js';
 import type { SwapNamespace } from './swap.js';
 import type { TokenNamespace } from './token.js';
 import type { CartNamespace } from './cart.js';
-import type { RareAccountClient } from './account.js';
 import type { RareUtilsNamespace } from './utils.js';
 
 /**

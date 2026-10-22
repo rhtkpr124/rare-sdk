@@ -43,7 +43,8 @@ export function createRareClient(config: RareManagedClientConfig | RareExternalC
     messaging: { ...account.messaging, public: api.messaging },
   };
   if (config.publicClient === undefined) return features;
-  const chain = createChainClient({ ...config, apiBaseUrl, apiFetch: publicApiFetch }, api);
+  const accountClient = config.accountClient ?? ('authenticatedFetch' in account ? account : undefined);
+  const chain = createChainClient({ ...config, apiBaseUrl, apiFetch: publicApiFetch, accountClient }, api);
   return { ...features, ...chain, token: { ...chain.token, getPrice: api.getTokenPrice }, collection: { ...chain.collection, events: api.getCollectionEvents }, drops: features.drops, posts: features.posts, messaging: features.messaging };
 }
 
