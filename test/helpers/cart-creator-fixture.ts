@@ -34,7 +34,7 @@ export async function createCreatorCartScenario() {
     throw new Error('Set RARE_API_BASE_URL, TEST_RPC_URL and a registered creator test wallet in RARE_ACCOUNT_TEST_PRIVATE_KEY or E2E_SELLER_PRIVATE_KEYS.');
   }
   const seller = privateKeyToAccount(key);
-  const accountClient = createRareAccountClient({ apiBaseUrl });
+  const accountClient = createRareClient({ apiBaseUrl });
   await accountClient.auth.loginWithWallet({ address: seller.address, chainId: 11155111,
     signMessage: message => seller.signMessage({ message }) });
   try {
