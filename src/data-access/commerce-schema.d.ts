@@ -214,6 +214,130 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/account/orders/checkout/{idempotencyKey}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Recover your interrupted checkout without creating another Order */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    idempotencyKey: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Account and wallet-bound checkout recovery */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** @enum {string} */
+                                status: "UNKNOWN" | "PREPARING" | "PREPARATION_FAILED" | "READY" | "EXECUTED" | "EXPIRED";
+                                orderId?: string;
+                                preparedPurchase?: {
+                                    /** @enum {number} */
+                                    schemaVersion: 1;
+                                    chainId: string | number;
+                                    cartAddress: string;
+                                    idempotencyKey: string;
+                                    /** Format: date-time */
+                                    preparedAt: string;
+                                    executePurchase: {
+                                        order: {
+                                            orderId: string;
+                                            paymentCurrency: string;
+                                            deadline: string;
+                                            paymentAmount: string;
+                                            orderLinesHash: string;
+                                            payoutRouteHash: string;
+                                            fulfillmentActionsHash: string;
+                                        };
+                                        lines: {
+                                            sku: string;
+                                            listingDigest: string;
+                                            fulfillmentKind: number;
+                                            quantity: string;
+                                            settlementCurrency: string;
+                                            amount: string;
+                                            paymentRecipient: string;
+                                        }[];
+                                        listings: {
+                                            listingSalt: string;
+                                            seller: string;
+                                            sku: string;
+                                            fulfillmentKind: number;
+                                            tokenContract: string;
+                                            tokenId: string;
+                                            settlementCurrency: string;
+                                            minimumUnitPrice: string;
+                                            availableQuantity: string;
+                                            paymentRecipient: string;
+                                        }[];
+                                        authorization: {
+                                            listingRoots: {
+                                                listingsRoot: string;
+                                                nonce: string;
+                                                deadline: string;
+                                            }[];
+                                            listingRootSignatures: string[];
+                                            listingRootIndexes: string[];
+                                            listingProofs: string[][];
+                                        };
+                                        route: {
+                                            commands: string;
+                                            inputs: string[];
+                                            routerValue: string;
+                                        };
+                                        actions: {
+                                            lineIndex: string;
+                                            quantity: string;
+                                            recipient: string;
+                                        }[];
+                                        platformSignature: string;
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+                /** @description Unable to access Orders */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CartErrorResponse"];
+                    };
+                };
+                /** @description Unable to access Orders */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CartErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/account/orders": {
         parameters: {
             query?: never;
@@ -243,7 +367,8 @@ export interface paths {
                         "application/json": {
                             data: {
                                 id: string;
-                                status: string;
+                                /** @enum {string} */
+                                status: "PREPARING" | "PREPARATION_FAILED" | "READY" | "EXECUTED" | "EXPIRED";
                                 paymentCurrency: string | null;
                                 paymentAmount: string | null;
                                 /** Format: date-time */
@@ -253,7 +378,9 @@ export interface paths {
                                 fulfillments: {
                                     id: string;
                                     kind: string;
-                                    status: string;
+                                    orderLineIndex: number;
+                                    /** @enum {string} */
+                                    status: "PENDING" | "PROCESSING" | "RETRY" | "COMPLETED" | "FAILED";
                                     providerOrderId: string | null;
                                     /** Format: date-time */
                                     createdAt: string;
@@ -321,7 +448,8 @@ export interface paths {
                         "application/json": {
                             data: {
                                 id: string;
-                                status: string;
+                                /** @enum {string} */
+                                status: "PREPARING" | "PREPARATION_FAILED" | "READY" | "EXECUTED" | "EXPIRED";
                                 paymentCurrency: string | null;
                                 paymentAmount: string | null;
                                 /** Format: date-time */
@@ -331,7 +459,9 @@ export interface paths {
                                 fulfillments: {
                                     id: string;
                                     kind: string;
-                                    status: string;
+                                    orderLineIndex: number;
+                                    /** @enum {string} */
+                                    status: "PENDING" | "PROCESSING" | "RETRY" | "COMPLETED" | "FAILED";
                                     providerOrderId: string | null;
                                     /** Format: date-time */
                                     createdAt: string;
@@ -670,6 +800,7 @@ export interface paths {
                         /** @enum {string} */
                         chainId?: "11155111";
                         print?: {
+                            sourceUniversalTokenId?: components["schemas"]["UniversalTokenId"];
                             name: string;
                             description: string;
                             tags: string[];

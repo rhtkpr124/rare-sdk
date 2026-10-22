@@ -11,6 +11,7 @@ import type {
 } from './types/cart.js';
 import { buildCartVariantSearchQuery, validateCartCheckoutIntent, type CartChainId } from './cart-core.js';
 import { generateCartListingSalt } from './cart-listing-shell.js';
+import { validateCartCheckoutRecovery } from './cart-checkout-recovery-core.js';
 import type {
   CartCheckoutIntentItem,
   CartApiListing,
@@ -38,6 +39,9 @@ import type {
   CartProductSku,
   CartDeliveryCheckout,
   CartCardCheckout,
+  CartCheckoutRecovery,
+  CreateCartProduct,
+  AddCartVariants,
 } from './types/cart-api.js';
 
 type CartApiTransport = {
@@ -89,6 +93,12 @@ export function createCartApiNamespace(
       ),
       publish: async (id: string): Promise<CartApiProduct> => normalizeProduct(await getWrappedData(
         protectedClient.POST(`/v1/cart/products/${encodeURIComponent(id)}/publish`, {}), 'Rare API did not return the published Product.',
+      )),
+      getMine: async (id: string): Promise<CartApiProduct> => normalizeProduct(await getWrappedData(
+        protectedClient.GET(`/v1/cart/products/mine/${encodeURIComponent(id)}`, {}), 'Rare API did not return your Product.',
+      )),
+      archive: async (id: string): Promise<CartApiProduct> => normalizeProduct(await getWrappedData(
+        protectedClient.POST(`/v1/cart/products/${encodeURIComponent(id)}/archive`, {}), 'Rare API did not return the archived Product.',
       )),
       search: async (params: CartProductSearchParams = {}): Promise<CartApiPage<CartApiProduct>> => {
         const page = await getData<{ data: CartApiProduct[]; hasNextPage: boolean }>(
@@ -222,6 +232,18 @@ export function createCartApiNamespace(
         'Rare API did not return the signed Cart Purchase.',
       );
       return normalizePreparedPurchase(wire);
+    },
+    recover: async (idempotencyKey: string): Promise<CartCheckoutRecovery> => {
+      const wire = await getWrappedData<Omit<CartCheckoutRecovery, 'preparedPurchase'> & { preparedPurchase?: CartApiPreparedPurchaseWire }>(
+        protectedClient.GET('/v1/account/orders/checkout/{idempotencyKey}', {
+          params: { path: { idempotencyKey } },
+        }), 'Rare API did not return the saved checkout status.',
+      );
+      const recovery = { ...wire, preparedPurchase: wire.preparedPurchase === undefined
+        ? undefined : normalizePreparedPurchase(wire.preparedPurchase) };
+      const validation = validateCartCheckoutRecovery(recovery, { chainId: BigInt(chainId), cart: cartAddress() });
+      if (!validation.isValid) throw new Error(validation.message);
+      return recovery;
     },
     coinflow: async (input: CartDeliveryCheckout): Promise<CartCardCheckout> => {
       const wire = await getWrappedData<Omit<CartCardCheckout, 'preparedPurchase'> & { preparedPurchase: CartApiPreparedPurchaseWire }>(

@@ -137,6 +137,7 @@ export type CartNamespace = {
   };
   checkout: {
     receipt: CartApiNamespace['checkout']['receipt'];
+    recover: CartApiNamespace['checkout']['recover'];
     /** Authorizes a reviewed quote and reserves any required claims, without paying. */
     authorize: (preparation: CartCheckoutPreparation) => Promise<CartApiPreparedPurchase>;
     prepare: (intent: CartCheckoutIntent) => Promise<CartCheckoutPreparation>;
