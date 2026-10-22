@@ -1,4 +1,5 @@
 import { createNotificationsClient } from './notifications-client.js';
+import { createApiClient } from '../data-access/client.js';
 import { createMessagingClient } from './messaging-client.js';
 import { normalizeDropId, planCreateDrop, planDropUpdate, parseDrop } from './drops-core.js';
 import { normalizePostId, planCreatePost, planPostComment, parsePost, parsePostComment, parsePostData, parsePostPage, parsePostDeleted } from './posts-core.js';
@@ -16,6 +17,16 @@ type Request = (path: string, init: RequestInit, options?: RareAuthRequestOption
 /** Feature methods share one API transport; signed storage requests use a separate fetch. */
 export function createAccountFeatures(apiRequest: Request, request: Request): RareAccountFeatures {
   const jsonRequest = async (path: string, init: RequestInit, options?: RareAuthRequestOptions, timeoutMilliseconds?: number): Promise<unknown> => featureResponse(await apiRequest(path, init, options, timeoutMilliseconds), path);
+  // The generated client builds typed API requests; the configured account transport owns their authority and authentication.
+  const accountApiClient = createApiClient(undefined, async (input, init) => {
+    const pending = new globalThis.Request(input, init);
+    const target = new URL(pending.url);
+    return apiRequest(`${target.pathname}${target.search}`, {
+      method: pending.method,
+      headers: pending.headers,
+      ...(pending.body === null ? {} : { body: await pending.text() }),
+    }, { signal: pending.signal });
+  });
   const profileRequest = async (method: 'GET' | 'PATCH', body: string | undefined, requestOptions: RareAuthRequestOptions = {}) => {
     return parseAccountProfile(await jsonRequest('v1/me', {
       method, headers: { Accept: 'application/json', ...(body === undefined ? {} : { 'Content-Type': 'application/json' }) },
@@ -92,6 +103,40 @@ export function createAccountFeatures(apiRequest: Request, request: Request): Ra
     return result;
   };
   return {
+    orders: {
+      async list(input = {}, options = {}) {
+        const result = await accountApiClient.GET('/v1/account/orders', { params: { query: input }, signal: options.signal });
+        if (result.data === undefined) throw new Error('Rare API did not return fulfillment Orders.');
+        return result.data;
+      },
+      async get(id, options = {}) {
+        const result = await accountApiClient.GET('/v1/account/orders/{id}', { params: { path: { id } }, signal: options.signal });
+        if (result.data === undefined) throw new Error('Rare API did not return the fulfillment Order.');
+        return result.data.data;
+      },
+    },
+    shippingAddresses: {
+      async list(options = {}) {
+        const result = await accountApiClient.GET('/v1/account/shipping-addresses', { signal: options.signal });
+        if (result.data === undefined) throw new Error('Rare API did not return shipping addresses.');
+        return result.data.data;
+      },
+      async save(input, options = {}) {
+        const result = await accountApiClient.PUT('/v1/account/shipping-addresses', { body: input, signal: options.signal });
+        if (result.data === undefined) throw new Error('Rare API did not return saved shipping addresses.');
+        return result.data.data;
+      },
+      async delete(id, options = {}) {
+        const result = await accountApiClient.DELETE('/v1/account/shipping-addresses/{id}', { params: { path: { id } }, signal: options.signal });
+        if (result.data === undefined) throw new Error('Rare API did not return remaining shipping addresses.');
+        return result.data.data;
+      },
+    },
+    ...createAccountFeatures(async (path, init, requestOptions = {}, timeoutMilliseconds) => {
+      const token = await accessToken(requestOptions);
+      return request(joinAuthPath(apiBaseUrl, path), { ...init, headers: { ...init.headers, Authorization: `Bearer ${token}` } }, requestOptions, timeoutMilliseconds);
+    }, request),
+    auth: {
     notifications: createNotificationsClient(postRequest),
     messaging: createMessagingClient(async (method, path, body, headers, requestOptions = {}) => {
       return apiRequest(path, { method, headers: { Accept: 'application/json', ...headers }, ...(body === undefined ? {} : { body }) }, requestOptions);
