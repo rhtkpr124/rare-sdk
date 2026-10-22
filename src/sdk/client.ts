@@ -31,9 +31,12 @@ export function createRareClient(config: RareManagedClientConfig | RareExternalC
   const apiFetch = config.apiFetch;
   const publicApiFetch = 'transport' in config ? createPublicApiTransport(apiBaseUrl, config.transport, apiFetch) : apiFetch;
   const api = createRareApi({ baseUrl: apiBaseUrl, fetch: publicApiFetch });
-  const account = 'transport' in config
-    ? createAccountClient({ transport: config.transport, fetch: apiFetch })
-    : createAccountClient({ apiBaseUrl, sessionStore: config.sessionStore, fetch: apiFetch });
+  const authentication = (() => {
+    if ('transport' in config) return { features: createAccountClient({ transport: config.transport, fetch: apiFetch }), authenticatedFetch: undefined };
+    const features = createAccountClient({ apiBaseUrl, sessionStore: config.sessionStore, fetch: apiFetch });
+    return { features, authenticatedFetch: features.authenticatedFetch };
+  })();
+  const account = authentication.features;
   const publicFeatures = createPublicFeatures(api);
   const features = {
     ...publicFeatures,
@@ -51,7 +54,8 @@ export function createRareClient(config: RareManagedClientConfig | RareExternalC
   };
   if (config.publicClient === undefined) return features;
 
-  const accountClient = config.accountClient ?? ('authenticatedFetch' in account ? account : undefined);
+  const accountClient = config.accountClient ?? (authentication.authenticatedFetch === undefined ? undefined : { authenticatedFetch: authentication.authenticatedFetch });
+
   const chain = createChainClient({ ...config, apiBaseUrl, apiFetch: publicApiFetch, accountClient }, api);
   return { ...features, ...chain, token: { ...chain.token, getPrice: api.getTokenPrice }, collection: { ...chain.collection, events: api.getCollectionEvents }, user: features.user, drops: features.drops, posts: features.posts, messaging: features.messaging };
 
