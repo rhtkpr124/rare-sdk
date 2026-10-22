@@ -3,7 +3,7 @@ import { createPublicClient, createWalletClient, getAddress, http, isAddressEqua
 import { privateKeyToAccount } from 'viem/accounts';
 import { sepolia } from 'viem/chains';
 import { describe, expect, it } from 'vitest';
-import { createRareAccountClient, createRareClient } from '../../dist/sdk/index.js';
+import { createRareClient } from '../../dist/sdk/index.js';
 import type { CreatePrintDrop } from '../../dist/sdk/index.js';
 import { loadDotEnv } from '../helpers/env.js';
 import { createCreatorCartScenario } from '../helpers/cart-creator-fixture.js';
@@ -19,7 +19,7 @@ const setup = () => {
   const url = new URL(apiBaseUrl);
   if (url.protocol !== 'https:' || url.hostname === 'api.superrare.com') throw new Error('Print integration tests require a non-production HTTPS API.');
   const wallet = privateKeyToAccount(key);
-  const accountClient = createRareAccountClient({ apiBaseUrl });
+  const accountClient = createRareClient({ apiBaseUrl });
   const publicClient = createPublicClient({ chain: sepolia, transport: http(process.env.TEST_RPC_URL) });
   const walletClient = createWalletClient({ account: wallet, chain: sepolia, transport: http(process.env.TEST_RPC_URL) });
   const rare = createRareClient({ apiBaseUrl, accountClient, publicClient, walletClient });
@@ -155,7 +155,7 @@ describe('print tooling through deployed Rare API', () => {
           if (!buyerKey || !isHex(buyerKey) || buyerKey.length !== 66) throw new Error('Set a registered, funded Sepolia E2E_BUYER_PRIVATE_KEYS wallet.');
           const buyer = privateKeyToAccount(buyerKey);
           if (isAddressEqual(buyer.address, wallet.address)) throw new Error('The print eligibility buyer must differ from the creator.');
-          const buyerAccount = createRareAccountClient({ apiBaseUrl: source.apiBaseUrl });
+          const buyerAccount = createRareClient({ apiBaseUrl: source.apiBaseUrl });
           await buyerAccount.auth.loginWithWallet({ address: buyer.address, chainId: sepolia.id,
             signMessage: message => buyer.signMessage({ message }) });
           try {
