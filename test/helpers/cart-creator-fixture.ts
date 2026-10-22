@@ -3,7 +3,7 @@ import { createWalletClient, http, isHex, zeroAddress } from 'viem';
 import { sepolia } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
 import { isRecord, requireString } from '../../src/sdk/account-auth-core.js';
-import { createRareAccountClient, createRareClient } from '../../dist/sdk/index.js';
+import { createRareClient } from '../../dist/sdk/index.js';
 import { cartAbi } from '../../src/contracts/abis/cart.js';
 import { getCartAddress } from '../../src/contracts/addresses.js';
 import { cartDomain, hashCartListing } from '../../src/sdk/cart-core.js';
