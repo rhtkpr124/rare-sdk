@@ -181,7 +181,7 @@ export type { IntegerInput };
 
 /** Public Rare API methods available without a blockchain RPC client. */
 export type RarePublicFeatures = {
-  utils: UtilsNamespace;
+  utils: RareUtilsNamespace;
   token: Pick<TokenNamespace, 'getPrice'>;
   search: {
     liquidEditions: RareApi['searchLiquidEditions'];

@@ -2,6 +2,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { type Address, type Hash, type PublicClient, type TransactionReceipt, type WalletClient } from 'viem';
 import { createRareClient } from '../../../src/sdk/client.js';
+import type { RareClient } from '../../../src/sdk/types/client.js';
 
 const accountAddress = '0x1000000000000000000000000000000000000000' as Address;
 const contract = '0x2000000000000000000000000000000000000000' as Address;
@@ -15,24 +16,24 @@ const revertedReceipt = {
 
 describe('marketplace SDK write receipt handling', () => {
   it.each([
-    ['listing.create', 'listing create', (rare: ReturnType<typeof createRareClient>) =>
+    ['listing.create', 'listing create', (rare: RareClient) =>
       rare.listing.create({ contract, tokenId: 1n, price: 1n })],
-    ['listing.cancel', 'listing cancel', (rare: ReturnType<typeof createRareClient>) =>
+    ['listing.cancel', 'listing cancel', (rare: RareClient) =>
       rare.listing.cancel({ contract, tokenId: 1n })],
-    ['listing.buy', 'listing buy', (rare: ReturnType<typeof createRareClient>) =>
+    ['listing.buy', 'listing buy', (rare: RareClient) =>
       rare.listing.buy({ contract, tokenId: 1n, price: 1n })],
-    ['auction.create', 'auction create', (rare: ReturnType<typeof createRareClient>) =>
+    ['auction.create', 'auction create', (rare: RareClient) =>
       rare.auction.create({
         contract,
         tokenId: 1n,
         price: 1n,
         endTime: BigInt(Math.floor(Date.now() / 1000) + 86_400),
       })],
-    ['auction.bid', 'auction bid', (rare: ReturnType<typeof createRareClient>) =>
+    ['auction.bid', 'auction bid', (rare: RareClient) =>
       rare.auction.bid({ contract, tokenId: 1n, price: 1n })],
-    ['auction.settle', 'auction settle', (rare: ReturnType<typeof createRareClient>) =>
+    ['auction.settle', 'auction settle', (rare: RareClient) =>
       rare.auction.settle({ contract, tokenId: 1n })],
-    ['auction.cancel', 'auction cancel', (rare: ReturnType<typeof createRareClient>) =>
+    ['auction.cancel', 'auction cancel', (rare: RareClient) =>
       rare.auction.cancel({ contract, tokenId: 1n })],
   ])('rejects a reverted %s receipt before returning success', async (_method, operation, run) => {
     const publicClient = makePublicClient();

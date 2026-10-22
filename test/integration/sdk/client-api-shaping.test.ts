@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { createPublicClient, http } from 'viem';
 import { mainnet } from 'viem/chains';
 import { createRareClient } from '../../../src/sdk/client.js';
+import type { RareClient } from '../../../src/sdk/types/client.js';
 
 type ApiRequest = {
   method: string;
@@ -227,7 +228,7 @@ describe('Rare SDK client API request shaping', () => {
   });
 });
 
-function createTestClient(baseUrl: string, configuredAccount?: typeof account): ReturnType<typeof createRareClient> {
+function createTestClient(baseUrl: string, configuredAccount?: typeof account): RareClient {
   return createRareClient({
     publicClient: createPublicClient({
       chain: mainnet,
