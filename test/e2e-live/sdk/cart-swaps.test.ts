@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createWalletClient, erc20Abi, http, isHex, zeroAddress } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { sepolia } from 'viem/chains';
-import { createRareAccountClient, createRareClient, type CartCheckoutIntentItem } from '../../../dist/sdk/index.js';
+import { createRareClient, type RareClient, type CartCheckoutIntentItem } from '../../../dist/sdk/index.js';
 import { resolveCurrency } from '../../../src/contracts/addresses.js';
 import { loadDotEnv } from '../../helpers/env.js';
 import { createTestSepoliaPublicClient, getTestRpcUrl } from '../../helpers/liveViem.js';
@@ -11,9 +11,8 @@ loadDotEnv();
 
 describe.sequential('SDK standalone Cart swap purchases', () => {
   const publicClient = createTestSepoliaPublicClient();
-  const accountClient = createRareAccountClient({ apiBaseUrl: process.env.RARE_API_BASE_URL });
   const outputCurrency = resolveCurrency('rare', 'sepolia');
-  let rare: ReturnType<typeof createRareClient>;
+  let rare: RareClient;
   let buyer: ReturnType<typeof privateKeyToAccount>;
 
   beforeAll(async () => {
@@ -23,12 +22,12 @@ describe.sequential('SDK standalone Cart swap purchases', () => {
     }
     if (await publicClient.getChainId() !== 11155111) throw new Error('Cart swap tests only support Sepolia.');
     buyer = privateKeyToAccount(key);
-    await accountClient.auth.loginWithWallet({ address: buyer.address, chainId: 11155111,
-      signMessage: message => buyer.signMessage({ message }) });
-    rare = createRareClient({ publicClient, apiBaseUrl: process.env.RARE_API_BASE_URL, accountClient,
+    rare = createRareClient({ publicClient, apiBaseUrl: process.env.RARE_API_BASE_URL,
       walletClient: createWalletClient({ account: buyer, chain: sepolia, transport: http(getTestRpcUrl()) }) });
+    await rare.auth.loginWithWallet({ address: buyer.address, chainId: 11155111,
+      signMessage: message => buyer.signMessage({ message }) });
   }, 60_000);
-  afterAll(async () => { await accountClient.auth.logout(); });
+  afterAll(async () => { await rare?.auth.logout(); });
 
   it.each([
     { mode: 'exact-input' as const, paymentCurrency: zeroAddress },
