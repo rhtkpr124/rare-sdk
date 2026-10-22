@@ -29,7 +29,7 @@ describe('consistent feature errors', () => {
 
   it('normalizes nested messaging errors without exposing arbitrary descriptions', async () => {
     const client = createRareClient({ transport: async () => Response.json({ error: { code: 'forbidden', message: 'private message or bearer credential' } }, { status: 403 }) });
-    const error: unknown = await client.messaging.history(id).catch(error => error);
+    const error: unknown = await client.messaging.history(id).catch((error: unknown) => error);
     expect(error).toBeInstanceOf(RareApiError);
     expect(error).toMatchObject({ status: 403, path: `/v1/messaging/conversations/${id}`, code: 'forbidden' });
     expect((error as Error).message).not.toContain('private message or bearer credential');
@@ -52,7 +52,7 @@ describe('consistent feature errors', () => {
   });
 
   it('bounds field diagnostics and rejects unstructured descriptions as codes', async () => {
-    const error: unknown = await featureResponse(Response.json({ error: 'private submitted content', details: [{ field: 'a'.repeat(200), message: 'b'.repeat(800) }] }, { status: 422 }), '/v1/me?secret=do-not-retain').catch(error => error);
+    const error: unknown = await featureResponse(Response.json({ error: 'private submitted content', details: [{ field: 'a'.repeat(200), message: 'b'.repeat(800) }] }, { status: 422 }), '/v1/me?secret=do-not-retain').catch((error: unknown) => error);
     expect(error).toMatchObject({ path: '/v1/me', code: 'request_failed', details: [{ field: 'a'.repeat(128), message: 'b'.repeat(512) }] });
     expect((error as Error).message).not.toContain('private submitted content');
   });
