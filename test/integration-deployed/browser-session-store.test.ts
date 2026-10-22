@@ -160,11 +160,11 @@ describe('managed browser sessions against real Auth', () => {
       const current = await window.rareBrowserTest.auth.getSession();
       if (!current) throw new Error('Missing real session');
       const otherStore = window.RareSdk.createBrowserAccountSessionStore(`${apiBaseUrl}/different-authority`);
-      const mismatch = await otherStore.set(current).then(() => 'unexpected_success', error => error instanceof window.RareSdk.RareAuthError ? error.code : 'unexpected_error');
+      const mismatch = await otherStore.set(current).then(() => 'unexpected_success', (error: unknown) => error instanceof window.RareSdk.RareAuthError ? error.code : 'unexpected_error');
       const key = localStorage.key(0);
       if (!key) throw new Error('Missing persisted session');
       localStorage.setItem(key, 'invalid-json');
-      const corruption = await window.rareBrowserTest.auth.getSession().then(() => 'unexpected_success', error => error instanceof window.RareSdk.RareAuthError ? error.code : 'unexpected_error');
+      const corruption = await window.rareBrowserTest.auth.getSession().then(() => 'unexpected_success', (error: unknown) => error instanceof window.RareSdk.RareAuthError ? error.code : 'unexpected_error');
       await window.rareBrowserTest.auth.clearSession();
       return { mismatch, corruption, cleared: await window.rareBrowserTest.auth.getSession() === null };
     }, configuration().apiBaseUrl);
@@ -251,7 +251,7 @@ describe('managed browser sessions against real Auth', () => {
     await first.evaluate(address => {
       window.pendingBrowserLogin = window.rareBrowserTest.auth.loginWithWallet({ address, chainId: 1, signMessage: message => new Promise(resolve => {
         window.approvePendingBrowserLogin = async () => { resolve(await window.signExistingTestWallet(0, message)); };
-      }) }).then(() => ({ code: 'unexpected_success' }), error => ({ code: error instanceof window.RareSdk.RareAuthError ? error.code : 'unexpected_error' }));
+      }) }).then(() => ({ code: 'unexpected_success' }), (error: unknown) => ({ code: error instanceof window.RareSdk.RareAuthError ? error.code : 'unexpected_error' }));
     }, address);
     await first.waitForFunction(() => typeof window.approvePendingBrowserLogin === 'function');
     if (action === 'logout') await second.evaluate(() => window.rareBrowserTest.auth.logout());
