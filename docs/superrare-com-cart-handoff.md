@@ -44,20 +44,50 @@ Check the public interfaces in these files rather than importing SDK internals:
 - [`src/sdk/types/shipping-addresses.ts`](../src/sdk/types/shipping-addresses.ts)
 - [`src/sdk/types/orders.ts`](../src/sdk/types/orders.ts)
 
-## Configure one authenticated client
+## Configure one client with the application's transport
 
-Supply the application's existing viem clients and one session store:
+Use the application's existing viem clients and authenticated API transport:
 
 ```typescript
-const rare = createRareClient({ publicClient, walletClient, apiBaseUrl, sessionStore });
+import { createRareClient } from '@rareprotocol/rare-sdk';
+
+const rare = createRareClient({
+	publicClient,
+	walletClient,
+	apiBaseUrl,
+	transport: (path, init) => fetch(`/api/rare${path}`, {
+		...init,
+		credentials: 'same-origin',
+		redirect: 'error',
+	}),
+});
 ```
 
-Account and protected Cart methods share this client's login and renewal lock.
-Wallet connection alone does not authenticate an account. Account identity and
-transaction-signing wallets remain separate. For application-owned sessions,
-configure `transport` on the same constructor instead of `sessionStore`.
-Authenticated fetch wiring stays internal; consumers call typed SDK methods.
-See [Account integration](auth/integration.md) for authentication behavior.
+The application owns login, logout, refresh, and account switching. This client
+does not expose `auth` methods or start another SDK session. Wallet connection
+alone does not authenticate an account. Account identity and the transaction
+signing wallet remain separate inputs.
+
+Pass the original viem wallet client to `createRareClient`. SDK namespace writes
+apply wallet compatibility handling automatically. For direct viem writes outside
+SDK namespaces, use `createRareWalletClient({ publicClient, walletClient })` from
+`@rareprotocol/rare-sdk/wallet`. Do not import private SDK modules or apply a
+second compatibility wrapper to SDK namespace writes.
+
+The transport receives API-relative paths. Its server proxy must validate
+cookie-authenticated writes against CSRF and forward credentials only to the
+configured Rare API. Do not expose HttpOnly cookies or service credentials to
+browser code. Signed storage transfers bypass the authenticated API transport.
+Use `rare.upload` for both private masters and public display images.
+
+For SDK-managed bearer authentication, omit `transport`, supply `sessionStore`,
+and use `rare.auth`. Cart shares that client's session and renewal lock. See
+[Account integration](auth/integration.md) for the authentication contract.
+
+Keep SDK instances and private query caches scoped to the account, chain, and
+environment. Do not share account-bound clients between server requests.
+Clear private caches when an account or wallet changes. A tRPC adapter may
+forward requests, but it must not become another eligibility or fee engine.
 
 ## Build discovery, seller, and buyer flows
 
@@ -408,8 +438,8 @@ credentials in logs.
 Use `rare.cart.orders.list({ page, perPage })` for `{ data, pagination }` pages,
 and `rare.cart.orders.get(cartOrderId)` for one account-owned Cart
 Order. History includes NFT-only, swap-only, print, and mixed orders.
-Order reads do not require a blockchain RPC connection. The identifier is the Cart Order's bytes32 ID, not an internal fulfillment
-UUID or provider Order ID. These methods do not include legacy NFT purchase
+Order reads do not require a blockchain RPC connection.
+The identifier is the Cart Order's bytes32 ID, not an internal fulfillment UUID or provider Order ID. These methods do not include legacy NFT purchase
 history and do not return private postal snapshots.
 
 Keep payment state separate from each line's fulfillment state. Fulfillment
@@ -456,9 +486,10 @@ If the endpoint exists, add a typed SDK method using the existing transport and
 error handling. If it does not exist, add it in the owning backend layer before
 wiring the frontend. Preserve the user's task scope when proposing those changes.
 
-Add a named, typed SDK method for missing authenticated capabilities. Reuse
-the internal account transport rather than exposing a raw authenticated request
-function or asking consumers to read session credentials.
+Authenticated request wiring stays internal to the SDK. Add a named, typed SDK
+method for missing authenticated capabilities and reuse its existing account
+transport. Consumers configure `sessionStore` or application-owned `transport`
+on one `createRareClient`; they do not read credentials or pass a separate client.
 Do not import private SDK modules or replace a missing method with another
 component-local request client.
 
