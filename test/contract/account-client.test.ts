@@ -6,7 +6,6 @@ import { createSiweMessage } from 'viem/siwe';
 import { createPublicClient, http, zeroAddress } from 'viem';
 import { sepolia } from 'viem/chains';
 import { createRareClient } from '../../src/sdk/client.js';
-import { createRareAccountClient } from '../../src/sdk/account-client.js';
 import { createMemoryAccountSessionStore } from '../../src/sdk/account-session-store.js';
 import type { RareAccountSession, RareDeviceAuthorization } from '../../src/sdk/types/account.js';
 
@@ -82,7 +81,7 @@ describe('account authentication over HTTP', () => {
     const rare = createRareClient({
       publicClient: createPublicClient({ chain: sepolia, transport: http() }),
       apiBaseUrl: origin,
-      ...(mode === 'existing account' ? { accountClient: client(storage) } : { sessionStore: storage, clientId: 'rare-cli' }),
+      ...(mode === 'existing account' ? { accountClient: client(storage) } : { sessionStore: storage }),
     });
     await rare.cart.api.listing.search();
     const intent = { seller: account.address, deadline: 9999999999n, listings: [{ sku: `0x${'12'.repeat(32)}` as const,
@@ -105,7 +104,7 @@ describe('account authentication over HTTP', () => {
   it('does not forward credentials across API base paths or redirects, or replay unauthorized Cart mutations', async () => {
     const storage = createMemoryAccountSessionStore();
     await storage.set({ ...session(), apiBaseUrl: `${origin}/api`, authBaseUrl: `${origin}/api/auth/v2` });
-    const authenticated = createRareAccountClient({ apiBaseUrl: `${origin}/api`, clientId: 'rare-cli', sessionStore: storage });
+    const authenticated = createRareClient({ apiBaseUrl: `${origin}/api`, sessionStore: storage });
     await expect(authenticated.authenticatedFetch(`${origin}/api-other/v1/cart/checkout/prepare`)).rejects.toMatchObject({ code: 'request_authority_mismatch' });
     const received: string[] = [];
     handler = async (request, response) => {
