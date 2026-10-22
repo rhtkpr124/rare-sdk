@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createWalletClient, erc20Abi, erc721Abi, http, isHex, zeroAddress } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { sepolia } from 'viem/chains';
-import { createRareAccountClient, createRareClient } from '../../../dist/sdk/index.js';
+import { createRareClient } from '../../../dist/sdk/index.js';
 import { resolveCurrency } from '../../../src/contracts/addresses.js';
 import { createCreatorCartScenario } from '../../helpers/cart-creator-fixture.js';
 import { loadDotEnv } from '../../helpers/env.js';
@@ -13,7 +13,7 @@ loadDotEnv();
 describe('SDK mixed Listing and currency swap checkout', () => {
   it('receives an NFT and exact ERC20 output in the same Cart transaction', async () => {
     const scenario = await createCreatorCartScenario({ tokenCount: 1 });
-    const accountClient = createRareAccountClient({ apiBaseUrl: scenario.apiBaseUrl });
+    const accountClient = createRareClient({ apiBaseUrl: scenario.apiBaseUrl });
     try {
       const key = process.env.E2E_BUYER_PRIVATE_KEYS?.split(/[,\s]+/u).find(Boolean);
       if (!key || !isHex(key) || key.length !== 66) throw new Error('Mixed Cart test requires a funded Sepolia buyer.');
