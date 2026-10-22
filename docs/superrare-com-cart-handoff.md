@@ -485,9 +485,9 @@ pay again while fulfillment is pending.
 ## Extend missing SDK capabilities instead of bypassing them
 
 The account shipping, print authoring, delivery checkout, card session, and
-fulfillment Order methods above now exist. The high-level Cart catalog interface
-remains read-oriented; do not assume it exposes Product mutations or saved carts.
-Mixed delivery carts and shipment tracking remain unsupported.
+fulfillment Order methods above now exist. The Cart catalog supports the creator
+operations listed above, but does not provide saved carts or every Product edit.
+Mixed physical/non-physical delivery carts and shipment tracking remain unsupported.
 
 For each missing capability, inspect the generated Rare API contract first.
 If the endpoint exists, add a typed SDK method using the existing transport and
@@ -531,9 +531,10 @@ explicitly for the CLI. Use registered dedicated test accounts and Sepolia RPC
 configuration. Do not rely on an environment file's default deployment.
 
 The SDK print suite covers address storage, private/public uploads, creator edits,
-configuration, atomic gated publication, quantity limits, multi-copy delivery
-quotes, idempotent signed Order
-preparation, and account Order reads. The CLI suite covers its corresponding
+configuration, source-linked discovery, creator receipt variants, atomic gated
+publication, quantity limits, multi-copy and multi-print delivery quotes,
+idempotent signed Order preparation, recovery, and per-line account Order reads.
+The CLI suite covers its corresponding
 commands through delivery preview and signed Order preparation. Neither suite
 pays or submits a physical Order. A separate funded sandbox fulfillment run is required to prove provider
 submission and the private signed download end to end.
