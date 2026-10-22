@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { describe, expect, it } from 'vitest';
-import { messagingOrigin, required, withMessagingActors } from './messaging-live.js';
+import { messagingOrigin, withMessagingActors } from './messaging-live.js';
 
 const input = (body: string, attachmentIds: string[] = []) => ({ clientMessageId: randomUUID(), body, attachmentIds, mentionUserIds: [] });
 const roomInput = () => ({ type: 'group' as const, title: `SDK authorization ${randomUUID()}`, description: '', guidelines: '', clientOperationId: randomUUID(), inviteeUserIds: [] });
@@ -98,19 +98,26 @@ describe('messaging authorization against deployed services', () => {
   }, 240_000);
 
   it('authorizes attachment bytes independently and rejects cross-room reuse, nonmembers and revoked membership', async () => {
-    const bucket = required('RARE_MESSAGING_TEST_PRIVATE_BUCKET');
+    const bucket = 'rare-api-private-upload-dev';
     if (bucket.includes('prod') || !/^[a-z0-9-]+$/.test(bucket)) throw new Error('Use the non-production messaging bucket');
     execFileSync('gcloud', ['--project=superrare-dev', 'storage', 'buckets', 'describe', `gs://${bucket}`, '--format=value(name)'], { stdio: 'pipe' });
     await withMessagingActors(async (owner, member, outsider) => {
       const room = await owner.account.messaging.createRoom(roomInput());
       const second = await owner.account.messaging.createRoom(roomInput());
-      const bytes = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a9uQAAAAASUVORK5CYII=', 'base64');
+      const gif = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
+      const marker = Buffer.from(randomUUID());
+      // A valid GIF comment makes this test's content-addressed object unique.
+      const bytes = Buffer.concat([gif.subarray(0, -1), Buffer.from([0x21, 0xfe, marker.length]), marker, Buffer.from([0, 0x3b])]);
       const uploadId = randomUUID();
-      const object = `gs://${bucket}/messaging/${room.id}/${uploadId}/${createHash('sha256').update(bytes).digest('hex')}`;
+      const object = `gs://${bucket}/${createHash('sha256').update(bytes).digest('hex')}`;
       try {
         await owner.account.messaging.command(room.id, { action: 'invite', userId: member.user.id });
         await member.account.messaging.command(room.id, { action: 'accept' });
-        const image = await owner.account.messaging.uploadImage(room.id, bytes, { contentType: 'image/png', width: 1, height: 1, uploadId });
+        const upload = await owner.account.uploads.upload(bytes, 'private.gif', { contentType: 'image/gif', access: 'private' });
+        const image = await owner.account.messaging.attachImage(room.id, upload.uploadId, { width: 1, height: 1, attachmentId: uploadId });
+        const secondImage = await owner.account.messaging.attachImage(second.id, upload.uploadId, { width: 1, height: 1, attachmentId: randomUUID() });
+        expect(Buffer.from(await (await owner.account.messaging.readImage(secondImage.id)).arrayBuffer())).toEqual(bytes);
+        await expect(member.account.messaging.attachImage(room.id, upload.uploadId, { width: 1, height: 1 })).rejects.toMatchObject({ status: 404 });
         expect(Buffer.from(await (await owner.account.messaging.readImage(image.id)).arrayBuffer())).toEqual(bytes);
         await expect(member.account.messaging.readImage(image.id)).rejects.toMatchObject({ status: 403 });
         await expect(owner.account.messaging.send(second.id, input('Cross-room attachment', [image.id]))).rejects.toMatchObject({ status: 400 });

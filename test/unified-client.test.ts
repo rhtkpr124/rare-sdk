@@ -3,7 +3,6 @@ import { mainnet } from 'viem/chains';
 import { afterEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
 import { createRareClient } from '../src/sdk/client.js';
 import { createMemoryAccountSessionStore } from '../src/sdk/account-session-store.js';
-import { createRareAccountClient } from '../src/sdk/account-client.js';
 import type { RareAccountTransport } from '../src/sdk/types/account.js';
 import type { RareApiClient, RareExternalApiClient } from '../src/sdk/types/client.js';
 
@@ -112,12 +111,4 @@ describe('one primary SDK factory', () => {
     expect(await sessionStore.get()).toMatchObject({ apiBaseUrl: 'https://environment.example', authBaseUrl: 'https://environment.example/auth/v2' });
   });
 
-  it('keeps the deprecated account factory as a compatibility wrapper', async () => {
-    const legacy = createRareAccountClient();
-    expect(await legacy.auth.getSession()).toBeNull();
-    const external = createRareAccountClient({ transport: async () => Response.json({ data: profile }) });
-    expect('auth' in external).toBe(false);
-    expect(await external.profile.get()).toEqual(profile);
-    expect(() => createRareAccountClient({ apiBaseUrl: 'http://unsafe.example' })).toThrow('Authentication requires HTTPS');
-  });
 });

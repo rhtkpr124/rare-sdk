@@ -28,12 +28,12 @@ export function createRareClient(config: RareManagedClientConfig | RareExternalC
   if ('authBaseUrl' in config) throw new RareAuthError('auth_url_not_supported');
   const apiBaseUrl = resolveRareApiBaseUrl(config.apiBaseUrl);
   if (config.walletClient !== undefined && config.publicClient === undefined) throw new Error('A publicClient is required when supplying walletClient.');
-  const apiFetch = config.apiFetch ?? ('fetch' in config ? config.fetch : undefined);
+  const apiFetch = config.apiFetch;
   const publicApiFetch = 'transport' in config ? createPublicApiTransport(apiBaseUrl, config.transport, apiFetch) : apiFetch;
   const api = createRareApi({ baseUrl: apiBaseUrl, fetch: publicApiFetch });
   const account = 'transport' in config
     ? createAccountClient({ transport: config.transport, fetch: apiFetch })
-    : createAccountClient({ apiBaseUrl, clientId: config.clientId, sessionStore: config.sessionStore, fetch: apiFetch });
+    : createAccountClient({ apiBaseUrl, sessionStore: config.sessionStore, fetch: apiFetch });
   const publicFeatures = createPublicFeatures(api);
   const features = {
     ...publicFeatures,

@@ -1,4 +1,4 @@
-import type { RareAccountClient, RareAccountClientOptions, RareAccountFeatures, RareAccountTransportOptions } from './account.js';
+import type { RareAccountClient, RareAccountFeatures, RareAccountTransport, RareAccountSessionStore } from './account.js';
 import type { RareApi } from '../api.js';
 import type { Address, PublicClient, WalletClient } from 'viem';
 import type {
@@ -211,7 +211,7 @@ export type RareClient = RareChainFeatures & RareAccountClient & { collection: C
 export type RareExternalClient = RareChainFeatures & RareAccountFeatures & { collection: CollectionNamespace & { events: RareApi['getCollectionEvents'] }; messaging: RareAccountFeatures['messaging'] & { public: RareApi['messaging'] } };
 
 /** API and account operations need no publicClient or blockchain RPC. */
-export type RareApiClientConfig = RareAccountClientOptions & { apiFetch?: typeof fetch; publicClient?: never; walletClient?: never };
-export type RareExternalApiClientConfig = RareAccountTransportOptions & { apiBaseUrl?: string; apiFetch?: typeof fetch; publicClient?: never; walletClient?: never };
-export type RareManagedClientConfig = RareClientConfig & Pick<RareAccountClientOptions, 'clientId' | 'sessionStore'>;
-export type RareExternalClientConfig = RareClientConfig & RareAccountTransportOptions;
+export type RareApiClientConfig = { apiBaseUrl?: string; apiFetch?: typeof fetch; sessionStore?: RareAccountSessionStore; publicClient?: never; walletClient?: never };
+export type RareExternalApiClientConfig = Omit<RareApiClientConfig, 'sessionStore'> & { transport: RareAccountTransport };
+export type RareManagedClientConfig = RareClientConfig & { sessionStore?: RareAccountSessionStore };
+export type RareExternalClientConfig = RareClientConfig & { transport: RareAccountTransport };

@@ -1,3 +1,5 @@
+import { createBrowserAccountSessionStore } from './browser-session-store.js';
+import { featureError } from './feature-error.js';
 import { createAccountFeatures } from './account-features.js';
 import { isAddress } from 'viem';
 import { parseSiweMessage, validateSiweMessage } from 'viem/siwe';
@@ -8,10 +10,13 @@ import {
 } from './account-auth-core.js';
 import { createMemoryAccountSessionStore, parseAccountSession } from './account-session-store.js';
 import type {
-  RareAccountClient, RareAccountClientOptions, RareAccountSession,
+  RareAccountClient, RareAccountSession,
   RareAuthRequestOptions, RareDeviceAuthorization, RareDevicePollResult,
-  RareAccountFeatures, RareAccountTransportOptions,
+  RareAccountFeatures, RareAccountTransport, RareAccountSessionStore,
 } from './types/account.js';
+
+type RareAccountClientOptions = { apiBaseUrl?: string; sessionStore?: RareAccountSessionStore; fetch?: typeof globalThis.fetch };
+type RareAccountTransportOptions = { transport: RareAccountTransport; fetch?: typeof globalThis.fetch };
 
 const scope = 'rare:account offline_access';
 const deviceGrant = 'urn:ietf:params:oauth:grant-type:device_code';
@@ -30,23 +35,22 @@ export function createAccountClient(options: RareAccountClientOptions | RareAcco
         return await options.transport(`/${target.replace(/^\//, '')}`, { ...init, signal });
       } catch (cause) {
         if (cause instanceof RareAuthError) throw cause;
-        throw new RareAuthError(requestOptions.signal?.aborted ? 'cancelled' : 'transport_error');
+        throw featureError(requestOptions.signal?.aborted ? 'cancelled' : 'transport_error');
       }
     };
     const storageRequest = async (url: string, init: RequestInit, requestOptions: RareAuthRequestOptions = {}, timeoutMilliseconds = 30_000): Promise<Response> => {
       const timeout = AbortSignal.timeout(timeoutMilliseconds);
       const signal = requestOptions.signal === undefined ? timeout : AbortSignal.any([timeout, requestOptions.signal]);
       try { return await fetchImpl(url, { ...init, redirect: 'error', credentials: 'omit', signal }); }
-      catch { throw new RareAuthError(requestOptions.signal?.aborted ? 'cancelled' : 'transport_error'); }
+      catch { throw featureError(requestOptions.signal?.aborted ? 'cancelled' : 'transport_error'); }
     };
     return createAccountFeatures(dispatch, storageRequest);
   }
   if ('authBaseUrl' in options) throw new RareAuthError('auth_url_not_supported');
-  const apiBaseUrl = (options.apiBaseUrl ?? DEFAULT_RARE_API_BASE_URL).replace(/\/+$/u, '');
+  const apiBaseUrl = new URL(options.apiBaseUrl ?? DEFAULT_RARE_API_BASE_URL).href.replace(/\/+$/u, '');
   const authBaseUrl = joinAuthPath(apiBaseUrl, 'auth/v2');
-  const clientId = options.clientId ?? 'rare-sdk';
-  if (!['rare-sdk', 'rare-cli'].includes(clientId)) throw new RareAuthError('invalid_client');
-  const storage = options.sessionStore ?? createMemoryAccountSessionStore();
+  const clientId = 'rare-sdk';
+  const storage = options.sessionStore ?? (typeof window === 'undefined' ? createMemoryAccountSessionStore() : createBrowserAccountSessionStore(apiBaseUrl));
   const fetchImpl = options.fetch ?? globalThis.fetch;
   // A logout/newer login invalidates an in-flight interactive login on this instance.
   // eslint-disable-next-line functional/no-let
@@ -62,6 +66,10 @@ export function createAccountClient(options: RareAccountClientOptions | RareAcco
       throw new RareAuthError(requestOptions.signal?.aborted ? 'cancelled' : 'transport_error');
     }
   };
+  const applicationRequest = (...args: Parameters<typeof request>): Promise<Response> => request(...args).catch((error: unknown) => {
+    if (error instanceof RareAuthError && ['transport_error', 'cancelled'].includes(error.code)) throw featureError(error.code, error.status, new URL(args[0]).pathname);
+    throw error;
+  });
   const json = async (response: Response): Promise<unknown> => {
     const value: unknown = await response.json().catch(() => undefined);
     if (!response.ok) throw new RareAuthError(parseAuthErrorCode(value), response.status);
@@ -176,8 +184,8 @@ export function createAccountClient(options: RareAccountClientOptions | RareAcco
   return {
     ...createAccountFeatures(async (path, init, requestOptions = {}, timeoutMilliseconds) => {
       const token = await accessToken(requestOptions);
-      return request(joinAuthPath(apiBaseUrl, path), { ...init, headers: { ...init.headers, Authorization: `Bearer ${token}` } }, requestOptions, timeoutMilliseconds);
-    }, request),
+      return applicationRequest(joinAuthPath(apiBaseUrl, path), { ...init, headers: { ...init.headers, Authorization: `Bearer ${token}` } }, requestOptions, timeoutMilliseconds);
+    }, applicationRequest),
     auth: {
       async startDeviceAuthorization(requestOptions = {}) {
         generation += 1;

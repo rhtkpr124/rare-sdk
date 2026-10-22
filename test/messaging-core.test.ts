@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { messagingAccountId, messagingErrorCode, messagingId, messagingQuery, messagingSequence, parseMessagingConversation, parseMessagingMessage, parseMessagingPeople, parseMessagingPreview, parseMessagingPublicMessage, parseMessagingPublicPage, messagingPublicHistoryQuery } from '../src/sdk/messaging-core.js';
+import { messagingAccountId, messagingId, messagingQuery, messagingSequence, parseMessagingConversation, parseMessagingMessage, parseMessagingPeople, parseMessagingPreview, parseMessagingPublicMessage, parseMessagingPublicPage, messagingPublicHistoryQuery } from '../src/sdk/messaging-core.js';
 const id = '08000000-0000-4000-8000-000000000001';
 const user = { id: '42', username: 'artist' };
 const conversation = { id, type: 'group', contextId: null, access: 'private', publicContext: null, title: 'Room', description: '', guidelines: '', owner: user, counterpart: null, lifecycle: 'open', capabilities: { read: true, send: true, accept: false, reopen: false, moderate: true, leave: true, state: 'active' }, notification: 'all', unreadCount: 0, latestSequence: '9223372036854775807', readSequence: '0', changeSequence: '1', updatedAt: '2026-10-13T00:00:00Z', lastMessage: null };
@@ -46,10 +46,6 @@ describe('messaging pure contract parsing', () => {
     expect(messagingPublicHistoryQuery({ after: '0', limit: 100 })).toEqual({ after: '0', limit: 100 });
     expect(() => messagingPublicHistoryQuery({ before: '1', after: '0' })).toThrow();
     for (const limit of [0, 101, 1.5]) expect(() => messagingPublicHistoryQuery({ limit })).toThrow();
-  });
-  it('preserves structured error codes without accepting arbitrary error payloads', () => {
-    expect(messagingErrorCode({ error: { code: 'idempotency_conflict', message: 'Private text' } })).toBe('idempotency_conflict');
-    expect(messagingErrorCode({ error: { code: 'message contains private text' } })).toBe('request_failed');
   });
   it('preserves both first-party and external draft preview contracts', () => {
     const reference = { kind: 'reference', reference: { kind: 'post', id: '1', state: 'available', title: 'Post', href: '/posts/1' } };

@@ -10,7 +10,7 @@ describe('external account transport with deployed services', () => {
     if (!apiBaseUrl || new URL(apiBaseUrl).protocol !== 'https:' || new URL(apiBaseUrl).hostname === 'api.superrare.com') throw new Error('Set a non-production HTTPS RARE_ACCOUNT_TEST_API_URL');
     if (!key || !/^0x[0-9a-f]{64}$/iu.test(key)) throw new Error('Set the existing dedicated RARE_ACCOUNT_TEST_PRIVATE_KEY');
     const wallet = privateKeyToAccount(key as `0x${string}`);
-    const managed = createRareClient({ apiBaseUrl, fetch: async (input, init) => {
+    const managed = createRareClient({ apiBaseUrl, apiFetch: async (input, init) => {
       const response = await fetch(input, init);
       if (!response.ok) console.warn(`[live SDK transport] ${init?.method ?? 'GET'} ${new URL(String(input)).pathname} returned ${response.status}`);
       return response;

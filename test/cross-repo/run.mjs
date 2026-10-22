@@ -71,12 +71,12 @@ async function run() {
   // Generated addresses are hex-only. Never interpolate caller input into SQL.
   check(/^0x[0-9a-f]{40}$/.test(address), 'Invalid generated wallet');
   const row = async () => JSON.parse(await sql(`SELECT COALESCE(json_agg(json_build_object('accountId',u.id::text,'username',u.username,'metadata',u.metadata)), '[]'::json) FROM "${schema}"."user" u JOIN "${schema}".user_address a ON a.user_id=u.id WHERE lower(a.address)='${address}'`));
-  const options = { apiBaseUrl, clientId: 'rare-cli', fetch: async (input, init) => {
+  const options = { apiBaseUrl, apiFetch: async (input, init) => {
     check(new URL(input instanceof Request ? input.url : input).origin === new URL(apiBaseUrl).origin, 'SDK attempted to bypass public API origin');
     return fetch(input, init);
   } };
   const clients = [];
-  const client = () => { const c = sdk.createRareAccountClient(options); clients.push(c); return c; };
+  const client = () => { const c = sdk.createRareClient(options); clients.push(c); return c; };
   const login = c => c.auth.loginWithWallet({ address: wallet.address, chainId: 1, signMessage: message => wallet.signMessage({ message }), signal: AbortSignal.timeout(15000) });
   const rawMe = token => fetch(`${apiBaseUrl}/v1/me`, { headers: { authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(15000) });
   const bridge = async (path, body) => {

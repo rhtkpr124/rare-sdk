@@ -1,4 +1,6 @@
 # SDK and CLI exposure inventory
+
+Historical planning snapshot. Current SDK construction and authentication are documented in the repository README.
 Snapshot: 2026-09-30. Read-only source inspection of current working trees. SDK 69f0aac690a0d8e2c34f5740cfe2158ee0d9e810; CLI a69a66bb8a5c580bb30736762f1ea7ed78c96221. No deployed behavior or live API verified.
 Source roots: SDK `/Users/keeganead/.codex/worktrees/bdb5/rare-sdk`, CLI `/Users/keeganead/.codex/worktrees/d46f/rare-cli`, website `/Users/keeganead/.codex/worktrees/fc3b/superrare-monorepo/services/superrare-com`. All paths below relative to these roots.
 ## Exposure boundaries

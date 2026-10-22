@@ -8,9 +8,9 @@ describe('user query planning', () => {
   });
   it('keeps the legacy address argument and rejects invalid inputs before HTTP', () => {
     expect(userQuery('0x0000000000000000000000000000000000000001')).toEqual({ address: '0x0000000000000000000000000000000000000001' });
-    expect(() => userQuery('artist')).toThrow('Invalid user address');
-    expect(() => userQuery({ userId: 0 })).toThrow('Invalid userId');
-    expect(() => userQuery({ username: 'artist' }, { page: 0 })).toThrow('Invalid page');
-    expect(() => userQuery({ username: 'artist' }, { perPage: 101 })).toThrow('Invalid perPage');
+    expect(() => userQuery('artist')).toThrow('invalid_address');
+    expect(() => userQuery({ userId: 0 })).toThrow('invalid_user_id');
+    expect(() => userQuery({ username: 'artist' }, { page: 0 })).toThrow('invalid_pagination');
+    expect(() => userQuery({ username: 'artist' }, { perPage: 101 })).toThrow('invalid_pagination');
   });
 });

@@ -66,21 +66,7 @@ export type RareWalletLoginOptions = {
 /** Sends API-relative paths using authentication owned by the application. */
 export type RareAccountTransport = (path: string, init: RequestInit) => Promise<Response>;
 
-export type RareAccountTransportOptions = {
-  transport: RareAccountTransport;
-  /** Used only for signed storage transfers, never for authenticated API requests. */
-  fetch?: typeof globalThis.fetch;
-};
-
 export type RareAccountFeatures = Omit<RareAccountClient, 'auth'>;
-
-export type RareAccountClientOptions = {
-  /** Public API base; auth uses its /auth/v2 routes. Defaults to https://api.superrare.com. */
-  apiBaseUrl?: string;
-  clientId?: string;
-  sessionStore?: RareAccountSessionStore;
-  fetch?: typeof globalThis.fetch;
-};
 
 export type RareAccountProfile = {
   accountId: string;
@@ -119,7 +105,7 @@ export type RareAccountProfilePatch = {
 export type RareAuthRequestOptions = { signal?: AbortSignal };
 
 export type RarePublicUpload = { access: 'public'; key: string; url: string; contentType: string; size: number };
-export type RarePrivateUpload = { access: 'private'; key: string; contentType: string; size: number };
+export type RarePrivateUpload = { access: 'private'; uploadId: string; key: string; contentType: string; size: number };
 export type RareUpload = RarePublicUpload | RarePrivateUpload;
 export type RareUploadOptions = RareAuthRequestOptions & { contentType?: string; access?: 'public' | 'private' };
 export type RareUploadMethod = {

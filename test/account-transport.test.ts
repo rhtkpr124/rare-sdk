@@ -52,7 +52,7 @@ describe('application-owned account transport', () => {
         : response({ access: 'public', key: 'a'.repeat(64), url: 'https://storage.googleapis.com/public/object', contentType: 'image/png', size: 3 });
     });
     const storageFetch = vi.fn<typeof fetch>(async () => new Response(null, { status: 200 }));
-    const client = createRareClient({ transport, fetch: storageFetch });
+    const client = createRareClient({ transport, apiFetch: storageFetch });
     await client.uploads.upload(new Uint8Array([1, 2, 3]), 'image.png', { contentType: 'image/png' });
     expect(transport.mock.calls.map(([path]) => path)).toEqual(['/v1/uploads', `/v1/uploads/${id}/complete`]);
     expect(storageFetch).toHaveBeenCalledTimes(1);

@@ -84,7 +84,7 @@ describe('real-browser third-party wallet authentication', () => {
   it('authenticates two unregistered browser origins with independent SDK bearer sessions', async () => {
     const { apiBaseUrl, wallet, local } = config();
     const apps = await Promise.all([applicationPage(browser(), local), applicationPage(browser(), local)]);
-    const clients = apps.map(({ page, origin }) => ({ origin, client: createRareClient({ apiBaseUrl, fetch: browserFetch(page) }) }));
+    const clients = apps.map(({ page, origin }) => ({ origin, client: createRareClient({ apiBaseUrl, apiFetch: browserFetch(page) }) }));
     try {
       for (const { origin, client } of clients) {
         await client.auth.loginWithWallet({ address: wallet.address, chainId: 1, signingOrigin: origin, signMessage: message => {
@@ -116,7 +116,7 @@ describe('real-browser third-party wallet authentication', () => {
     const { apiBaseUrl, local } = config();
     const { page } = await applicationPage(browser(), local);
     try {
-      const authorization = await createRareClient({ apiBaseUrl, fetch: browserFetch(page) }).auth.startDeviceAuthorization();
+      const authorization = await createRareClient({ apiBaseUrl, apiFetch: browserFetch(page) }).auth.startDeviceAuthorization();
       expect(new URL(authorization.verificationUri).protocol).toMatch(/^https?:$/u);
       expect(authorization.expiresAt).toBeGreaterThan(Date.now());
       expect(authorization.userCode).not.toBe('');

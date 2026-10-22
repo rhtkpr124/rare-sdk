@@ -1,5 +1,6 @@
 import type { components, operations } from '../data-access/schema.js';
-import { isRecord, RareAuthError } from './account-auth-core.js';
+import { isRecord } from './account-auth-core.js';
+import { featureError } from './feature-error.js';
 
 export type MessagingConversation = components['schemas']['MessagingConversation'];
 export type MessagingMessage = components['schemas']['MessagingMessage'];
@@ -20,17 +21,17 @@ export type MessagingCreatedDirect = operations['createMessagingDirect']['respon
 export type MessagingSession = operations['getMessagingSession']['responses'][200]['content']['application/json'];
 export type MessagingParticipants = operations['listMessagingParticipants']['responses'][200]['content']['application/json'];
 
-const invalid = (): never => { throw new RareAuthError('invalid_messaging_response'); };
+const invalid = (): never => { throw featureError('invalid_messaging_response'); };
 export function messagingId(value: string): string {
-  if (typeof value !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)) throw new RareAuthError('invalid_messaging_id');
+  if (typeof value !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)) throw featureError('invalid_messaging_id');
   return value;
 }
 export function messagingAccountId(value: string): string {
-  if (typeof value !== 'string' || !/^[1-9]\d{0,18}$/.test(value) || BigInt(value) > 9223372036854775807n) throw new RareAuthError('invalid_messaging_account_id');
+  if (typeof value !== 'string' || !/^[1-9]\d{0,18}$/.test(value) || BigInt(value) > 9223372036854775807n) throw featureError('invalid_messaging_account_id');
   return value;
 }
 export function messagingSequence(value: string): string {
-  if (typeof value !== 'string' || !/^\d{1,19}$/.test(value) || BigInt(value) > 9223372036854775807n) throw new RareAuthError('invalid_messaging_sequence');
+  if (typeof value !== 'string' || !/^\d{1,19}$/.test(value) || BigInt(value) > 9223372036854775807n) throw featureError('invalid_messaging_sequence');
   return value;
 }
 function record(value: unknown): Record<string, unknown> { return isRecord(value) ? value : invalid(); }
@@ -97,10 +98,6 @@ export function messagingQuery(input: Readonly<Record<string, string | number | 
   return new URLSearchParams(Object.entries(input).flatMap(([key, value]) => value === undefined ? [] : [[key, String(value)]])).toString();
 }
 
-export function messagingErrorCode(value: unknown): string {
-  return isRecord(value) && isRecord(value.error) && typeof value.error.code === 'string' && /^[a-z][a-z0-9_]{0,63}$/.test(value.error.code) ? value.error.code : 'request_failed';
-}
-
 export type MessagingPublicResolveContext = components['schemas']['MessagingPublicResolveContext'];
 export type MessagingPublicContext = components['schemas']['MessagingPublicContext'];
 export type MessagingPublicRoom = components['schemas']['MessagingPublicRoom'];
@@ -138,7 +135,7 @@ export function parseMessagingPublicPage(value: unknown): MessagingPublicPage {
   return { room: parseMessagingPublicRoom(row.room), messages: list(row.messages, parseMessagingPublicMessage), nextCursor: row.nextCursor === null ? null : messagingSequence(text(row.nextCursor)) };
 }
 export function messagingPublicHistoryQuery(options: { before?: string; after?: string; limit?: number }): { before?: string; after?: string; limit?: number } {
-  if (options.before !== undefined && options.after !== undefined) throw new RareAuthError('invalid_messaging_cursor');
-  if (options.limit !== undefined && (!Number.isInteger(options.limit) || options.limit < 1 || options.limit > 100)) throw new RareAuthError('invalid_messaging_limit');
+  if (options.before !== undefined && options.after !== undefined) throw featureError('invalid_messaging_cursor');
+  if (options.limit !== undefined && (!Number.isInteger(options.limit) || options.limit < 1 || options.limit > 100)) throw featureError('invalid_messaging_limit');
   return { ...(options.before === undefined ? {} : { before: messagingSequence(options.before) }), ...(options.after === undefined ? {} : { after: messagingSequence(options.after) }), ...(options.limit === undefined ? {} : { limit: options.limit }) };
 }

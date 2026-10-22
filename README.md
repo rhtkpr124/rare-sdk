@@ -186,8 +186,8 @@ await account.auth.loginWithWallet({
 
 SIWE uses the browser page's origin when signing in a browser, or the selected
 API origin for non-browser callers such as the CLI. An optional `signingOrigin`
-can select a different origin outside a browser. Auth must allow that origin in
-its existing `SIWE_ALLOWED_ORIGINS` configuration; browser callers cannot override
+can select a different origin outside a browser. Valid third-party HTTPS origins
+do not require registration in the new Auth flow; browser callers cannot override
 their page's origin. Hosted device approval signs for Connect's browser origin.
 
 Browser-approved login supports the hosted application's wallet, social, and email
@@ -214,8 +214,24 @@ The controlled HTTP account tests in `test/contract/` exercise protocol edge
 cases without claiming service integration. The local disposable-stack driver
 in `test/cross-repo/` remains available for backend diagnosis.
 
-Sessions default to instance-local memory. Persist them by supplying a
-`RareAccountSessionStore`. `withLock` must serialize **all** operations across
+Managed browser sessions persist by default in origin-local storage, scoped to the
+configured API. Reloading or creating another client resumes that session. Native
+Web Locks serialize refresh and session changes across same-origin tabs. Logout
+and a newer login invalidate pending login completion in other clients. Storage
+or locking failures are explicit errors, never a silent memory fallback.
+
+Persisted bearer credentials are readable by same-origin JavaScript. The adapter
+does not protect against XSS. Applications with server-managed cookie sessions
+should use the application-owned transport below, which creates no SDK session.
+
+Node clients use memory by default; the CLI provides protected persistent storage.
+To explicitly opt out of browser persistence:
+
+```ts
+const rare = createRareClient({ sessionStore: createMemoryAccountSessionStore() });
+```
+
+Custom persistence can implement `RareAccountSessionStore`. `withLock` must serialize **all** operations across
 clients/processes sharing a store; reads happen after lock acquisition and writes
 must finish durably before resolving. Scope the store by normalized auth base,
 API base, and client ID. Store values can be credentials or a nonsecret logout
@@ -459,16 +475,31 @@ message sequences, and pagination cursors stay strings.
 
 The namespace exposes `session`, `inbox`, `people`, `createDirect`, `createRoom`,
 `history`, `changes`, `participants`, `send`, `command`, `messageCommand`, `blocks`,
-`block`, `unblock`, `preview`, `uploadImage`, and `readImage`. Commands use the
+`block`, `unblock`, `preview`, `attachImage`, and `readImage`. Commands use the
 existing API actions for membership, lifecycle, notification preferences, read
 markers, editing, deletion, reactions, pins, and reporting. Input and response types
 are exported from the SDK and derive from the Rare API OpenAPI contract.
 
-Messaging image attachments use the existing private conversation attachment API:
-`uploadImage(room.id, bytes, { contentType: 'image/png', width: 100, height: 100,
-uploadId: crypto.randomUUID() })`. Reuse `uploadId` for retries of the same image.
-`readImage(attachment.id)` returns an authenticated `Blob`; it does not expose a
-public storage URL.
+Messaging images use the shared uploader, then attach the completed private upload:
+
+```ts
+const upload = await rare.uploads.upload(bytes, 'image.png', {
+  access: 'private', contentType: 'image/png',
+});
+const attachment = await rare.messaging.attachImage(room.id, upload.uploadId, {
+  width: 100, height: 100, attachmentId: crypto.randomUUID(),
+});
+await rare.messaging.send(room.id, {
+  clientMessageId: crypto.randomUUID(), body: 'Image', attachmentIds: [attachment.id],
+});
+```
+
+Reuse `attachmentId` for retries. Attaching a completed upload must happen within
+its 24-hour upload authorization window. Once attached, access is governed durably
+by messaging membership and message visibility. One upload can back multiple
+attachments without copying the file. `readImage(attachment.id)` returns an
+authenticated `Blob`, never a public storage URL. The website's existing upload
+route remains supported; this SDK uses only the shared upload transfer.
 
 Run `npm run test:integration:messaging` manually against a deployment with account
 bearer support. Set `RARE_ACCOUNT_TEST_API_URL` to a non-production HTTPS origin.
@@ -594,7 +625,7 @@ validate cookie-authenticated writes against CSRF and forward credentials only t
 its configured Rare API. Do not put session cookies or internal keys in browser
 JavaScript. Authenticated API errors retain the SDK's normal error handling.
 
-Signed storage uploads bypass this API transport and use the optional `fetch`
+Signed storage uploads bypass this API transport and use the optional `apiFetch`
 implementation with `credentials: 'omit'`, without authentication headers.
 Without a transport, `createRareClient` retains its existing bearer-token
 login, session storage and refresh behavior.
@@ -625,8 +656,7 @@ account profile reads still require the deployed Rare API and run in HTTPS mode.
 No browser CORS or address-space security settings are disabled.
 
 
-`createRareAccountClient` remains a deprecated compatibility wrapper. New callers
-should use `createRareClient`. `createRareApi` remains available as a lower-level
+`createRareApi` remains available as a lower-level
 HTTP adapter, but is not needed to combine public reads and authenticated writes.
 The resource namespaces combine both: `rare.posts.list/get/comments` are public,
 while `rare.posts.create/comment/delete/deleteComment` use account authentication;
@@ -634,3 +664,23 @@ while `rare.posts.create/comment/delete/deleteComment` use account authenticatio
 Anonymous chat resolution and history live under `rare.messaging.public`.
 Without a configured chain, NFT identity lookups require `chain` or `chainId`.
 Configured chain clients retain their existing chain-bound lookup signatures.
+
+
+`apiFetch` is the unified client's optional fetch implementation. With an
+application-owned `transport`, API requests go through the transport and only
+signed storage transfers use `apiFetch`. Without a transport, `apiFetch` handles
+API requests and storage transfers. There is no caller-configurable `clientId`;
+the SDK supplies its fixed protocol identifier internally.
+
+Public and authenticated application failures use `RareApiError`, with `code`,
+`status`, `path`, and optional field `details`. `RareAuthError` is reserved for
+login, session storage, refresh and revocation failures.
+
+
+Run `npm run test:integration:account:browser:sessions` to verify default browser
+storage with two existing test wallets. Set `RARE_ACCOUNT_TEST_PRIVATE_KEY`,
+`RARE_ACCOUNT_TEST_SECOND_PRIVATE_KEY` and the non-production API URL as above.
+The suite bundles the complete SDK into Chromium and verifies reloads, cross-tab
+refresh/logout/account switching, and stale-login protection. Disposable local
+Auth mode verifies authentication and storage; successful profile reads require
+a deployed Rare API with the arbitrary-origin Auth update.

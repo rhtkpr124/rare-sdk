@@ -1,17 +1,15 @@
-import { RareAuthError } from './account-auth-core.js';
-import { messagingAccountId, messagingErrorCode, messagingId, messagingSequence, messagingQuery, parseMessagingAttachment, parseMessagingChanges, parseMessagingConversation, parseMessagingCreatedDirect, parseMessagingInbox, parseMessagingMessage, parseMessagingPage, parseMessagingParticipants, parseMessagingPeople, parseMessagingPreview, parseMessagingSession, parseMessagingSuccess, parseMessagingUsers, parseMessagingPublicMessage, parseMessagingPublicPage, messagingPublicHistoryQuery } from './messaging-core.js';
+import { featureError, featureResponse } from './feature-error.js';
+import { messagingAccountId, messagingId, messagingSequence, messagingQuery, parseMessagingAttachment, parseMessagingChanges, parseMessagingConversation, parseMessagingCreatedDirect, parseMessagingInbox, parseMessagingMessage, parseMessagingPage, parseMessagingParticipants, parseMessagingPeople, parseMessagingPreview, parseMessagingSession, parseMessagingSuccess, parseMessagingUsers, parseMessagingPublicMessage, parseMessagingPublicPage, messagingPublicHistoryQuery } from './messaging-core.js';
 import type { RareAuthRequestOptions } from './types/account.js';
 import type { RareMessagingClient } from './types/messaging.js';
 
 export type MessagingTransport = (method: 'GET' | 'POST', path: string, body: BodyInit | undefined, headers: Readonly<Record<string, string>>, options?: RareAuthRequestOptions) => Promise<Response>;
 /** The shell supplies authenticated transport; this module only maps the HTTP contract. */
-export function createMessagingClient(request: MessagingTransport, json: (response: Response) => Promise<unknown>): RareMessagingClient {
-  const messagingJson = async (response: Response): Promise<unknown> => {
-    if (response.ok) return json(response);
-    const value: unknown = await response.json().catch(() => undefined);
-    throw new RareAuthError(messagingErrorCode(value), response.status);
+export function createMessagingClient(request: MessagingTransport): RareMessagingClient {
+  const call = async (method: 'GET' | 'POST', path: string, input: unknown, options?: RareAuthRequestOptions): Promise<unknown> => {
+    const target = `v1/messaging/${path}`;
+    return featureResponse(await request(method, target, input === undefined ? undefined : JSON.stringify(input), { ...(method === 'POST' ? { 'x-messaging-request': '1' } : {}), ...(input === undefined ? {} : { 'Content-Type': 'application/json' }) }, options), target);
   };
-  const call = async (method: 'GET' | 'POST', path: string, input: unknown, options?: RareAuthRequestOptions): Promise<unknown> => messagingJson(await request(method, `v1/messaging/${path}`, input === undefined ? undefined : JSON.stringify(input), { ...(method === 'POST' ? { 'x-messaging-request': '1' } : {}), ...(input === undefined ? {} : { 'Content-Type': 'application/json' }) }, options));
   const conversation = (id: string) => `conversations/${messagingId(id)}`;
   const changeBlock = async (id: string, blocked: boolean, options?: RareAuthRequestOptions) => parseMessagingSuccess(await call('POST', `blocks/${messagingAccountId(id)}`, { blocked }, options));
   return {
@@ -32,11 +30,14 @@ export function createMessagingClient(request: MessagingTransport, json: (respon
     block: (id, options) => changeBlock(id, true, options),
     unblock: (id, options) => changeBlock(id, false, options),
     async preview(id, url, options) { return parseMessagingPreview(await call('POST', `${conversation(id)}/previews`, { url }, options)); },
-    async uploadImage(id, file, options) {
-      if (!['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(options.contentType) || !Number.isSafeInteger(options.width) || options.width <= 0 || !Number.isSafeInteger(options.height) || options.height <= 0) throw new RareAuthError('invalid_messaging_image');
-      const blob = file instanceof Blob ? file : new Blob([new Uint8Array(file)], { type: options.contentType });
-      return parseMessagingAttachment(await messagingJson(await request('POST', `v1/messaging/${conversation(id)}/attachments`, blob, { 'x-messaging-request': '1', 'Content-Type': options.contentType, 'x-messaging-image-width': String(options.width), 'x-messaging-image-height': String(options.height), ...(options.uploadId === undefined ? {} : { 'x-messaging-upload-id': messagingId(options.uploadId) }) }, options)));
+    async attachImage(id, uploadId, options) {
+      if (!Number.isSafeInteger(options.width) || options.width <= 0 || !Number.isSafeInteger(options.height) || options.height <= 0 || (options.purpose !== undefined && !['message', 'conversation'].includes(options.purpose))) throw featureError('invalid_messaging_image');
+      return parseMessagingAttachment(await call('POST', `${conversation(id)}/attachments/from-upload`, {
+        uploadId: messagingId(uploadId), width: options.width, height: options.height,
+        ...(options.attachmentId === undefined ? {} : { attachmentId: messagingId(options.attachmentId) }),
+        ...(options.purpose === undefined ? {} : { purpose: options.purpose }),
+      }, options));
     },
-    async readImage(id, options) { const response = await request('GET', `v1/messaging/attachments/${messagingId(id)}`, undefined, {}, options); if (!response.ok) await messagingJson(response); return response.blob(); },
+    async readImage(id, options) { const path = `v1/messaging/attachments/${messagingId(id)}`; const response = await request('GET', path, undefined, {}, options); if (!response.ok) await featureResponse(response, path); return response.blob(); },
   };
 }

@@ -1,23 +1,24 @@
 import { isAddress } from 'viem';
-import { isRecord, RareAuthError, requireString } from './account-auth-core.js';
+import { isRecord } from './account-auth-core.js';
+import { featureError, requireFeatureString as requireString } from './feature-error.js';
 import type { RareAccountProfile, RareAccountProfilePatch } from './types/account.js';
 
 function nullableText(value: unknown, field: string): string | null {
   if (value === null) return null;
-  if (typeof value !== 'string') throw new RareAuthError(`invalid_${field}`);
+  if (typeof value !== 'string') throw featureError(`invalid_${field}`);
   return value;
 }
 
 export function parseAccountProfile(value: unknown): RareAccountProfile {
   if (!isRecord(value) || !isRecord(value.data) || !isRecord(value.data.profile)) {
-    throw new RareAuthError('invalid_profile_response');
+    throw featureError('invalid_profile_response');
   }
   const data = value.data;
   const profile = value.data.profile;
   const accountId = requireString(data.accountId, 'account_id');
   const address = requireString(data.address, 'address');
   if (!/^[1-9]\d*$/.test(accountId) || !isAddress(address, { strict: false })) {
-    throw new RareAuthError('invalid_profile_identity');
+    throw featureError('invalid_profile_identity');
   }
   return {
     accountId,
@@ -42,21 +43,21 @@ export function parseAccountProfile(value: unknown): RareAccountProfile {
 export function validateAccountProfilePatch(value: unknown): asserts value is RareAccountProfilePatch {
   if (!isRecord(value) || Object.keys(value).length === 0 ||
       Object.keys(value).some(key => key !== 'username' && key !== 'email' && key !== 'profile')) {
-    throw new RareAuthError('invalid_profile_patch');
+    throw featureError('invalid_profile_patch');
   }
   if ('username' in value && (typeof value.username !== 'string' || value.username.trim().length === 0)) {
-    throw new RareAuthError('invalid_username');
+    throw featureError('invalid_username');
   }
   if ('email' in value && (typeof value.email !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.email))) {
-    throw new RareAuthError('invalid_email');
+    throw featureError('invalid_email');
   }
   if ('profile' in value) {
     if (!isRecord(value.profile) || Object.keys(value.profile).length === 0 ||
         Object.entries(value.profile).some(([key, field]) =>
           !['fullName', 'bio', 'avatar', 'website', 'twitterlink', 'discordlink', 'instagramlink', 'youtubelink', 'masthead_universal_token_id'].includes(key) || typeof field !== 'string')) {
-      throw new RareAuthError('invalid_profile_patch');
+      throw featureError('invalid_profile_patch');
     }
-    if (typeof value.profile.bio === 'string' && value.profile.bio.length > 180) throw new RareAuthError('invalid_bio');
+    if (typeof value.profile.bio === 'string' && value.profile.bio.length > 180) throw featureError('invalid_bio');
   }
 }
 
@@ -64,7 +65,7 @@ export function validateAccountProfilePatch(value: unknown): asserts value is Ra
 export function planAvatarUpload(buffer: Uint8Array, filename: string): { filename: string; contentType: string } {
   if (buffer.length === 0 || buffer.length > 5 * 1024 * 1024 ||
       !/^[^/\\]+\.(png|jpe?g|gif)$/i.test(filename) || filename.length > 255) {
-    throw new RareAuthError('invalid_avatar_file');
+    throw featureError('invalid_avatar_file');
   }
   const suffix = filename.split('.').at(-1)?.toLowerCase();
   const png = [137, 80, 78, 71, 13, 10, 26, 10].every((byte, index) => buffer[index] === byte);
@@ -74,12 +75,12 @@ export function planAvatarUpload(buffer: Uint8Array, filename: string): { filena
   if (suffix === 'png' && png) return { filename, contentType: 'image/png' };
   if ((suffix === 'jpg' || suffix === 'jpeg') && jpeg) return { filename, contentType: 'image/jpeg' };
   if (suffix === 'gif' && gif) return { filename, contentType: 'image/gif' };
-  throw new RareAuthError('invalid_avatar_file');
+  throw featureError('invalid_avatar_file');
 }
 
 export function normalizeProfileUsername(username: string): string {
   const normalized = username.trim().toLowerCase();
-  if (normalized.length === 0 || normalized.length > 30) throw new Error('Invalid username.');
+  if (normalized.length === 0 || normalized.length > 30) throw featureError('invalid_username');
   return normalized;
 }
 

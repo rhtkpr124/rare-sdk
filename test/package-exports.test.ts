@@ -16,7 +16,7 @@ describe('package exports', () => {
     const addresses = await import('@rareprotocol/rare-sdk/contracts/addresses');
 
     expect(typeof root.createRareClient).toBe('function');
-    expect(typeof root.createRareAccountClient).toBe('function');
+    expect('createRareAccountClient' in root).toBe(false);
     expect(typeof root.RareAuthError).toBe('function');
     expect(typeof contracts.getContractAddresses).toBe('function');
     expect(typeof validation.parseAddress).toBe('function');
@@ -29,7 +29,7 @@ describe('package exports', () => {
     const validation = require('@rareprotocol/rare-sdk/validation');
 
     expect(typeof root.createRareClient).toBe('function');
-    expect(typeof root.createRareAccountClient).toBe('function');
+    expect('createRareAccountClient' in root).toBe(false);
     expect(typeof root.RareAuthError).toBe('function');
     expect(typeof dataAccess.createApiClient).toBe('function');
     expect(typeof validation.parseAddress).toBe('function');

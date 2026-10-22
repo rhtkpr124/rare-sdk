@@ -134,9 +134,11 @@
     "test:integration:messaging:public": "vitest run test/integration-deployed/messaging-public.test.ts test/integration-deployed/messaging-public-delivery.test.ts --no-file-parallelism",
     "test:integration:nfts": "vitest run test/integration-deployed/nft-search.test.ts",
     "test:integration:notifications": "vitest run test/integration-deployed/notifications.test.ts",
+    "test:integration:account:browser:sessions": "vitest run test/integration-deployed/browser-session-store.test.ts --no-file-parallelism",
     "test:integration:account:browser": "vitest run test/integration-deployed/account-browser.test.ts --no-file-parallelism"
   },
   "dependencies": {
+    "buffer": "6.0.3",
     "merkletreejs": "0.6.0",
     "openapi-fetch": "0.17.0",
     "viem": "2.54.6"

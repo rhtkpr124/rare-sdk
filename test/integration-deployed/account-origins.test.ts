@@ -22,7 +22,7 @@ describe('deployed third-party wallet authentication', () => {
     const { apiBaseUrl, wallet } = configuration();
     const clients = [1, 2].map(index => {
       const origin = `https://sdk-${index}-${randomUUID()}.example`;
-      return { origin, client: createRareClient({ apiBaseUrl, fetch: browserOriginFetch(origin) }) };
+      return { origin, client: createRareClient({ apiBaseUrl, apiFetch: browserOriginFetch(origin) }) };
     });
     try {
       for (const { origin, client } of clients) {

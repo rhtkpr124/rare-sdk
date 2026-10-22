@@ -30,16 +30,16 @@ const reply = (response: ServerResponse, value: unknown, status = 200) => {
 };
 const tokens = { access_token: 'access-2', refresh_token: 'refresh-2', token_type: 'Bearer', expires_in: 300, scope: 'rare:account offline_access' };
 const session = (expiresAt = Date.now() + 300000): RareAccountSession => ({
-  revision: 'first-session', authBaseUrl: `${origin}/auth/v2`, apiBaseUrl: origin, clientId: 'rare-cli',
+  revision: 'first-session', authBaseUrl: `${origin}/auth/v2`, apiBaseUrl: origin, clientId: 'rare-sdk',
   accessToken: 'access-1', refreshToken: 'refresh-1', expiresAt, scope: tokens.scope,
 });
 const device = (extra: Partial<RareDeviceAuthorization> = {}): RareDeviceAuthorization => ({
-  sessionRevision: null, authBaseUrl: `${origin}/auth/v2`, apiBaseUrl: origin, clientId: 'rare-cli',
+  sessionRevision: null, authBaseUrl: `${origin}/auth/v2`, apiBaseUrl: origin, clientId: 'rare-sdk',
   deviceCode: 'device-secret', userCode: 'ABCD-EFGH', verificationUri: `${origin}/device`,
   expiresAt: Date.now() + 600000, interval: 5, nextPollAt: Date.now() - 1, ...extra,
 });
 const client = (storage = createMemoryAccountSessionStore()) => createRareClient({
-  apiBaseUrl: origin, clientId: 'rare-cli', sessionStore: storage,
+  apiBaseUrl: origin, sessionStore: storage,
 });
 
 beforeEach(async () => {
@@ -76,7 +76,7 @@ describe('account authentication over HTTP', () => {
       uri: origin, version: '1', nonce: 'abcdefgh1234', issuedAt: new Date(), expirationTime: new Date(Date.now() + 299000) });
     handler = async (request, response, body) => {
       if (request.url?.endsWith('/wallet/challenge')) {
-        expect(JSON.parse(body)).toEqual({ client_id: 'rare-cli', address: account.address, chain_id: 1, origin });
+        expect(JSON.parse(body)).toEqual({ client_id: 'rare-sdk', address: account.address, chain_id: 1, origin });
         reply(response, { challenge_id: 'challenge', message, expires_in: 300 });
       } else {
         const form = new URLSearchParams(body);

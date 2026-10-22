@@ -5,7 +5,9 @@ import { normalizePostId, planCreatePost, planPostComment, parsePost, parsePostC
 import { normalizeFavoriteId, favoritePageQuery, parseFavoritesPage, parseFavoriteStatus, type FavoriteArtworkInput } from './favorites-core.js';
 import { userQuery, type UserSelector } from './user-core.js';
 import { planUpload, parseUpload, parseUploadSession, uploadedOffset } from './upload-core.js';
-import { isRecord, parseAuthErrorCode, RareAuthError } from './account-auth-core.js';
+import { isRecord } from './account-auth-core.js';
+import { RareApiError } from '../data-access/errors.js';
+import { featureError, featureResponse } from './feature-error.js';
 import { AvatarProfileUpdateError, parseAccountProfile, planAvatarUpload, validateAccountProfilePatch } from './account-profile-core.js';
 import type { RareAccountFeatures, RareAuthRequestOptions, RareUpload, RarePublicUpload, RarePrivateUpload, RareUploadOptions } from './types/account.js';
 
@@ -13,18 +15,12 @@ type Request = (path: string, init: RequestInit, options?: RareAuthRequestOption
 
 /** Feature methods share one API transport; signed storage requests use a separate fetch. */
 export function createAccountFeatures(apiRequest: Request, request: Request): RareAccountFeatures {
-  const json = async (response: Response): Promise<unknown> => {
-    const value: unknown = await response.json().catch(() => undefined);
-    if (!response.ok) throw new RareAuthError(parseAuthErrorCode(value), response.status);
-    if (value === undefined) throw new RareAuthError('invalid_response', response.status);
-    return value;
-  };
+  const jsonRequest = async (path: string, init: RequestInit, options?: RareAuthRequestOptions, timeoutMilliseconds?: number): Promise<unknown> => featureResponse(await apiRequest(path, init, options, timeoutMilliseconds), path);
   const profileRequest = async (method: 'GET' | 'PATCH', body: string | undefined, requestOptions: RareAuthRequestOptions = {}) => {
-    const response = await apiRequest('v1/me', {
+    return parseAccountProfile(await jsonRequest('v1/me', {
       method, headers: { Accept: 'application/json', ...(body === undefined ? {} : { 'Content-Type': 'application/json' }) },
       ...(body === undefined ? {} : { body }),
-    }, requestOptions);
-    return parseAccountProfile(await json(response));
+    }, requestOptions));
   };
 
   function upload(file: Uint8Array | Blob, filename: string, requestOptions?: RareUploadOptions & { access?: 'public' }): Promise<RarePublicUpload>;
@@ -32,12 +28,12 @@ export function createAccountFeatures(apiRequest: Request, request: Request): Ra
   function upload(file: Uint8Array | Blob, filename: string, requestOptions: RareUploadOptions): Promise<RareUpload>;
   async function upload(file: Uint8Array | Blob, filename: string, requestOptions: RareUploadOptions = {}): Promise<RareUpload> {
     const access = requestOptions.access ?? 'public';
-    if (access !== 'public' && access !== 'private') throw new RareAuthError('invalid_upload');
+    if (access !== 'public' && access !== 'private') throw featureError('invalid_upload');
     const plan = planUpload(file, filename, requestOptions.contentType);
-    const session = parseUploadSession(await json(await apiRequest('v1/uploads', {
+    const session = parseUploadSession(await jsonRequest('v1/uploads', {
       method: 'POST', headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
       body: JSON.stringify({ access, size: plan.file.size, contentType: plan.file.type }),
-    }, requestOptions)));
+    }, requestOptions));
     // Google's resumable upload header avoids treating progress responses as HTTP redirects.
     const transfer = async (offset: number, recoveries = 0): Promise<void> => {
       const end = Math.min(offset + 8 * 1024 * 1024, plan.file.size);
@@ -45,61 +41,61 @@ export function createAccountFeatures(apiRequest: Request, request: Request): Ra
         method: 'PUT', headers: { 'X-GUploader-No-308': 'yes', 'Content-Type': plan.file.type, 'Content-Range': `bytes ${offset}-${end - 1}/${plan.file.size}` },
         body: plan.file.slice(offset, end),
       }, requestOptions, 120_000).catch(async (error: unknown) => {
-        if (!(error instanceof RareAuthError) || error.code !== 'transport_error' || recoveries >= 2) throw error;
+        if (!(error instanceof RareApiError) || error.code !== 'transport_error' || recoveries >= 2) throw error;
         // Query GCS's committed offset before retransmitting an ambiguous chunk.
         const status = await request(session.uploadUrl, { method: 'PUT', headers: { 'X-GUploader-No-308': 'yes', 'Content-Range': `bytes */${plan.file.size}` }, body: new Blob([]) }, requestOptions);
         if ((status.status === 200 || status.status === 201) && status.headers.get('x-http-status-code-override') !== '308') return status;
-        if (status.status !== 308 && status.headers.get('x-http-status-code-override') !== '308') throw new RareAuthError('upload_failed', status.status);
+        if (status.status !== 308 && status.headers.get('x-http-status-code-override') !== '308') throw featureError('upload_failed', status.status);
         await transfer(uploadedOffset(status.headers.get('range'), plan.file.size), recoveries + 1);
         return null;
       });
       if (response === null) return;
       if (response.status === 308 || response.headers.get('x-http-status-code-override') === '308') {
         const next = uploadedOffset(response.headers.get('range'), plan.file.size);
-        if (next <= offset || next > end) throw new RareAuthError('invalid_upload_progress');
+        if (next <= offset || next > end) throw featureError('invalid_upload_progress');
         return transfer(next, recoveries);
       }
-      if (response.status !== 200 && response.status !== 201) throw new RareAuthError('upload_failed', response.status);
-      if (end !== plan.file.size) throw new RareAuthError('invalid_upload_progress');
+      if (response.status !== 200 && response.status !== 201) throw featureError('upload_failed', response.status);
+      if (end !== plan.file.size) throw featureError('invalid_upload_progress');
     };
     await transfer(0);
-    const result = parseUpload(await json(await apiRequest(`v1/uploads/${session.id}/complete`, {
+    const result = parseUpload(await jsonRequest(`v1/uploads/${session.id}/complete`, {
       method: 'POST', headers: { Accept: 'application/json' },
-    }, requestOptions, 300_000)));
-    if (result.access !== access || result.size !== plan.file.size) throw new RareAuthError('invalid_upload_response');
+    }, requestOptions, 300_000));
+    if (result.access !== access || result.size !== plan.file.size) throw featureError('invalid_upload_response');
     return result;
   }
   const changeFollow = async (method: 'POST' | 'DELETE', input: UserSelector | string, options: RareAuthRequestOptions = {}): Promise<void> => {
     const query = userQuery(input);
     const search = new URLSearchParams(Object.entries(query).map(([key, value]) => [key, String(value)]));
-    const body = await json(await apiRequest(`v1/me/following?${search}`, { method, headers: { Accept: 'application/json' } }, options));
-    if (!isRecord(body) || !isRecord(body.data) || body.data.following !== (method === 'POST')) throw new RareAuthError('invalid_follow_response');
+    const body = await jsonRequest(`v1/me/following?${search}`, { method, headers: { Accept: 'application/json' } }, options);
+    if (!isRecord(body) || !isRecord(body.data) || body.data.following !== (method === 'POST')) throw featureError('invalid_follow_response');
   };
   const favoriteRequest = async (method: 'GET' | 'PUT' | 'DELETE', input: FavoriteArtworkInput, options: RareAuthRequestOptions = {}): Promise<boolean> => {
     const id = normalizeFavoriteId(input);
-    const result = parseFavoriteStatus(await json(await apiRequest(`v1/me/favorites/${encodeURIComponent(id)}`, {
+    const result = parseFavoriteStatus(await jsonRequest(`v1/me/favorites/${encodeURIComponent(id)}`, {
       method, headers: { Accept: 'application/json' },
-    }, options)));
-    if (method !== 'GET' && result !== (method === 'PUT')) throw new RareAuthError('invalid_favorite_response');
+    }, options));
+    if (method !== 'GET' && result !== (method === 'PUT')) throw featureError('invalid_favorite_response');
     return result;
   };
   const postRequest = async (method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE', path: string, body: unknown, options: RareAuthRequestOptions = {}): Promise<unknown> => {
-    return json(await apiRequest(path, {
+    return jsonRequest(path, {
       method, headers: { Accept: 'application/json', ...(body === undefined ? {} : { 'Content-Type': 'application/json' }) },
       ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-    }, options));
+    }, options);
   };
   const postFavorite = async (method: 'GET' | 'PUT' | 'DELETE', postId: string, options?: RareAuthRequestOptions): Promise<boolean> => {
     const id = normalizePostId(postId);
     const result = parseFavoriteStatus(await postRequest(method, `v1/me/post-favorites/${id}`, undefined, options));
-    if (method !== 'GET' && result !== (method === 'PUT')) throw new RareAuthError('invalid_favorite_response');
+    if (method !== 'GET' && result !== (method === 'PUT')) throw featureError('invalid_favorite_response');
     return result;
   };
   return {
     notifications: createNotificationsClient(postRequest),
     messaging: createMessagingClient(async (method, path, body, headers, requestOptions = {}) => {
       return apiRequest(path, { method, headers: { Accept: 'application/json', ...headers }, ...(body === undefined ? {} : { body }) }, requestOptions);
-    }, json),
+    }),
     drops: {
       async create(input, options) { const plan = planCreateDrop(input); return parsePostData(await postRequest('POST', 'v1/drops', plan, options), parseDrop); },
       async update(dropId, input, options) { const id = normalizeDropId(dropId); const plan = planDropUpdate(input); return parsePostData(await postRequest('PATCH', `v1/drops/${id}`, plan, options), parseDrop); },
@@ -120,7 +116,7 @@ export function createAccountFeatures(apiRequest: Request, request: Request): Ra
     favorites: {
       async list(options = {}) {
         const query = favoritePageQuery(options);
-        return parseFavoritesPage(await json(await apiRequest(`v1/me/favorites?page=${query.page}&perPage=${query.perPage}`, { method: 'GET', headers: { Accept: 'application/json' } }, options)));
+        return parseFavoritesPage(await jsonRequest(`v1/me/favorites?page=${query.page}&perPage=${query.perPage}`, { method: 'GET', headers: { Accept: 'application/json' } }, options));
       },
       has: (input, options) => favoriteRequest('GET', input, options),
       async add(input, options) { await favoriteRequest('PUT', input, options); },

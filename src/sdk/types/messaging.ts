@@ -1,7 +1,7 @@
 import type { RareAuthRequestOptions } from './account.js';
 import type { MessagingSession, MessagingInbox, MessagingSearchPerson, MessagingCreateDirect, MessagingCreatedDirect, MessagingCreateRoom, MessagingConversation, MessagingPage, MessagingChanges, MessagingParticipants, MessagingSend, MessagingMessage, MessagingCommand, MessagingMessageCommand, MessagingUser, MessagingDraftPreview, MessagingAttachment, MessagingPublicResolveContext, MessagingPublicRoom, MessagingPublicPage, MessagingPublicSend, MessagingPublicMessage } from '../messaging-core.js';
 export type * from '../messaging-core.js';
-export type MessagingImageOptions = RareAuthRequestOptions & { contentType: 'image/jpeg' | 'image/png' | 'image/webp' | 'image/gif'; width: number; height: number; uploadId?: string };
+export type MessagingImageOptions = RareAuthRequestOptions & { width: number; height: number; attachmentId?: string; purpose?: 'message' | 'conversation' };
 /** Durable messaging uses the account session. Mutations are not automatically retried. */
 export type PublicMessagingClient = {
   resolveRoom: (context: MessagingPublicResolveContext, options?: RareAuthRequestOptions) => Promise<MessagingPublicRoom>;
@@ -25,6 +25,6 @@ export type RareMessagingClient = {
   block: (userId: string, options?: RareAuthRequestOptions) => Promise<void>;
   unblock: (userId: string, options?: RareAuthRequestOptions) => Promise<void>;
   preview: (conversationId: string, url: string, options?: RareAuthRequestOptions) => Promise<MessagingDraftPreview>;
-  uploadImage: (conversationId: string, file: Uint8Array | Blob, options: MessagingImageOptions) => Promise<MessagingAttachment>;
+  attachImage: (conversationId: string, uploadId: string, options: MessagingImageOptions) => Promise<MessagingAttachment>;
   readImage: (attachmentId: string, options?: RareAuthRequestOptions) => Promise<Blob>;
 };

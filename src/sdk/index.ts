@@ -43,7 +43,6 @@ export type {
   Pagination,
 } from './api.js';
 
-export { createRareAccountClient } from './account-client.js';
 export { RareAuthError } from './account-auth-core.js';
 export { createMemoryAccountSessionStore } from './account-session-store.js';
 export type * from './types/account.js';
@@ -63,3 +62,6 @@ export { createRareApi } from './api.js';
 export type { RareApi, RareApiOptions } from './api.js';
 
 export type * from './types/notifications.js';
+
+export { createBrowserAccountSessionStore } from './browser-session-store.js';
+export { RareApiError } from '../data-access/errors.js';

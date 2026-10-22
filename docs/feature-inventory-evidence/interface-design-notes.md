@@ -1,5 +1,7 @@
 # SuperRare website, SDK and CLI feature parity
 
+Historical planning snapshot. Current SDK construction and authentication are documented in the repository README.
+
 Source snapshot: 2026-09-30. This inventory includes the current open account-auth branches. Coverage describes public high-level SDK methods and registered CLI commands. It does not establish release status or successful live parity testing.
 
 40 distinct capability rows. Screens, entry points and format variants share a row when they implement the same capability. Public reads and authenticated writes stay together, with their access differences shown in the table. The source evidence retains the detailed procedure and route audit.

@@ -12,8 +12,10 @@ describe('shared uploads', () => {
     expect(() => planUpload(new Uint8Array(250 * 1024 * 1024 + 1), 'large')).toThrow();
   });
   it('parses private references without exposing URLs', () => {
-    const result = { access: 'private', key: 'a'.repeat(64), contentType: 'application/pdf', size: 3 };
+    const result = { access: 'private', uploadId: '11111111-1111-4111-8111-111111111111', key: 'a'.repeat(64), contentType: 'application/pdf', size: 3 };
     expect(parseUpload(result)).toEqual(result);
+    expect(() => parseUpload({ ...result, uploadId: undefined })).toThrow('invalid_upload_id');
+    expect(() => parseUpload({ ...result, uploadId: '../other' })).toThrow('invalid_upload_response');
     expect(() => parseUpload({ ...result, url: 'https://storage.googleapis.com/bucket/key' })).toThrow();
     expect(() => parseUpload({ ...result, access: 'unknown' })).toThrow();
   });
