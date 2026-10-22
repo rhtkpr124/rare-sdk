@@ -1,5 +1,6 @@
 import type { Address, Hex } from 'viem';
 import type { IntegerInput } from './common.js';
+import type { AccountCheckoutRecoveryWire } from './orders.js';
 import type { ShippingDetails } from './shipping-addresses.js';
 import type {
   CartFulfillmentKind,
@@ -246,6 +247,11 @@ export type CartCheckoutIntent = {
 };
 export type CartDeliveryCheckout = CartCheckoutIntent & { delivery: NonNullable<CartCheckoutIntent['delivery']>; idempotencyKey: string };
 export type CartCheckoutBreakdown = { displayPrice: bigint; shipping: bigint; networkFee: bigint; total: bigint };
+export type CartCheckoutRecovery = Omit<AccountCheckoutRecoveryWire, 'orderId' | 'preparedPurchase'> & {
+  orderId?: Hex;
+  preparedPurchase?: CartApiPreparedPurchase;
+};
+
 export type CartCardCheckout = {
   checkoutJwtToken: string;
   sessionKey: string;
@@ -346,13 +352,20 @@ export type CartApiPreparedPurchase = {
   };
 };
 
+export type CreateCartProduct = import('../../data-access/cart-schema.js').paths['/v1/cart/products']['post']['requestBody']['content']['application/json'];
+export type AddCartVariants = import('../../data-access/cart-schema.js').paths['/v1/cart/products/{productId}/variants']['post']['requestBody']['content']['application/json'];
+
 export type CartApiNamespace = {
   catalog: {
     products: {
+      create: (input: CreateCartProduct, options?: { idempotencyKey?: string }) => Promise<CartApiProduct>;
+      getMine: (id: string) => Promise<CartApiProduct>;
+      archive: (id: string) => Promise<CartApiProduct>;
       search: (params?: CartProductSearchParams) => Promise<CartProductSearchResult>;
       get: (id: string) => Promise<CartApiProduct>;
     };
     variants: {
+      add: (productId: string, input: AddCartVariants) => Promise<CartApiProduct>;
       search: (params?: CartVariantSearchParams) => Promise<CartVariantSearchResult>;
     };
   };
@@ -366,6 +379,8 @@ export type CartApiNamespace = {
   checkout: {
     preview: (intent: CartCheckoutIntent) => Promise<CartCheckoutPreparation>;
     prepare: (input: string | CartDeliveryCheckout) => Promise<CartApiPreparedPurchase>;
+    /** Resolve the original attempt without signing, paying, or replacing an unknown order. */
+    recover: (idempotencyKey: string) => Promise<CartCheckoutRecovery>;
     coinflow: (input: CartDeliveryCheckout) => Promise<CartCardCheckout>;
   };
 };

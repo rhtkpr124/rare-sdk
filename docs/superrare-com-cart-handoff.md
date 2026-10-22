@@ -190,10 +190,12 @@ checkout authorizations; it cannot revoke an already-signed Order. Rule
 definitions are not editable through this interface.
 
 Use `effectiveFrom` and `definition.claimExpiresAt` for activation and claim
-expiration. Historical purchase backfills are not part of this interface. For
-current-holder rules, explicit `source.tokenIds` support initialization from
-existing holder evidence at a confirmed block. A collection-wide rule without
-token IDs applies to future events. Verify the backend's supported NFT event
+expiration. Omit `effectiveFrom` to include historical events when they are
+reindexed, or supply an explicit event cutoff. Rule creation does not schedule
+a historical backfill. For current-holder rules, explicit `source.tokenIds`
+support initialization from existing holder evidence. Replayed transfer events
+reconcile the current on-chain holder rather than the historical recipient.
+Verify the backend's supported NFT event
 adapters; do not assume ERC-1155 per-copy eligibility is supported.
 
 ### Publish a gated Listing without an open interval
@@ -272,6 +274,23 @@ backend resolves the existing Order. Claim expiration and routing quote
 expiration are different deadlines.
 
 ## Build the print creator flow
+
+For an NFT-linked physical print, set `print.sourceUniversalTokenId` when creating
+the standalone drop. This is attribution, not an instruction to transfer the NFT.
+It is independent of eligibility and receipt minting. The API verifies the source
+artwork belongs to the creator. Use `rare.prints.releases.list({ universalTokenId })`
+to find its published prints.
+
+For a collection, repeat the existing authoring operations for each approved file
+and source token. Keep shared defaults and unfinished resource IDs in your UI's
+draft state. Create eligibility rules with collection scope and explicit token-to-SKU
+targets. There is no bulk setup helper or campaign requirement.
+
+Use `rare.cart.catalog.products.create`, `getMine`, and `archive`, and
+`rare.cart.catalog.variants.add` for creator-owned catalog resources such as a
+shared receipt SKU. Pass `{ idempotencyKey }` as the second argument to Product
+creation. Variant creation is not automatically retried; after an ambiguous
+response, inspect `getMine` before issuing another mutation.
 
 Use the authenticated `rare.prints` methods rather than component-local Rare API
 requests. Keep platform fee rules, provider credentials, and administrative
@@ -398,8 +417,25 @@ available; never expose that private email through public profile data.
 
 Prints use `rare.cart.checkout`, not a separate print payment engine. Add either
 `delivery: { savedAddressId }` or `delivery: { recipientDetails }` to the usual
-intent. Current delivery checkout supports one print with quantity one, not
-mixed or multi-print carts.
+intent. Delivery supports one print with its configured copy limit, or up to five
+distinct prints with one copy each. The Listings must use the same Cart and a
+compatible fulfillment settlement currency and recipient. Mixed physical and
+non-physical items, explicit swap items, and multiple destination addresses are
+not supported in this delivery adapter.
+
+Each print has a separate fulfillment record and provider order. Shipping quotes
+are summed; they do not promise consolidated shipping. Pipelines owns submission
+and retries. Do not resubmit a physical order from the SDK or frontend.
+
+Read `accountClient.orders.get(orderId)` for payment status and `fulfillments`.
+Each fulfillment includes `orderLineIndex`, status, and nullable `providerOrderId`.
+`COMPLETED` means provider acceptance, not shipment or delivery. Poll this read
+when useful; it does not initiate work.
+
+After an interrupted signed checkout, call
+`rare.cart.api.checkout.recover(idempotencyKey)`. It returns the original payload
+only to the account and wallet that prepared it. `UNKNOWN` is not permission to
+assume payment failed. Never silently replace an unresolved signed Order.
 
 Call `rare.cart.checkout.prepare(intent)` to get the unsigned preview. Display
 its `breakdown.displayPrice`, `shipping`, `networkFee`, and `total` when present.
