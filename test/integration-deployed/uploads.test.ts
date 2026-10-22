@@ -63,7 +63,7 @@ describe('uploads through deployed API and real GCS', () => {
     await withLiveAccount(async ({ api, client }, track) => {
       const session = await client.auth.getSession();
       if (!session) throw new Error('Missing live session');
-      const external = createRareAccountClient({
+      const external = createRareClient({
         transport: (path, init) => fetch(`${api}${path}`, {
           ...init, credentials: 'omit', redirect: 'error',
           headers: { ...Object.fromEntries(new Headers(init.headers)), Authorization: `Bearer ${session.accessToken}` },

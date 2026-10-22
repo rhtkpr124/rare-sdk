@@ -846,17 +846,17 @@ Feature methods keep the same request and response types. This client has no `au
 methods and never acquires or refreshes an SDK bearer session.
 
 ```ts
-const account = createRareClient({
+const rare = createRareClient({
   transport: (path, init) => fetch(`/api/rare${path}`, {
     ...init,
     credentials: 'same-origin',
     redirect: 'error',
   }),
 });
-const inbox = await account.messaging.inbox();
-const master = await account.uploads.upload(printFile, 'master.tiff', { access: 'private' });
-const addresses = await account.shippingAddresses.list();
-const orders = await account.orders.list();
+const inbox = await rare.messaging.inbox();
+const master = await rare.uploads.upload(printFile, 'master.tiff', { access: 'private' });
+const addresses = await rare.shippingAddresses.list();
+const orders = await rare.orders.list();
 ```
 
 The transport receives API-relative paths such as `/v1/messaging/conversations`,
