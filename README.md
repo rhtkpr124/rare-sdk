@@ -854,6 +854,9 @@ const account = createRareClient({
   }),
 });
 const inbox = await account.messaging.inbox();
+const master = await account.uploads.upload(printFile, 'master.tiff', { access: 'private' });
+const addresses = await account.shippingAddresses.list();
+const orders = await account.orders.list();
 ```
 
 The transport receives API-relative paths such as `/v1/messaging/conversations`,
@@ -866,6 +869,9 @@ JavaScript. Authenticated API errors retain the SDK's normal error handling.
 
 Signed storage uploads bypass this API transport and use the optional `apiFetch`
 implementation with `credentials: 'omit'`, without authentication headers.
+Use this same `rare.uploads.upload` method for production files and public
+display images. SuperRare's existing session belongs in the application transport;
+there is no separate print uploader or upload-specific login.
 Without a transport, `createRareClient` retains its existing bearer-token
 login, session storage and refresh behavior.
 

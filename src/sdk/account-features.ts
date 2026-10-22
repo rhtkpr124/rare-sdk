@@ -132,11 +132,6 @@ export function createAccountFeatures(apiRequest: Request, request: Request): Ra
         return result.data.data;
       },
     },
-    ...createAccountFeatures(async (path, init, requestOptions = {}, timeoutMilliseconds) => {
-      const token = await accessToken(requestOptions);
-      return request(joinAuthPath(apiBaseUrl, path), { ...init, headers: { ...init.headers, Authorization: `Bearer ${token}` } }, requestOptions, timeoutMilliseconds);
-    }, request),
-    auth: {
     notifications: createNotificationsClient(postRequest),
     messaging: createMessagingClient(async (method, path, body, headers, requestOptions = {}) => {
       return apiRequest(path, { method, headers: { Accept: 'application/json', ...headers }, ...(body === undefined ? {} : { body }) }, requestOptions);
