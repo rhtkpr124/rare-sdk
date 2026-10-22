@@ -79,7 +79,7 @@
     "CHANGELOG.md"
   ],
   "scripts": {
-    "build": "tsdown --config-loader unrun",
+    "build": "tsdown --config-loader tsx",
     "typecheck": "tsc --noEmit",
     "generate:types": "tsx scripts/generate-openapi-types.ts",
     "generate:cart-types": "tsx scripts/generate-cart-types.ts",
