@@ -66,7 +66,7 @@ export type RareWalletLoginOptions = {
 /** Sends API-relative paths using authentication owned by the application. */
 export type RareAccountTransport = (path: string, init: RequestInit) => Promise<Response>;
 
-export type RareAccountFeatures = Omit<RareAccountClient, 'auth'>;
+export type RareAccountFeatures = Omit<RareAccountClient, 'auth' | 'authenticatedFetch'>;
 
 export type RareAccountProfile = {
   accountId: string;
