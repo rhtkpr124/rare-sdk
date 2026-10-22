@@ -1,6 +1,14 @@
-import { getAddress, isAddress, isHex } from 'viem';
+import { getAddress, isAddress, isAddressEqual, isHex } from 'viem';
 import type { CartListing, CartFulfillmentKind } from './types/cart.js';
-import type { PreparePrintListing, PrintListingPreparation } from './types/prints.js';
+import type { ConfigurePrintOption, PreparePrintListing, PrintListingPreparation } from './types/prints.js';
+
+export function validatePrintOptionConfiguration(input: ConfigurePrintOption): { valid: true } | { valid: false; message: string } {
+  if (input.receipt !== undefined && input.receipt !== null &&
+    (typeof input.receipt.sku !== 'string' || !isHex(input.receipt.sku) || input.receipt.sku.length !== 66)) {
+    return { valid: false, message: 'A print receipt requires a 32-byte ERC-1155 variant SKU.' };
+  }
+  return { valid: true };
+}
 
 export function validatePrintListingQuantityLimit(input: PreparePrintListing): { valid: true } | { valid: false; message: string } {
   const quantity = input.maxQuantityPerCheckout ?? '1';
@@ -41,11 +49,20 @@ export function parsePrintListingTerms(preparation: PrintListingPreparation): { 
     throw new Error('Print preparation does not identify its owned drop.');
   }
   const value = snapshot.configured.listing;
-  return { dropId: snapshot.dropId, deadline: integer(snapshot.intent.deadline), listing: {
+  const listing: CartListing = {
     listingSalt: hex(value.listingSalt), seller: address(value.seller), sku: hex(value.sku),
     fulfillmentKind: fulfillmentKind(value.fulfillmentKind), tokenContract: address(value.tokenContract),
     tokenId: integer(value.tokenId), settlementCurrency: address(value.settlementCurrency),
     minimumUnitPrice: integer(value.minimumUnitPrice), availableQuantity: integer(value.availableQuantity),
     paymentRecipient: address(value.paymentRecipient),
-  } };
+  };
+  if (snapshot.receipt !== undefined) {
+    if (!record(snapshot.receipt)) throw new Error('Print preparation contains an invalid receipt.');
+    hex(snapshot.receipt.sku);
+    if (snapshot.receipt.chainId !== preparation.chain_id || listing.fulfillmentKind !== 5 ||
+      !isAddressEqual(address(snapshot.receipt.tokenContract), listing.tokenContract) || integer(snapshot.receipt.tokenId) !== listing.tokenId) {
+      throw new Error('Print receipt does not match the frozen ERC-1155 mint terms.');
+    }
+  }
+  return { dropId: snapshot.dropId, deadline: integer(snapshot.intent.deadline), listing };
 }

@@ -8,6 +8,7 @@ import type { CreatePrintDrop } from '../../dist/sdk/index.js';
 import { loadDotEnv } from '../helpers/env.js';
 import { createCreatorCartScenario } from '../helpers/cart-creator-fixture.js';
 import { getTestRpcUrl } from '../helpers/liveViem.js';
+import { isRecord, requireString } from '../../src/sdk/account-auth-core.js';
 
 loadDotEnv();
 
@@ -22,12 +23,12 @@ const setup = () => {
   const publicClient = createPublicClient({ chain: sepolia, transport: http(process.env.TEST_RPC_URL) });
   const walletClient = createWalletClient({ account: wallet, chain: sepolia, transport: http(process.env.TEST_RPC_URL) });
   const rare = createRareClient({ apiBaseUrl, accountClient, publicClient, walletClient });
-  return { wallet, accountClient, rare };
+  return { wallet, accountClient, rare, apiBaseUrl };
 };
 
 describe('print tooling through deployed Rare API', () => {
   it('publishes quantity-limited and gated prints, quotes copies, and reserves an earned claim', async () => {
-    const { wallet, accountClient, rare } = setup();
+    const { wallet, accountClient, rare, apiBaseUrl } = setup();
     const addressId = randomUUID();
     let addressNeedsCleanup = false;
     let dropId: string | undefined;
@@ -165,6 +166,80 @@ describe('print tooling through deployed Rare API', () => {
         }
       } finally {
         await source.accountClient.auth.logout();
+      }
+      // The regular print flow can include a receipt without creating a campaign.
+      // This defines a zero-supply token and signs a checkout, but does not pay
+      // for a print or submit a provider order.
+      const receiptCollection = await rare.collection.deploy.erc1155({
+        name: `Print receipt ${randomUUID()}`, symbol: 'PRINT', baseUri: '',
+      });
+      const receiptToken = await rare.collection.erc1155.createToken({
+        contract: receiptCollection.contract, maxSupply: 1000n,
+        tokenUri: 'data:application/json,%7B%22name%22%3A%22Print%20receipt%22%7D',
+      });
+      const receiptRequest = async (path: string, body: unknown): Promise<unknown> => {
+        const response = await accountClient.authenticatedFetch(new URL(path, apiBaseUrl), {
+          method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body),
+        });
+        if (!response.ok) throw new Error(`Receipt fixture ${path} failed with ${response.status}.`);
+        return response.json();
+      };
+      const productResponse = await receiptRequest('/v1/cart/products', { metadata: { title: 'Print receipt fixture' } });
+      if (!isRecord(productResponse) || !isRecord(productResponse.data)) throw new Error('Receipt product was not returned.');
+      const receiptProductId = requireString(productResponse.data.id, 'id');
+      const cart = rare.contracts.cart;
+      if (cart === undefined) throw new Error('Sepolia Cart address is not configured.');
+      try {
+        const variantsResponse = await receiptRequest(`/v1/cart/products/${receiptProductId}/variants`, {
+          variants: [{ metadata: { type: 'ERC1155', chainId: '11155111',
+            tokenContract: receiptCollection.contract, tokenId: receiptToken.tokenId.toString() } }],
+        });
+        if (!isRecord(variantsResponse) || !isRecord(variantsResponse.data) || !Array.isArray(variantsResponse.data.variants))
+          throw new Error('Receipt variant was not returned.');
+        const variant: unknown = variantsResponse.data.variants[0];
+        if (!isRecord(variant)) throw new Error('Receipt variant was not returned.');
+        const receiptSku = requireString(variant.sku, 'sku');
+        if (!isHex(receiptSku) || receiptSku.length !== 66) throw new Error('Receipt variant returned an invalid SKU.');
+        expect(receiptSku).not.toBe(option.sku);
+        const configuredReceipt = await rare.prints.options.configure(created.id, {
+          displayPriceUsdCents: '10000', receipt: { sku: receiptSku },
+        });
+        expect(configuredReceipt.sku).toBe(option.sku);
+        await rare.collection.erc1155.setMinterApproval({ contract: receiptCollection.contract, minter: cart, approved: false });
+        // Invalid permissions must fail before asking the creator to sign.
+        await expect(rare.prints.listings.prepare({ optionId: option.id, seller: wallet.address,
+          listingSalt: keccak256(toHex(randomUUID())), deadline: String(Math.floor(Date.now() / 1000) + 86_400),
+          availableQuantity: '10', maxQuantityPerCheckout: '2' })).rejects.toMatchObject({ status: 409 });
+        await rare.collection.erc1155.setMinterApproval({ contract: receiptCollection.contract, minter: cart, approved: true });
+        const receiptPreparation = await rare.prints.listings.prepare({ optionId: option.id, seller: wallet.address,
+          listingSalt: keccak256(toHex(randomUUID())), deadline: String(Math.floor(Date.now() / 1000) + 86_400),
+          availableQuantity: '10', maxQuantityPerCheckout: '2' });
+        const receiptPublished = await rare.prints.listings.signAndPublish(receiptPreparation, { autoApprove: false });
+        const receiptEntry = receiptPublished.signedArtifact.entries[0];
+        if (!receiptEntry) throw new Error('Receipt print Listing was not returned.');
+        expect(receiptEntry.listing).toMatchObject({ sku: option.sku, fulfillmentKind: 5, tokenId: receiptToken.tokenId });
+        expect(isAddressEqual(receiptEntry.listing.tokenContract, receiptCollection.contract)).toBe(true);
+        await expect.poll(async () => (await rare.prints.drops.get(created.id)).options
+          .find(candidate => candidate.listingDigest === receiptEntry.listingDigest)?.receipt,
+        { timeout: 60_000, interval: 2_000 }).toMatchObject({ sku: receiptSku, tokenId: receiptToken.tokenId.toString() });
+        const receiptQuote = await rare.cart.checkout.prepare({ paymentCurrency: getAddress(receiptEntry.listing.settlementCurrency),
+          items: [{ kind: 'listing', listingDigest: receiptEntry.listingDigest, quantity: 2n, recipient: wallet.address }],
+          delivery: { savedAddressId: addressId } });
+        if (!receiptQuote.intent.delivery || !receiptQuote.idempotencyKey) throw new Error('Receipt quote lost its delivery identity.');
+        const signedReceipt = await rare.cart.api.checkout.prepare({ ...receiptQuote.intent,
+          delivery: receiptQuote.intent.delivery, idempotencyKey: receiptQuote.idempotencyKey });
+        const receiptLineIndex = signedReceipt.executePurchase.lines.findIndex(line => line.listingDigest === receiptEntry.listingDigest);
+        expect(receiptLineIndex).toBeGreaterThanOrEqual(0);
+        expect(signedReceipt.executePurchase.actions).toEqual([{ lineIndex: BigInt(receiptLineIndex), quantity: 2n, recipient: wallet.address }]);
+        const preserved = await rare.prints.options.configure(created.id, { displayPriceUsdCents: '10000' });
+        expect(preserved.metadata.receipt).toEqual(configuredReceipt.metadata.receipt);
+        await rare.prints.options.configure(created.id, { displayPriceUsdCents: '10000', receipt: null });
+        const plain = await rare.prints.listings.prepare({ optionId: option.id, seller: wallet.address,
+          listingSalt: keccak256(toHex(randomUUID())), deadline: String(Math.floor(Date.now() / 1000) + 86_400), availableQuantity: '10' });
+        expect((await rare.prints.listings.signAndPublish(plain)).signedArtifact.entries[0]?.listing.fulfillmentKind).toBe(1);
+      } finally {
+        await rare.collection.erc1155.setMinterApproval({ contract: receiptCollection.contract, minter: cart, approved: false });
+        await receiptRequest(`/v1/cart/products/${receiptProductId}/archive`, {});
       }
       // No purchase call: the prepared order expires without payment or provider submission.
       const anonymous = createRareClient({ publicClient: createPublicClient({ chain: sepolia, transport: http() }),
