@@ -3,7 +3,7 @@ import { toCartListingRootArtifactWire } from './cart-api.js';
 import type { RareClientConfig } from './types/client.js';
 import type { PrintsNamespace } from './types/prints.js';
 import { buildCartListingRootArtifact, cartDomain, hashCartListing } from './cart-core.js';
-import { parsePrintListingTerms, validatePrintListingQuantityLimit } from './prints-core.js';
+import { parsePrintListingTerms, validatePrintListingQuantityLimit, validatePrintOptionConfiguration } from './prints-core.js';
 import { requireWallet } from './wallet-shell.js';
 import { cartAbi } from '../contracts/abis/cart.js';
 import { erc721Abi, erc1155Abi, getAddress, isAddressEqual } from 'viem';
@@ -35,7 +35,11 @@ export function createPrintsNamespace(config: RareClientConfig, authenticatedFet
       activity: (id, options = {}) => data(publicClient.GET('/v1/prints/drops/{id}/activity', { params: { path: { id }, query: options } })),
     },
     releases: { list: input => data(publicClient.GET('/v1/prints/releases', { params: { query: input } })) },
-    options: { configure: (id, input) => data(client.PUT('/v1/prints/drops/{id}/options/standard', { params: { path: { id } }, body: input })) },
+    options: { configure: (id, input) => {
+      const validation = validatePrintOptionConfiguration(input);
+      if (!validation.valid) return Promise.reject(new Error(validation.message));
+      return data(client.PUT('/v1/prints/drops/{id}/options/standard', { params: { path: { id } }, body: input }));
+    } },
     listings: {
       prepare: input => {
         const validation = validatePrintListingQuantityLimit(input);

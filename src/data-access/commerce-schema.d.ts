@@ -428,6 +428,12 @@ export interface paths {
                                     maxQuantityPerCheckout: string;
                                     /** Format: uuid */
                                     eligibilityRuleId: string | null;
+                                    receipt: {
+                                        chainId: string;
+                                        tokenContract: string;
+                                        tokenId: string;
+                                        sku: string;
+                                    } | null;
                                 }[];
                             };
                         };
@@ -1089,6 +1095,9 @@ export interface paths {
             requestBody: {
                 content: {
                     "application/json": {
+                        receipt?: {
+                            sku: string;
+                        } | null;
                         displayPriceUsdCents: string;
                     };
                 };
@@ -1355,7 +1364,7 @@ export interface paths {
                         /** Format: uuid */
                         eligibilityRuleId?: string;
                         maxQuantityPerCheckout?: string;
-                        fulfillmentKind: 1 | 2 | 3 | 5;
+                        fulfillmentKind?: 1 | 2 | 3 | 5;
                     };
                 };
             };
@@ -2461,6 +2470,12 @@ export interface paths {
                                     maxQuantityPerCheckout: string;
                                     /** Format: uuid */
                                     eligibilityRuleId: string | null;
+                                    receipt: {
+                                        chainId: string;
+                                        tokenContract: string;
+                                        tokenId: string;
+                                        sku: string;
+                                    } | null;
                                 }[];
                             }[];
                         };
