@@ -25,8 +25,12 @@ export function parseApiError(value: unknown): { error?: string; code?: string; 
   }
   const error = 'error' in value && typeof value.error === 'string' ? value.error : undefined;
   const code = 'code' in value && typeof value.code === 'string' && /^[a-z][a-z0-9_]{0,63}$/.test(value.code) ? value.code : undefined;
-  const details = 'details' in value && Array.isArray(value.details) && value.details.every(isApiErrorField) ? value.details : undefined;
+  const details = parseApiErrorFields('details' in value ? value.details : undefined);
   return { ...(error === undefined ? {} : { error }), ...(code === undefined ? {} : { code }), ...(details === undefined ? {} : { details }) };
+}
+
+export function parseApiErrorFields(value: unknown): ApiErrorField[] | undefined {
+  return Array.isArray(value) && value.every(isApiErrorField) ? value : undefined;
 }
 
 function isApiErrorField(value: unknown): value is ApiErrorField {

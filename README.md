@@ -71,23 +71,20 @@ Each Listing carries a client-generated `listingSalt`; its complete EIP-712
 `listingDigest` is the immutable public identity referenced by Order Lines,
 Merkle artifacts, cancellation, fill state, and order-book APIs.
 
-Protected Cart requests reuse account authentication. Create an account client
-with your existing session store, then pass it to the chain client. This does not
-log in again or change the wallet used for transaction signatures.
+Protected Cart requests reuse the unified client's account authentication. Use
+your existing session store without changing the transaction signing wallet.
 
 ```ts
-const accountClient = createRareAccountClient({ apiBaseUrl, sessionStore });
-const rare = createRareClient({ publicClient, walletClient, apiBaseUrl, accountClient });
+const rare = createRareClient({ publicClient, walletClient, apiBaseUrl, sessionStore });
 ```
 
 Listing preparation, publication, invalidation, and signed checkout preparation
 send the account's bearer token. Public catalog reads, Listing reads, and checkout
-quotes remain anonymous. The account's `authenticatedFetch` also works with the
-lower-level `createApiClient(apiBaseUrl, accountClient.authenticatedFetch)`.
+quotes remain anonymous. `rare.authenticatedFetch` also works with the
+lower-level `createApiClient(apiBaseUrl, rare.authenticatedFetch)`.
 It refuses other API origins or base paths, omits cookies, follows no redirects,
-and does not replay a mutation after a failure. Both clients must use the same
-API base URL. `apiFetch` remains available for existing cookie-based integrations
-that do not supply an account client.
+and does not replay a mutation after a failure. For application-owned sessions,
+pass `transport` instead. The application owns authentication and session renewal.
 
 ```ts
 const variants = await rare.cart.catalog.variants.search({
