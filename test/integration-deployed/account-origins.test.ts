@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { privateKeyToAccount } from 'viem/accounts';
 import { parseSiweMessage } from 'viem/siwe';
 import { describe, expect, it } from 'vitest';
-import { createRareAccountClient } from '../../src/sdk/account-client.js';
+import { createRareClient } from '../../src/sdk/client.js';
 
 const configuration = () => {
   const apiBaseUrl = process.env.RARE_ACCOUNT_TEST_API_URL?.replace(/\/$/u, '');
@@ -22,7 +22,7 @@ describe('deployed third-party wallet authentication', () => {
     const { apiBaseUrl, wallet } = configuration();
     const clients = [1, 2].map(index => {
       const origin = `https://sdk-${index}-${randomUUID()}.example`;
-      return { origin, client: createRareAccountClient({ apiBaseUrl, fetch: browserOriginFetch(origin) }) };
+      return { origin, client: createRareClient({ apiBaseUrl, fetch: browserOriginFetch(origin) }) };
     });
     try {
       for (const { origin, client } of clients) {

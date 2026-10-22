@@ -16,6 +16,20 @@ npm install @rareprotocol/rare-sdk viem
 
 ## Usage
 
+Start with one client for public reads and account features. No RPC connection is needed:
+
+```ts
+import { createRareClient } from '@rareprotocol/rare-sdk';
+
+const rare = createRareClient();
+const artworks = await rare.search.nfts({ query: 'portrait', chainId: 1 });
+const artwork = await rare.nft.get({ chainId: 1, contract: '0x...', tokenId: '1' });
+// After wallet or device login, the same client exposes profile, messaging,
+// uploads, follows, favorites, posts, drops and notifications.
+```
+
+Add viem clients for chain-bound reads and blockchain transactions:
+
 ```ts
 import { createPublicClient, http } from 'viem';
 import { mainnet } from 'viem/chains';
@@ -76,14 +90,14 @@ are page 1, 20 results (maximum 100), and `newest` sorting. Sort options are
 `newest`, `oldest`, `priceAsc`, `priceDesc`, `holderCountAsc`, and `holderCountDesc`. Search text is limited
 to 500 characters and tags to 50 entries. `IMAGE` includes GIFs.
 
-For all-chain discovery, use the standalone API client and omit `chainId`:
+For all-chain discovery, use the same factory without a `publicClient` and omit `chainId`:
 
 ```ts
-import { createRareApi } from '@rareprotocol/rare-sdk/api';
+import { createRareClient } from '@rareprotocol/rare-sdk';
 
-const api = createRareApi();
-const editions = await api.searchLiquidEditions({ query: 'generative' });
-const edition = await api.getLiquidEdition('1-0x1234567890123456789012345678901234567890');
+const api = createRareClient();
+const editions = await api.search.liquidEditions({ query: 'generative' });
+const edition = await api.liquidEdition.get({ chainId: 1, contract: '0x1234567890123456789012345678901234567890' });
 ```
 
 Only public editions are returned. Holder filtering uses positive indexed collector
@@ -96,7 +110,7 @@ cannot be combined with `hasCurrentPrice: false`. API validation errors (`400`),
 missing editions (`404`), and unavailable discovery (`503`) propagate as
 `RareApiError` from `@rareprotocol/rare-sdk/data-access`, retaining `status` and
 `path`. The SDK uses the production Rare API by default. Set `apiBaseUrl` on
-`createRareClient`, or `baseUrl` on `createRareApi`, to use another deployment.
+`createRareClient` to use another deployment. The existing `RARE_API_BASE_URL` environment override takes precedence and applies to both public and authenticated requests.
 
 ## Live integration tests
 
@@ -126,7 +140,7 @@ is treated as an integration failure, not simulated by the suite.
 
 ## Account authentication (new authority)
 
-`createRareAccountClient` exposes account operations without an RPC connection or
+`createRareClient` exposes account operations without an RPC connection or
 transaction wallet. All requests use one public API base URL. Rare API forwards
 `/auth/v2` login, device, refresh and revocation requests to the existing auth
 service; profile requests use `/v1/me`. Legacy SuperRare/Connect cookies and tokens
@@ -135,9 +149,9 @@ are not accepted by this client.
 Login verifies wallet ownership and stores credentials. It does not create a SuperRare account. Profile operations require an existing account and return `account_required` when signup is needed. Wallet signing operations remain independent of account login.
 
 ```ts
-import { createRareAccountClient } from '@rareprotocol/rare-sdk';
+import { createRareClient } from '@rareprotocol/rare-sdk';
 
-const account = createRareAccountClient(); // https://api.superrare.com
+const account = createRareClient(); // https://api.superrare.com
 const authorization = await account.auth.startDeviceAuthorization();
 // Display authorization.verificationUri and authorization.userCode, or open
 // authorization.verificationUriComplete in a browser using your application's UI.
@@ -150,7 +164,7 @@ await account.auth.logout();
 For the development environment, set only the API base:
 
 ```ts
-const account = createRareAccountClient({
+const account = createRareClient({
   apiBaseUrl: 'https://rare-api-devmainnet-784573620320.us-east1.run.app',
 });
 ```
@@ -374,7 +388,7 @@ const post = await rare.posts.get('123'); // Includes public likeCount.
 const comments = await rare.posts.comments('123', { page: 1, perPage: 20 });
 ```
 
-After authenticating with `createRareAccountClient`, use the account's identity for writes:
+After authenticating with `createRareClient`, use the account's identity for writes:
 
 ```ts
 const post = await account.posts.create({ title: 'Studio update', body: '**New work**', imageUrls: [] });
@@ -419,7 +433,7 @@ Run `npm run test:integration:drops` manually after deploying the new routes. Se
 ## Durable messaging
 
 Messaging uses the same account session and refresh lifecycle as profile operations.
-Call `createRareAccountClient`, sign in, then use `account.messaging`:
+Call `createRareClient`, sign in, then use `account.messaging`:
 
 ```ts
 const room = await account.messaging.createRoom({
@@ -476,10 +490,10 @@ Public auction, liquid-edition, and drop rooms use the same durable conversation
 system. Anonymous callers can resolve a room and read its history without joining:
 
 ```ts
-import { createRareApi } from '@rareprotocol/rare-sdk';
-const api = createRareApi({ baseUrl: 'https://api.superrare.com' });
-const room = await api.messaging.resolveRoom({ type: 'auction', id: auctionId });
-const page = await api.messaging.history(room.id, { limit: 50 });
+import { createRareClient } from '@rareprotocol/rare-sdk';
+const api = createRareClient({ apiBaseUrl: 'https://api.superrare.com' });
+const room = await api.messaging.public.resolveRoom({ type: 'auction', id: auctionId });
+const page = await api.messaging.public.history(room.id, { limit: 50 });
 const sent = await account.messaging.sendPublic(room.id, {
   clientMessageId: crypto.randomUUID(), body: 'Great artwork!', mentionUserIds: [],
 });
@@ -562,7 +576,7 @@ Feature methods keep the same request and response types. This client has no `au
 methods and never acquires or refreshes an SDK bearer session.
 
 ```ts
-const account = createRareAccountClient({
+const account = createRareClient({
   transport: (path, init) => fetch(`/api/rare${path}`, {
     ...init,
     credentials: 'same-origin',
@@ -582,7 +596,7 @@ JavaScript. Authenticated API errors retain the SDK's normal error handling.
 
 Signed storage uploads bypass this API transport and use the optional `fetch`
 implementation with `credentials: 'omit'`, without authentication headers.
-Without a transport, `createRareAccountClient` retains its existing bearer-token
+Without a transport, `createRareClient` retains its existing bearer-token
 login, session storage and refresh behavior.
 
 Third-party browser applications use that default bearer client independently of
@@ -609,3 +623,14 @@ For a disposable real Auth service backed by Redis, set
 loopback application pages and checks Auth's complete browser/session behavior;
 account profile reads still require the deployed Rare API and run in HTTPS mode.
 No browser CORS or address-space security settings are disabled.
+
+
+`createRareAccountClient` remains a deprecated compatibility wrapper. New callers
+should use `createRareClient`. `createRareApi` remains available as a lower-level
+HTTP adapter, but is not needed to combine public reads and authenticated writes.
+The resource namespaces combine both: `rare.posts.list/get/comments` are public,
+while `rare.posts.create/comment/delete/deleteComment` use account authentication;
+`rare.drops.list/get` are public, while `create/update/delete` authenticate.
+Anonymous chat resolution and history live under `rare.messaging.public`.
+Without a configured chain, NFT identity lookups require `chain` or `chainId`.
+Configured chain clients retain their existing chain-bound lookup signatures.

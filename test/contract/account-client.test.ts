@@ -3,7 +3,7 @@ import { once } from 'node:events';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { privateKeyToAccount } from 'viem/accounts';
 import { createSiweMessage } from 'viem/siwe';
-import { createRareAccountClient } from '../../src/sdk/account-client.js';
+import { createRareClient } from '../../src/sdk/client.js';
 import { createMemoryAccountSessionStore } from '../../src/sdk/account-session-store.js';
 import type { RareAccountSession, RareDeviceAuthorization } from '../../src/sdk/types/account.js';
 
@@ -38,7 +38,7 @@ const device = (extra: Partial<RareDeviceAuthorization> = {}): RareDeviceAuthori
   deviceCode: 'device-secret', userCode: 'ABCD-EFGH', verificationUri: `${origin}/device`,
   expiresAt: Date.now() + 600000, interval: 5, nextPollAt: Date.now() - 1, ...extra,
 });
-const client = (storage = createMemoryAccountSessionStore()) => createRareAccountClient({
+const client = (storage = createMemoryAccountSessionStore()) => createRareClient({
   apiBaseUrl: origin, clientId: 'rare-cli', sessionStore: storage,
 });
 
@@ -58,10 +58,10 @@ afterEach(async () => {
 describe('account authentication over HTTP', () => {
   it('defaults to the production API and rejects the removed separate auth URL', async () => {
     const storage = createMemoryAccountSessionStore();
-    await createRareAccountClient({ sessionStore: storage }).auth.clearSession();
+    await createRareClient({ sessionStore: storage }).auth.clearSession();
     expect(await storage.get()).toMatchObject({ apiBaseUrl: 'https://api.superrare.com', authBaseUrl: 'https://api.superrare.com/auth/v2' });
-    expect(() => createRareAccountClient({ apiBaseUrl: origin, ...{ authBaseUrl: 'https://auth.example/auth/v2' } })).toThrow('auth_url_not_supported');
-    expect(await createRareAccountClient().auth.getSession()).toBeNull();
+    expect(() => createRareClient({ apiBaseUrl: origin, ...{ authBaseUrl: 'https://auth.example/auth/v2' } })).toThrow('auth_url_not_supported');
+    expect(await createRareClient().auth.getSession()).toBeNull();
   });
 
   it('does not reuse a session issued by the old direct auth endpoint', async () => {

@@ -1,6 +1,7 @@
+import type { RareExternalApiClient } from '../src/sdk/types/client.js';
 import { describe, expect, expectTypeOf, it, vi } from 'vitest';
-import { createRareAccountClient } from '../src/sdk/account-client.js';
-import type { RareAccountFeatures, RareAccountTransport } from '../src/sdk/types/account.js';
+import { createRareClient } from '../src/sdk/client.js';
+import type { RareAccountTransport } from '../src/sdk/types/account.js';
 
 const profile = { accountId: '42', address: '0x1111111111111111111111111111111111111111', username: 'artist', email: null, profile: { fullName: null, bio: 'hello', avatar: null } };
 const response = (value: unknown) => Response.json(value);
@@ -8,8 +9,8 @@ const response = (value: unknown) => Response.json(value);
 describe('application-owned account transport', () => {
   it('dispatches feature requests without acquiring a bearer session or exposing auth methods', async () => {
     const transport = vi.fn<RareAccountTransport>(async () => response({ data: profile }));
-    const client = createRareAccountClient({ transport });
-    expectTypeOf(client).toEqualTypeOf<RareAccountFeatures>();
+    const client = createRareClient({ transport });
+    expectTypeOf(client).toEqualTypeOf<RareExternalApiClient>();
     expect('auth' in client).toBe(false);
     expect(await client.profile.get()).toEqual(profile);
     await client.profile.update({ profile: { bio: 'updated' } });
@@ -24,7 +25,7 @@ describe('application-owned account transport', () => {
 
   it('preserves binary messaging attachment responses and API errors', async () => {
     const transport = vi.fn(async () => new Response('image', { headers: { 'Content-Type': 'image/png' } }));
-    const client = createRareAccountClient({ transport });
+    const client = createRareClient({ transport });
     expect(await (await client.messaging.readImage('11111111-1111-4111-8111-111111111111')).text()).toBe('image');
     transport.mockImplementation(async () => Response.json({ error: 'authentication_required' }, { status: 401 }));
     await expect(client.profile.get()).rejects.toMatchObject({ code: 'authentication_required', status: 401 });
@@ -37,7 +38,7 @@ describe('application-owned account transport', () => {
       expect(init.signal?.aborted).toBe(true);
       throw new DOMException('Aborted', 'AbortError');
     });
-    await expect(createRareAccountClient({ transport }).following.follow({ username: 'artist' }, { signal: controller.signal })).rejects.toMatchObject({ code: 'cancelled' });
+    await expect(createRareClient({ transport }).following.follow({ username: 'artist' }, { signal: controller.signal })).rejects.toMatchObject({ code: 'cancelled' });
     expect(transport).toHaveBeenCalledTimes(1);
   });
 
@@ -51,7 +52,7 @@ describe('application-owned account transport', () => {
         : response({ access: 'public', key: 'a'.repeat(64), url: 'https://storage.googleapis.com/public/object', contentType: 'image/png', size: 3 });
     });
     const storageFetch = vi.fn<typeof fetch>(async () => new Response(null, { status: 200 }));
-    const client = createRareAccountClient({ transport, fetch: storageFetch });
+    const client = createRareClient({ transport, fetch: storageFetch });
     await client.uploads.upload(new Uint8Array([1, 2, 3]), 'image.png', { contentType: 'image/png' });
     expect(transport.mock.calls.map(([path]) => path)).toEqual(['/v1/uploads', `/v1/uploads/${id}/complete`]);
     expect(storageFetch).toHaveBeenCalledTimes(1);

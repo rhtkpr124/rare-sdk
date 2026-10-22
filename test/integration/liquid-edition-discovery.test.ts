@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createPublicClient, http } from 'viem';
 import { sepolia } from 'viem/chains';
 import { createRareClient } from '../../src/sdk/client.js';
-import { createRareApi, type LiquidEdition } from '../../src/sdk/api.js';
+import type { LiquidEdition } from '../../src/sdk/api.js';
 import { createApiClient, RareApiError } from '../../src/data-access/index.js';
 
 // Public dev editions verified on 2026-09-21. Missing/changed fixtures should
@@ -69,7 +69,7 @@ function expectEdition(edition: LiquidEdition, fixture: typeof editions[number])
 }
 
 describe.skipIf(process.env.RARE_API_INTEGRATION !== '1')('live liquid edition discovery (dev Sepolia fixtures)', () => {
-  const api = createRareApi({ baseUrl, fetch: fetchWithTimeout });
+  const api = createRareClient({ apiBaseUrl: baseUrl, apiFetch: fetchWithTimeout });
   const rare = createRareClient({
     // Discovery is HTTP-only; an RPC connection and wallet are not needed.
     publicClient: createPublicClient({ chain: sepolia, transport: http() }),
@@ -78,9 +78,9 @@ describe.skipIf(process.env.RARE_API_INTEGRATION !== '1')('live liquid edition d
   });
 
   for (const fixture of editions) {
-    it(`reads ${fixture.name} through standalone and chain-bound detail methods`, async () => {
+    it(`reads ${fixture.name} through RPC-free and chain-bound detail methods`, async () => {
       const [standalone, bound] = await Promise.all([
-        api.getLiquidEdition(`${sepolia.id}-${fixture.contract}`),
+        api.liquidEdition.get({ chainId: sepolia.id, contract: fixture.contract }),
         rare.liquidEdition.get({ contract: fixture.contract }),
       ]);
       expectEdition(standalone, fixture);
@@ -103,8 +103,8 @@ describe.skipIf(process.env.RARE_API_INTEGRATION !== '1')('live liquid edition d
     }, testTimeout);
   }
 
-  it('finds a known edition through standalone all-chain search', async () => {
-    const result = await api.searchLiquidEditions({ contractAddress: editions[0].contract });
+  it('finds a known edition through RPC-free all-chain search', async () => {
+    const result = await api.search.liquidEditions({ contractAddress: editions[0].contract });
     const edition = result.data.find((item) => item.id === `${sepolia.id}-${editions[0].contract}`);
     expect(edition).toBeDefined();
     expectEdition(edition!, editions[0]);
@@ -120,7 +120,7 @@ describe.skipIf(process.env.RARE_API_INTEGRATION !== '1')('live liquid edition d
   }, testTimeout);
 
   it('paginates an exact contract search without repeating the first result', async () => {
-    const result = await api.searchLiquidEditions({
+    const result = await api.search.liquidEditions({
       chainId: sepolia.id, contractAddress: editions[0].contract, page: 2, perPage: 1,
     });
     expect(result.data).toEqual([]);
@@ -156,13 +156,13 @@ describe.skipIf(process.env.RARE_API_INTEGRATION !== '1')('live liquid edition d
   );
 
   it('preserves a real validation error for contradictory price filters', async () => {
-    await expect(api.searchLiquidEditions({ hasCurrentPrice: false, sortBy: 'priceAsc' }))
+    await expect(api.search.liquidEditions({ hasCurrentPrice: false, sortBy: 'priceAsc' }))
       .rejects.toMatchObject({ name: 'RareApiError', status: 400, path: '/v1/liquid-editions' });
   }, testTimeout);
 
   it('preserves a real missing-edition error', async () => {
     const id = `${sepolia.id}-0x0000000000000000000000000000000000000000`;
-    await expect(api.getLiquidEdition(id)).rejects.toMatchObject({
+    await expect(api.liquidEdition.get({ chainId: sepolia.id, contract: '0x0000000000000000000000000000000000000000' })).rejects.toMatchObject({
       name: RareApiError.name, status: 404, path: `/v1/liquid-editions/${id}`,
     });
   }, testTimeout);

@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
 import { privateKeyToAccount } from 'viem/accounts';
 import { describe, expect, it } from 'vitest';
-import { createRareAccountClient } from '../../src/sdk/account-client.js';
+import { createRareClient } from '../../src/sdk/client.js';
 import type { RareNotification, RareAccountClient } from '../../src/sdk/index.js';
 import { isPrivateKeyString } from '../../src/sdk/validation.js';
 
@@ -28,7 +28,7 @@ describe('notification inbox and real deployed message delivery', () => {
     if (url.protocol !== 'https:' || url.hostname === 'api.superrare.com' || url.pathname !== '/' || url.search || url.hash || url.username || url.password) throw new Error('Use a non-production HTTPS API origin');
     const ownerSigner = signer('RARE_ACCOUNT_TEST_PRIVATE_KEY'); const recipientSigner = signer('RARE_ACCOUNT_TEST_SECOND_PRIVATE_KEY');
     expect(ownerSigner.address.toLowerCase()).not.toBe(recipientSigner.address.toLowerCase());
-    const owner = createRareAccountClient({ apiBaseUrl: url.origin }); const recipient = createRareAccountClient({ apiBaseUrl: url.origin });
+    const owner = createRareClient({ apiBaseUrl: url.origin }); const recipient = createRareClient({ apiBaseUrl: url.origin });
     expect((await fetch(`${url.origin}/v1/me/notifications`)).status, 'Deploy the notification inbox routes before running this suite').toBe(401);
     try {
       const ownerSession = await owner.auth.loginWithWallet({ address: ownerSigner.address, chainId: 1, signMessage: message => ownerSigner.signMessage({ message }) });

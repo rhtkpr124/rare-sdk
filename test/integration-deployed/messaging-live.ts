@@ -1,7 +1,7 @@
 import { setTimeout as delay } from 'node:timers/promises';
 import { RareAuthError } from '../../src/sdk/account-auth-core.js';
 import { privateKeyToAccount } from 'viem/accounts';
-import { createRareAccountClient } from '../../src/sdk/account-client.js';
+import { createRareClient } from '../../src/sdk/client.js';
 import { isPrivateKeyString } from '../../src/sdk/validation.js';
 
 export const required = (name: string): string => {
@@ -21,7 +21,7 @@ export const loginMessagingActor = async (name: string) => {
   const key = required(name);
   if (!isPrivateKeyString(key)) throw new Error(`Invalid ${name}`);
   const wallet = privateKeyToAccount(key);
-  const account = createRareAccountClient({ apiBaseUrl: messagingOrigin() });
+  const account = createRareClient({ apiBaseUrl: messagingOrigin() });
   await account.auth.loginWithWallet({ address: wallet.address, chainId: 1, signMessage: message => wallet.signMessage({ message }) });
   try {
     const session = await account.messaging.session();

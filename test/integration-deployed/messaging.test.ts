@@ -1,8 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { privateKeyToAccount } from 'viem/accounts';
-import { createRareAccountClient } from '../../src/sdk/account-client.js';
-import { createRareApi } from '../../src/sdk/api.js';
+import { createRareClient } from '../../src/sdk/client.js';
 import { isPrivateKeyString } from '../../src/sdk/validation.js';
 const required = (name: string): string => { const value = process.env[name]; if (!value) throw new Error(`Missing ${name}`); return value; };
 const signer = (name: string) => { const value = required(name); if (!isPrivateKeyString(value)) throw new Error(`Invalid ${name}`); return privateKeyToAccount(value); };
@@ -11,8 +10,8 @@ const origin = () => { const url = new URL(required('RARE_ACCOUNT_TEST_API_URL')
 describe('durable messaging against deployed services', () => {
   it('uses account bearer sessions, protects private rooms, and round-trips messages, replies, reactions, changes and membership', async () => {
     const apiBaseUrl = origin();
-    const owner = createRareAccountClient({ apiBaseUrl });
-    const other = createRareAccountClient({ apiBaseUrl });
+    const owner = createRareClient({ apiBaseUrl });
+    const other = createRareClient({ apiBaseUrl });
     const ownerSigner = signer('RARE_ACCOUNT_TEST_PRIVATE_KEY');
     const otherSigner = signer('RARE_ACCOUNT_TEST_SECOND_PRIVATE_KEY');
     expect(ownerSigner.address.toLowerCase()).not.toBe(otherSigner.address.toLowerCase());
@@ -28,8 +27,8 @@ describe('durable messaging against deployed services', () => {
         expect((await owner.messaging.createRoom({ ...roomInput, inviteeUserIds: [] })).id).toBe(room.id);
         expect((await owner.messaging.inbox({ search: room.title })).conversations.some(row => row.id === room.id)).toBe(true);
         await expect(other.messaging.history(room.id)).rejects.toMatchObject({ status: 404 });
-        const publicApi = createRareApi({ baseUrl: apiBaseUrl });
-        await expect(publicApi.messaging.history(room.id)).rejects.toMatchObject({ status: 404 });
+        const publicApi = createRareClient({ apiBaseUrl: apiBaseUrl });
+        await expect(publicApi.messaging.public.history(room.id)).rejects.toMatchObject({ status: 404 });
         const anonymous = await fetch(`${apiBaseUrl}/v1/messaging/conversations/${room.id}`); expect(anonymous.status).toBe(401);
         const forged = await fetch(`${apiBaseUrl}/v1/messaging/conversations/${room.id}/commands`, { method: 'POST', headers: { Authorization: `Bearer ${ownerSession.accessToken}`, 'Content-Type': 'application/json', 'x-messaging-request': '1', 'x-messaging-actor': recipient.user.id }, body: JSON.stringify({ action: 'leave' }) }); expect(forged.status).toBe(409);
         const input = { clientMessageId: randomUUID(), body: 'Live SDK durable message', attachmentIds: [], mentionUserIds: [] };

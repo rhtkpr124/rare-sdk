@@ -3,8 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { isPrivateKeyString } from '../../src/sdk/validation.js';
 import { privateKeyToAccount } from 'viem/accounts';
 import { describe, expect, it } from 'vitest';
-import { createRareAccountClient } from '../../src/sdk/account-client.js';
-import { createRareApi } from '../../src/sdk/api.js';
+import { createRareClient } from '../../src/sdk/client.js';
 
 const required = (name: string): string => { const value = process.env[name]; if (!value) throw new Error(`Missing ${name}`); return value; };
 const wallet = (name: string) => { const key = required(name); if (!isPrivateKeyString(key)) throw new Error(`Invalid ${name}`); return privateKeyToAccount(key); };
@@ -24,9 +23,9 @@ describe('creator posts against deployed services', () => {
     const ownerWallet = wallet('RARE_ACCOUNT_TEST_PRIVATE_KEY');
     const otherWallet = wallet('RARE_ACCOUNT_TEST_SECOND_PRIVATE_KEY');
     expect(ownerWallet.address.toLowerCase()).not.toBe(otherWallet.address.toLowerCase());
-    const owner = createRareAccountClient({ apiBaseUrl });
-    const other = createRareAccountClient({ apiBaseUrl });
-    const api = createRareApi({ baseUrl: apiBaseUrl });
+    const owner = createRareClient({ apiBaseUrl });
+    const other = createRareClient({ apiBaseUrl });
+    const api = createRareClient({ apiBaseUrl: apiBaseUrl });
     try {
     for (const [account, signer] of [[owner, ownerWallet], [other, otherWallet]] as const) await account.auth.loginWithWallet({ address: signer.address, chainId: 1, signMessage: message => signer.signMessage({ message }) });
     const profile = await owner.profile.get();
@@ -35,29 +34,29 @@ describe('creator posts against deployed services', () => {
     const post = await owner.posts.create(postInput);
     try {
       expect(post.creatorUserId).toBe(profile.accountId);
-      expect(await api.getPost(post.id)).toMatchObject({ ...postInput, creatorUserId: profile.accountId });
+      expect(await api.posts.get(post.id)).toMatchObject({ ...postInput, creatorUserId: profile.accountId });
       for (const selector of [{ address: ownerWallet.address }, { username: profile.username }, { userId: Number(profile.accountId) }]) {
-        const page = await api.getPosts(selector, { perPage: 100 });
+        const page = await api.posts.list(selector, { perPage: 100 });
         expect(page.data.find(row => row.id === post.id)).toMatchObject({ ...postInput, creatorUserId: profile.accountId }); noEmail(page);
       }
       const comment = await other.posts.comment(post.id, 'A public comment');
-      const comments = await api.getPostComments(post.id);
+      const comments = await api.posts.comments(post.id);
       expect(comments.data.find(row => row.id === comment.id)).toMatchObject({ postId: post.id, body: 'A public comment', authorUserId: (await other.profile.get()).accountId }); noEmail(comments);
       await Promise.all([other.postFavorites.add(post.id), other.postFavorites.add(post.id)]);
       expect(await other.postFavorites.has(post.id)).toBe(true);
       expect(await owner.postFavorites.has(post.id)).toBe(false);
-      expect((await api.getPost(post.id)).likeCount).toBe(1);
+      expect((await api.posts.get(post.id)).likeCount).toBe(1);
       expect((await other.postFavorites.list()).data.some(row => row.id === post.id)).toBe(true);
       await other.postFavorites.remove(post.id);
       await other.postFavorites.remove(post.id);
       expect(await other.postFavorites.list()).toEqual(before);
       expect(await other.postFavorites.has(post.id)).toBe(false);
-      expect((await api.getPost(post.id)).likeCount).toBe(0);
+      expect((await api.posts.get(post.id)).likeCount).toBe(0);
       await other.posts.deleteComment(post.id, comment.id);
-      expect((await api.getPostComments(post.id)).data).toEqual([]);
+      expect((await api.posts.comments(post.id)).data).toEqual([]);
     } finally { await owner.posts.delete(post.id); }
-    await expect(api.getPost(post.id)).rejects.toMatchObject({ status: 404 });
-    await expect(api.getPostComments(post.id)).rejects.toMatchObject({ status: 404 });
+    await expect(api.posts.get(post.id)).rejects.toMatchObject({ status: 404 });
+    await expect(api.posts.comments(post.id)).rejects.toMatchObject({ status: 404 });
     } finally { await Promise.all([owner.auth.logout(), other.auth.logout()]); }
   }, 180_000);
 
@@ -65,8 +64,8 @@ describe('creator posts against deployed services', () => {
     const apiBaseUrl = origin();
     const ownerWallet = wallet('RARE_ACCOUNT_TEST_PRIVATE_KEY');
     const otherWallet = wallet('RARE_ACCOUNT_TEST_SECOND_PRIVATE_KEY');
-    const owner = createRareAccountClient({ apiBaseUrl });
-    const other = createRareAccountClient({ apiBaseUrl });
+    const owner = createRareClient({ apiBaseUrl });
+    const other = createRareClient({ apiBaseUrl });
     try {
     const ownerSession = await owner.auth.loginWithWallet({ address: ownerWallet.address, chainId: 1, signMessage: message => ownerWallet.signMessage({ message }) });
     const otherSession = await other.auth.loginWithWallet({ address: otherWallet.address, chainId: 1, signMessage: message => otherWallet.signMessage({ message }) });
@@ -97,8 +96,8 @@ describe('creator post images and pagination against deployed services', () => {
   it('round-trips an uploaded image and traverses posts, comments and favorites without missing or repeating records', async () => {
     const apiBaseUrl = origin();
     const signer = wallet('RARE_ACCOUNT_TEST_PRIVATE_KEY');
-    const account = createRareAccountClient({ apiBaseUrl });
-    const api = createRareApi({ baseUrl: apiBaseUrl });
+    const account = createRareClient({ apiBaseUrl });
+    const api = createRareClient({ apiBaseUrl: apiBaseUrl });
     const postIds: string[] = [];
     const commentIds: string[] = [];
     const gif = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
@@ -115,7 +114,7 @@ describe('creator post images and pagination against deployed services', () => {
         const post = await account.posts.create({ title: `Image pagination ${Date.now()} ${index}`, body: 'Live pagination fixture', imageUrls: [upload.url] });
         // eslint-disable-next-line functional/immutable-data
         postIds.push(post.id);
-        expect((await api.getPost(post.id)).imageUrls).toEqual([upload.url]);
+        expect((await api.posts.get(post.id)).imageUrls).toEqual([upload.url]);
         await account.postFavorites.add(post.id);
       }
       const firstPostId = postIds[0];
@@ -139,8 +138,8 @@ describe('creator post images and pagination against deployed services', () => {
         expect(beyond.data).toEqual([]);
         expect(beyond.pagination.totalCount).toBe(first.pagination.totalCount);
       };
-      await verifyPages(page => api.getPosts({ userId: Number(profile.accountId) }, { page, perPage: 2 }), postIds);
-      await verifyPages(page => api.getPostComments(firstPostId, { page, perPage: 2 }), commentIds);
+      await verifyPages(page => api.posts.list({ userId: Number(profile.accountId) }, { page, perPage: 2 }), postIds);
+      await verifyPages(page => api.posts.comments(firstPostId, { page, perPage: 2 }), commentIds);
       await verifyPages(page => account.postFavorites.list({ page, perPage: 2 }), postIds);
     } finally {
       for (const id of postIds) {
@@ -162,9 +161,9 @@ describe('creator post images and pagination against deployed services', () => {
 describe('threaded post replies against deployed services', () => {
   it('retrieves saved replies, verifies cursor pages and counts, and cascades root deletion', async () => {
     const apiBaseUrl = origin();
-    const owner = createRareAccountClient({ apiBaseUrl });
-    const other = createRareAccountClient({ apiBaseUrl });
-    const api = createRareApi({ baseUrl: apiBaseUrl });
+    const owner = createRareClient({ apiBaseUrl });
+    const other = createRareClient({ apiBaseUrl });
+    const api = createRareClient({ apiBaseUrl: apiBaseUrl });
     try {
       for (const [account, name] of [[owner, 'RARE_ACCOUNT_TEST_PRIVATE_KEY'], [other, 'RARE_ACCOUNT_TEST_SECOND_PRIVATE_KEY']] as const) {
         const signer = wallet(name);
@@ -178,26 +177,26 @@ describe('threaded post replies against deployed services', () => {
         const second = await owner.posts.comment(post.id, 'Second reply', { parentCommentId: root.id });
         const third = await owner.posts.comment(post.id, 'Third reply', { parentCommentId: root.id });
         expect(first).toMatchObject({ parentCommentId: root.id, replyCount: 0 });
-        expect((await api.getPost(post.id)).commentCount).toBe(5);
-        const roots = await api.getPostComments(post.id);
+        expect((await api.posts.get(post.id)).commentCount).toBe(5);
+        const roots = await api.posts.comments(post.id);
         expect(roots.data).toMatchObject([{ id: root.id, parentCommentId: null, replyCount: 3 }, { id: secondRoot.id, replyCount: 0 }]);
         expect(roots.pagination.totalCount).toBe(2);
-        const page = await api.getPostComments(post.id, { parentCommentId: root.id, perPage: 2 });
+        const page = await api.posts.comments(post.id, { parentCommentId: root.id, perPage: 2 });
         expect(page.data.map(row => row.id)).toEqual([first.id, second.id]);
         expect(page.pagination.totalCount).toBe(3);
         expect(page.nextCursor).toBe(second.id);
-        const last = await api.getPostComments(post.id, { parentCommentId: root.id, afterCommentId: second.id, perPage: 2 });
+        const last = await api.posts.comments(post.id, { parentCommentId: root.id, afterCommentId: second.id, perPage: 2 });
         expect(last.data.map(row => row.id)).toEqual([third.id]);
         expect(last.nextCursor).toBeNull();
         await expect(owner.posts.comment(post.id, 'Nested', { parentCommentId: first.id })).rejects.toMatchObject({ status: 404 });
         await expect(owner.posts.deleteComment(post.id, root.id)).rejects.toMatchObject({ status: 403 });
         await owner.posts.deleteComment(post.id, second.id);
-        expect((await api.getPostComments(post.id)).data[0]?.replyCount).toBe(2);
-        expect((await api.getPostComments(post.id, { parentCommentId: root.id, afterCommentId: second.id, perPage: 2 })).data.map(row => row.id)).toEqual([third.id]);
+        expect((await api.posts.comments(post.id)).data[0]?.replyCount).toBe(2);
+        expect((await api.posts.comments(post.id, { parentCommentId: root.id, afterCommentId: second.id, perPage: 2 })).data.map(row => row.id)).toEqual([third.id]);
         await other.posts.deleteComment(post.id, root.id);
-        expect((await api.getPost(post.id)).commentCount).toBe(1);
-        expect((await api.getPostComments(post.id)).data.map(row => row.id)).toEqual([secondRoot.id]);
-        await expect(api.getPostComments(post.id, { parentCommentId: root.id })).rejects.toMatchObject({ status: 404 });
+        expect((await api.posts.get(post.id)).commentCount).toBe(1);
+        expect((await api.posts.comments(post.id)).data.map(row => row.id)).toEqual([secondRoot.id]);
+        await expect(api.posts.comments(post.id, { parentCommentId: root.id })).rejects.toMatchObject({ status: 404 });
       } finally { await owner.posts.delete(post.id); }
     } finally { await owner.auth.logout(); await other.auth.logout(); }
   }, 180_000);

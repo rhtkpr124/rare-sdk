@@ -1,7 +1,6 @@
 import { privateKeyToAccount } from 'viem/accounts';
 import { describe, expect, it } from 'vitest';
-import { createRareAccountClient } from '../../src/sdk/account-client.js';
-import { createRareApi } from '../../src/sdk/api.js';
+import { createRareClient } from '../../src/sdk/client.js';
 import { isPrivateKeyString } from '../../src/sdk/validation.js';
 const required = (name: string): string => { const value = process.env[name]; if (!value) throw new Error(`Missing ${name}`); return value; };
 const signer = (name: string) => { const value = required(name); if (!isPrivateKeyString(value)) throw new Error(`Invalid ${name}`); return privateKeyToAccount(value); };
@@ -18,8 +17,8 @@ describe('drops against deployed services', () => {
   it('uploads, creates, publicly lists by each selector, patches and deletes an owned announcement', async () => {
     const apiBaseUrl = apiOrigin();
     const wallet = signer('RARE_ACCOUNT_TEST_PRIVATE_KEY');
-    const account = createRareAccountClient({ apiBaseUrl });
-    const publicApi = createRareApi({ baseUrl: apiBaseUrl });
+    const account = createRareClient({ apiBaseUrl });
+    const publicApi = createRareClient({ apiBaseUrl: apiBaseUrl });
     try {
       await account.auth.loginWithWallet({ address: wallet.address, chainId: 11155111, signMessage: message => wallet.signMessage({ message }) });
       const profile = await account.profile.get();
@@ -30,9 +29,9 @@ describe('drops against deployed services', () => {
       try {
         expect(drop.userId).toBe(profile.accountId);
         expect(drop.metadata.imageObjectKey).toBe(upload.key);
-        expect(await publicApi.getDrop(drop.id)).toEqual(drop);
+        expect(await publicApi.drops.get(drop.id)).toEqual(drop);
         for (const user of [{ address: wallet.address }, { username: profile.username }, { userId: Number(profile.accountId) }]) {
-          const page = await publicApi.getDrops({ from: new Date(Date.parse(startsAt) - 1000).toISOString(), to: new Date(Date.parse(startsAt) + 1000).toISOString(), user, perPage: 100 });
+          const page = await publicApi.drops.list({ from: new Date(Date.parse(startsAt) - 1000).toISOString(), to: new Date(Date.parse(startsAt) + 1000).toISOString(), user, perPage: 100 });
           expect(page.data.some(row => row.id === drop.id)).toBe(true);
           expect(page.pagination.totalCount).toBeGreaterThanOrEqual(1); noEmail(page);
         }
@@ -41,21 +40,21 @@ describe('drops against deployed services', () => {
         expect(updated.metadata.imageUrl).toBe(upload.url);
         expect(updated.metadata.slug).toBe(drop.metadata.slug);
         expect(updated.startsAt).toBe(drop.startsAt);
-        const persisted = await publicApi.getDrop(drop.id);
+        const persisted = await publicApi.drops.get(drop.id);
         expect(persisted).toMatchObject({ id: drop.id, userId: profile.accountId, type: drop.type, startsAt, metadata: { ...drop.metadata, headline: 'Updated by SDK' } });
         expect(Date.parse(persisted.updatedAt)).toBeGreaterThanOrEqual(Date.parse(drop.updatedAt));
-        const calendar = await publicApi.getDrops({ from: new Date(Date.parse(startsAt) - 1000).toISOString(), to: new Date(Date.parse(startsAt) + 1000).toISOString(), user: { userId: Number(profile.accountId) }, perPage: 100 });
+        const calendar = await publicApi.drops.list({ from: new Date(Date.parse(startsAt) - 1000).toISOString(), to: new Date(Date.parse(startsAt) + 1000).toISOString(), user: { userId: Number(profile.accountId) }, perPage: 100 });
         expect(calendar.data.find(row => row.id === drop.id)).toEqual(persisted);
         noEmail(persisted);
       } finally { await account.drops.delete(drop.id); }
-      await expect(publicApi.getDrop(drop.id)).rejects.toMatchObject({ status: 404 });
+      await expect(publicApi.drops.get(drop.id)).rejects.toMatchObject({ status: 404 });
     } finally { await account.auth.logout(); }
   }, 180_000);
   it('rejects another account’s edits/deletes, forged actors, flags and foreign image URLs', async () => {
     const apiBaseUrl = apiOrigin();
     const ownerWallet = signer('RARE_ACCOUNT_TEST_PRIVATE_KEY'); const otherWallet = signer('RARE_ACCOUNT_TEST_SECOND_PRIVATE_KEY');
     expect(ownerWallet.address.toLowerCase()).not.toBe(otherWallet.address.toLowerCase());
-    const owner = createRareAccountClient({ apiBaseUrl }); const other = createRareAccountClient({ apiBaseUrl });
+    const owner = createRareClient({ apiBaseUrl }); const other = createRareClient({ apiBaseUrl });
     try {
       for (const [account, wallet] of [[owner, ownerWallet], [other, otherWallet]] as const) await account.auth.loginWithWallet({ address: wallet.address, chainId: 11155111, signMessage: message => wallet.signMessage({ message }) });
       const upload = await owner.uploads.upload(Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64'), 'drop.gif', { contentType: 'image/gif' });
@@ -70,7 +69,7 @@ describe('drops against deployed services', () => {
           expect(response.status).toBe(400);
         }
         await expect(owner.drops.create({ ...input, metadata: { ...input.metadata, imageUrl: 'https://example.com/untrusted.png' } })).rejects.toMatchObject({ status: 400 });
-        const publicApi = createRareApi({ baseUrl: apiBaseUrl }); expect((await publicApi.getDrop(drop.id)).metadata.headline).toBe(input.metadata.headline);
+        const publicApi = createRareClient({ apiBaseUrl: apiBaseUrl }); expect((await publicApi.drops.get(drop.id)).metadata.headline).toBe(input.metadata.headline);
         for (const method of ['PATCH', 'DELETE']) {
           const response = await fetch(`${apiBaseUrl}/v1/drops/${drop.id}`, { method, headers: { 'Content-Type': 'application/json' }, ...(method === 'PATCH' ? { body: JSON.stringify({ metadata: { headline: 'Unauthenticated' } }) } : {}) });
           expect(response.status).toBe(401);
@@ -82,7 +81,7 @@ describe('drops against deployed services', () => {
     // This dedicated test account must not be an approved mainnet artist.
     const apiBaseUrl = apiOrigin();
     const wallet = signer('RARE_ACCOUNT_TEST_PRIVATE_KEY');
-    const account = createRareAccountClient({ apiBaseUrl });
+    const account = createRareClient({ apiBaseUrl });
     try {
       await account.auth.loginWithWallet({ address: wallet.address, chainId: 11155111, signMessage: message => wallet.signMessage({ message }) });
       const upload = await account.uploads.upload(Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64'), 'drop.gif', { contentType: 'image/gif' });

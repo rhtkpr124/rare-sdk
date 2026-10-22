@@ -4,7 +4,7 @@ import { privateKeyToAccount } from 'viem/accounts';
 import { describe, expect, it } from 'vitest';
 import { parseUploadSession } from '../../src/sdk/upload-core.js';
 import { isPrivateKeyString } from '../../src/sdk/validation.js';
-import { createRareAccountClient } from '../../src/sdk/account-client.js';
+import { createRareClient } from '../../src/sdk/client.js';
 
 const deployedAccount = () => {
   const api = process.env.RARE_ACCOUNT_TEST_API_URL;
@@ -13,7 +13,7 @@ const deployedAccount = () => {
   const origin = new URL(api);
   if (origin.protocol !== 'https:' || origin.pathname !== '/' || origin.search || origin.hash || origin.username || origin.password || origin.hostname === 'api.superrare.com') throw new Error('Use a dev feature API origin');
   const wallet = privateKeyToAccount(secret as `0x${string}`);
-  return { api: origin.origin, wallet, client: createRareAccountClient({ apiBaseUrl: origin.origin }) };
+  return { api: origin.origin, wallet, client: createRareClient({ apiBaseUrl: origin.origin }) };
 };
 
 const objectKey = (bytes: Uint8Array) => createHash('sha256').update(bytes).digest('hex');
@@ -97,7 +97,7 @@ describe('uploads through deployed API and real GCS', () => {
       const input: unknown = await started.json(); const pending = parseUploadSession(input);
       const otherKey = process.env.RARE_ACCOUNT_TEST_SECOND_PRIVATE_KEY;
       if (!otherKey || !isPrivateKeyString(otherKey)) throw new Error('Configure the second existing account wallet');
-      const otherWallet = privateKeyToAccount(otherKey); const other = createRareAccountClient({ apiBaseUrl: api });
+      const otherWallet = privateKeyToAccount(otherKey); const other = createRareClient({ apiBaseUrl: api });
       const complete = (authorization?: string) => fetch(`${api}/v1/uploads/${pending.id}/complete`, { method: 'POST', headers: authorization ? { authorization } : {} });
       try {
         const otherSession = await other.auth.loginWithWallet({ address: otherWallet.address, chainId: 1, signMessage: message => otherWallet.signMessage({ message }) });

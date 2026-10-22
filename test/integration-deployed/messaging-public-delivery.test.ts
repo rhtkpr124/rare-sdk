@@ -3,8 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
 import { privateKeyToAccount } from 'viem/accounts';
 import { describe, expect, it } from 'vitest';
-import { createRareAccountClient } from '../../src/sdk/account-client.js';
-import { createRareApi } from '../../src/sdk/api.js';
+import { createRareClient } from '../../src/sdk/client.js';
 import { parseMessagingPublicContext } from '../../src/sdk/messaging-core.js';
 import { isPrivateKeyString } from '../../src/sdk/validation.js';
 import type { RareNotification } from '../../src/sdk/types/notifications.js';
@@ -33,7 +32,7 @@ const stableNotifications = async (actor: MessagingActor, room: string, ids: rea
 describe('public room notification delivery and trusted system messages', () => {
   it.each(['auction', 'liquid-edition', 'drop-announcement'])('delivers %s subscriptions and verifies the persisted public thread', async type => {
     const apiBaseUrl = messagingOrigin();
-    const api = createRareApi({ baseUrl: apiBaseUrl });
+    const api = createRareClient({ apiBaseUrl: apiBaseUrl });
     const rawContexts: unknown = JSON.parse(required('RARE_MESSAGING_TEST_PUBLIC_CONTEXTS'));
     if (!Array.isArray(rawContexts)) throw new Error('Provide all three deployed room contexts');
     const fixture = rawContexts.map(parseMessagingPublicContext).find(context => context.type === type);
@@ -41,7 +40,7 @@ describe('public room notification delivery and trusted system messages', () => 
     const creatorKey = required('RARE_ACCOUNT_TEST_PRIVATE_KEY');
     if (!isPrivateKeyString(creatorKey)) throw new Error('Invalid dedicated creator key');
     const creatorWallet = privateKeyToAccount(creatorKey);
-    const creator = createRareAccountClient({ apiBaseUrl });
+    const creator = createRareClient({ apiBaseUrl });
     try {
       // Give system-message fixtures their own announcement instead of leaving
       // durable synthetic events on an existing auction or edition's history.
@@ -51,7 +50,7 @@ describe('public room notification delivery and trusted system messages', () => 
         return creator.drops.create({ type: 'NONE', startsAt: new Date(Date.now() + 86400000).toISOString(), metadata: { headline: `SDK public delivery ${randomUUID()}`, description: 'Temporary live notification fixture', destinationUrl: '', imageUrl: image.url } });
       })() : null;
       try {
-        const room = await api.messaging.resolveRoom(drop === null ? fixture : { type: 'drop-announcement', id: drop.id });
+        const room = await api.messaging.public.resolveRoom(drop === null ? fixture : { type: 'drop-announcement', id: drop.id });
         await withMessagingActors(async (owner, recipient) => {
           const sent: { actor: MessagingActor; id: string }[] = [];
           const send = async (actor: MessagingActor, body: string, mentionUserIds: string[] = []) => {
@@ -59,7 +58,7 @@ describe('public room notification delivery and trusted system messages', () => 
             const message = await retryPublicSend(() => actor.account.messaging.sendPublic(room.id, input));
             // eslint-disable-next-line functional/immutable-data
             sent.push({ actor, id: message.id });
-            expect((await api.messaging.history(room.id)).messages.find(row => row.id === message.id)).toMatchObject({ body, type: 'user', author: { id: actor.user.id } });
+            expect((await api.messaging.public.history(room.id)).messages.find(row => row.id === message.id)).toMatchObject({ body, type: 'user', author: { id: actor.user.id } });
             return { message, input };
           };
           try {
@@ -71,7 +70,7 @@ describe('public room notification delivery and trusted system messages', () => 
             expect((await recipient.account.messaging.inbox()).conversations.find(row => row.id === room.id)?.notification).toBe('all');
             // Rejoining preserves the old read cursor. Read through fixture setup
             // so a delayed join message cannot masquerade as a duplicate notice.
-            await recipient.account.messaging.command(room.id, { action: 'read', sequence: (await api.messaging.history(room.id)).room.latestSequence });
+            await recipient.account.messaging.command(room.id, { action: 'read', sequence: (await api.messaging.public.history(room.id)).room.latestSequence });
             const before = (await notifications(recipient, room.id)).map(row => row.id);
             const ordinary = await send(owner, `SDK public delivery ${randomUUID()}`);
             await retryPublicSend(() => owner.account.messaging.sendPublic(room.id, ordinary.input));
@@ -115,11 +114,11 @@ describe('public room notification delivery and trusted system messages', () => 
               if (!session) throw new Error('Missing owner session');
               for (const token of [undefined, 'forged']) expect([401, 404]).toContain((await append(token)).status);
               expect((await append(session.accessToken)).status).toBe(404);
-              expect((await api.messaging.history(room.id)).messages.some(row => row.type === 'system' && row.system.sourceId === system.sourceId)).toBe(false);
+              expect((await api.messaging.public.history(room.id)).messages.some(row => row.type === 'system' && row.system.sourceId === system.sourceId)).toBe(false);
               const stored = await appendSystemFixture(room.context, system);
               expect((await appendSystemFixture(room.context, system)).id).toBe(stored.id);
               await expect(appendSystemFixture(room.context, { ...system, summary: 'Conflicting producer payload' })).rejects.toThrow('reused');
-              const thread = await api.messaging.history(room.id);
+              const thread = await api.messaging.public.history(room.id);
               expect(thread.messages.filter(row => row.id === stored.id)).toHaveLength(1);
               expect(thread.messages.find(row => row.id === stored.id)).toMatchObject({ type: 'system', author: null, body: system.summary, system });
               const systemNotice = await delivered(recipient, room.id, systemBefore);
@@ -127,11 +126,11 @@ describe('public room notification delivery and trusted system messages', () => 
               for (const action of [{ action: 'edit', body: 'Forged edit' }, { action: 'delete' }] as const) {
                 await expect(owner.account.messaging.messageCommand(room.id, stored.id, action)).rejects.toMatchObject({ status: 404 });
               }
-              expect((await api.messaging.history(room.id)).messages.find(row => row.id === stored.id)).toMatchObject({ body: system.summary, system });
+              expect((await api.messaging.public.history(room.id)).messages.find(row => row.id === stored.id)).toMatchObject({ body: system.summary, system });
             }
           } finally {
             for (const message of sent) await message.actor.account.messaging.messageCommand(room.id, message.id, { action: 'delete' });
-            const thread = await api.messaging.history(room.id);
+            const thread = await api.messaging.public.history(room.id);
             for (const message of sent) expect(thread.messages.some(row => row.id === message.id)).toBe(false);
             for (const actor of [owner, recipient]) {
               await actor.account.messaging.command(room.id, { action: 'leave' });

@@ -11,7 +11,7 @@ export type NftIdentityParams = {
 }
 
 export function buildNftUniversalTokenId(params: NftIdentityParams): string {
-  const chainId = resolveNftChainId(params);
+  const chainId = resolveIdentityChainId(params);
   const tokenId = toInteger(params.tokenId, 'tokenId');
   if (tokenId < 0n) {
     throw new Error('tokenId must be greater than or equal to 0.');
@@ -20,7 +20,7 @@ export function buildNftUniversalTokenId(params: NftIdentityParams): string {
   return `${chainId.toString()}-${getAddress(params.contract)}-${tokenId.toString()}`;
 }
 
-function resolveNftChainId(params: NftIdentityParams): bigint {
+export function resolveIdentityChainId(params: Pick<NftIdentityParams, 'chain' | 'chainId'>): bigint {
   if (params.chainId !== undefined) {
     const chainId = toInteger(params.chainId, 'chainId');
     if (chainId <= 0n) {
