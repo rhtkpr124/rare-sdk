@@ -35,7 +35,6 @@ describe('public SDK API surface', () => {
       'createMemoryAccountSessionStore',
       'createRareApi',
       'createRareClient',
-      'createRareUploader',
     ]);
     expect(client.cartFulfillmentKinds).toEqual({
       none: 0,
