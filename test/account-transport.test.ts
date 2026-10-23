@@ -53,7 +53,7 @@ describe('application-owned account transport', () => {
     });
     const storageFetch = vi.fn<typeof fetch>(async () => new Response(null, { status: 200 }));
     const client = createRareClient({ transport, apiFetch: storageFetch });
-    await client.uploads.upload(new Uint8Array([1, 2, 3]), 'image.png', { contentType: 'image/png' });
+    await client.upload(new Uint8Array([1, 2, 3]), 'image.png', { contentType: 'image/png' });
     expect(transport.mock.calls.map(([path]) => path)).toEqual(['/v1/uploads', `/v1/uploads/${id}/complete`]);
     expect(storageFetch).toHaveBeenCalledTimes(1);
     expect(storageFetch).toHaveBeenCalledWith(uploadUrl, expect.objectContaining({ method: 'PUT', credentials: 'omit', redirect: 'error' }));

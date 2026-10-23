@@ -72,7 +72,7 @@ describe('consistent feature errors', () => {
       if (url.endsWith('/complete')) return Response.json({ access: 'public', key: 'a'.repeat(64), url: 'https://storage.googleapis.com/public/object', contentType: 'image/png', size: 3 });
       return Response.json({ id, uploadUrl: 'https://storage.googleapis.com/upload/storage/v1/b/private/o?upload_id=secret', expiresAt: new Date(Date.now() + 60_000).toISOString() });
     });
-    const result = await createRareClient({ apiBaseUrl: api, apiFetch, sessionStore: storage }).uploads.upload(new Uint8Array([1, 2, 3]), 'image.png', { contentType: 'image/png' });
+    const result = await createRareClient({ apiBaseUrl: api, apiFetch, sessionStore: storage }).upload(new Uint8Array([1, 2, 3]), 'image.png', { contentType: 'image/png' });
     expect(result.size).toBe(3);
     expect(storageCalls).toHaveLength(2);
     expect(new Headers(storageCalls[1]?.headers).get('content-range')).toBe('bytes */3');

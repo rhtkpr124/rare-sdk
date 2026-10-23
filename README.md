@@ -283,7 +283,7 @@ await rare.user.resolve({ username: 'artist' });
 Shared application uploads accept any file type up to 250 MiB. `access` selects the public or private bucket and defaults to `public` for compatibility. Public results contain `{ access, key, url, contentType, size }`. Private results contain `{ access, key, contentType, size }`, without a URL:
 
 ```ts
-const attachment = await account.uploads.upload(bytes, 'document.pdf', { access: 'private', contentType: 'application/pdf' });
+const attachment = await account.upload(bytes, 'document.pdf', { access: 'private', contentType: 'application/pdf' });
 ```
 
 The associated feature owns authorization for private files. This uploader does not issue download URLs or grant access based on possession of a key. Store the `access` and `key` reference with the feature.
@@ -291,7 +291,7 @@ The associated feature owns authorization for private files. This uploader does 
 Public upload example:
 
 ```ts
-const asset = await account.uploads.upload(bytes, 'cover.png', { contentType: 'image/png', access: 'public' });
+const asset = await account.upload(bytes, 'cover.png', { contentType: 'image/png', access: 'public' });
 // asset: { access: 'public', key, url, contentType, size }
 await account.profile.update({ profile: { avatar: asset.url } });
 ```
@@ -417,7 +417,7 @@ await account.posts.deleteComment(post.id, comment.id);
 await account.posts.delete(post.id);
 ```
 
-Image URLs can come from `account.uploads.upload`; posts do not add another uploader.
+Image URLs can come from `account.upload`; posts do not add another uploader.
 Only your favorite list is accessible. Deletion through this API is limited to your own content.
 
 Run deployed-service integration coverage manually with `npm run test:integration:posts`.
@@ -431,7 +431,7 @@ posts and comments, and revokes its sessions. It does not run in CI.
 ```ts
 const calendar = await rare.drops.list({ from, to, user: { username: 'artist' } });
 const announcement = await rare.drops.get('42');
-const image = await account.uploads.upload(bytes, 'cover.png', { contentType: 'image/png' });
+const image = await account.upload(bytes, 'cover.png', { contentType: 'image/png' });
 const drop = await account.drops.create({
   type: 'NONE', startsAt,
   metadata: { headline: 'New work', description: 'A new release', destinationUrl: '', imageUrl: image.url },
@@ -483,7 +483,7 @@ are exported from the SDK and derive from the Rare API OpenAPI contract.
 Messaging images use the shared uploader, then attach the completed private upload:
 
 ```ts
-const upload = await rare.uploads.upload(bytes, 'image.png', {
+const upload = await rare.upload(bytes, 'image.png', {
   access: 'private', contentType: 'image/png',
 });
 const attachment = await rare.messaging.attachImage(room.id, upload.uploadId, {

@@ -19,7 +19,7 @@ describe('public durable messaging against deployed services', () => {
     const api = createRareClient({ apiBaseUrl: apiBaseUrl });
     try {
       await account.auth.loginWithWallet({ address: wallet.address, chainId: 11155111, signMessage: message => wallet.signMessage({ message }) });
-      const upload = await account.uploads.upload(Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64'), 'system-message-fixture.gif', { contentType: 'image/gif' });
+      const upload = await account.upload(Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64'), 'system-message-fixture.gif', { contentType: 'image/gif' });
       const imageUrl = upload.url;
       const drop = await account.drops.create({ type: 'NONE', startsAt: new Date(Date.now() + 86400000).toISOString(), metadata: { headline: `Producer retry fixture ${randomUUID()}`, description: 'Dedicated SDK integration fixture', destinationUrl: '', imageUrl } });
       try {

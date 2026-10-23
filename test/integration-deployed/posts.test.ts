@@ -108,7 +108,7 @@ describe('creator post images and pagination against deployed services', () => {
     try {
       await account.auth.loginWithWallet({ address: signer.address, chainId: 1, signMessage: message => signer.signMessage({ message }) });
       const profile = await account.profile.get();
-      const upload = await account.uploads.upload(bytes, 'post.gif', { contentType: 'image/gif' });
+      const upload = await account.upload(bytes, 'post.gif', { contentType: 'image/gif' });
       expect(Buffer.from(await (await fetch(upload.url)).arrayBuffer())).toEqual(bytes);
       for (const index of [0, 1, 2]) {
         const post = await account.posts.create({ title: `Image pagination ${Date.now()} ${index}`, body: 'Live pagination fixture', imageUrls: [upload.url] });

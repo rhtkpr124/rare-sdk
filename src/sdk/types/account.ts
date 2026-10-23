@@ -144,9 +144,7 @@ export type RareAccountClient = {
     follow: (input: UserSelector | string, options?: RareAuthRequestOptions) => Promise<void>;
     unfollow: (input: UserSelector | string, options?: RareAuthRequestOptions) => Promise<void>;
   };
-  uploads: {
-    upload: RareUploadMethod;
-  };
+  upload: RareUploadMethod;
   auth: {
     startDeviceAuthorization: (options?: RareAuthRequestOptions) => Promise<RareDeviceAuthorization>;
     pollDeviceAuthorization: (authorization: RareDeviceAuthorization, options?: RareAuthRequestOptions) => Promise<RareDevicePollResult>;

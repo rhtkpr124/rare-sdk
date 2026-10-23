@@ -46,7 +46,7 @@ describe('public room notification delivery and trusted system messages', () => 
       // durable synthetic events on an existing auction or edition's history.
       const drop = type === 'drop-announcement' ? await (async () => {
         await creator.auth.loginWithWallet({ address: creatorWallet.address, chainId: 11155111, signMessage: message => creatorWallet.signMessage({ message }) });
-        const image = await creator.uploads.upload(Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64'), 'public-delivery.gif', { contentType: 'image/gif' });
+        const image = await creator.upload(Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64'), 'public-delivery.gif', { contentType: 'image/gif' });
         return creator.drops.create({ type: 'NONE', startsAt: new Date(Date.now() + 86400000).toISOString(), metadata: { headline: `SDK public delivery ${randomUUID()}`, description: 'Temporary live notification fixture', destinationUrl: '', imageUrl: image.url } });
       })() : null;
       try {

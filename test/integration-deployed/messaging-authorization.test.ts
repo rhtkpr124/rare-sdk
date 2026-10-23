@@ -113,7 +113,7 @@ describe('messaging authorization against deployed services', () => {
       try {
         await owner.account.messaging.command(room.id, { action: 'invite', userId: member.user.id });
         await member.account.messaging.command(room.id, { action: 'accept' });
-        const upload = await owner.account.uploads.upload(bytes, 'private.gif', { contentType: 'image/gif', access: 'private' });
+        const upload = await owner.account.upload(bytes, 'private.gif', { contentType: 'image/gif', access: 'private' });
         const image = await owner.account.messaging.attachImage(room.id, upload.uploadId, { width: 1, height: 1, attachmentId: uploadId });
         const secondImage = await owner.account.messaging.attachImage(second.id, upload.uploadId, { width: 1, height: 1, attachmentId: randomUUID() });
         expect(Buffer.from(await (await owner.account.messaging.readImage(secondImage.id)).arrayBuffer())).toEqual(bytes);

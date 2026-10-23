@@ -64,10 +64,10 @@ describe('uploads through deployed API and real GCS', () => {
       const bytes = randomBytes(1024);
       track(bytes);
       const before = await client.profile.get();
-      const results = await Promise.all([client.uploads.upload(bytes, 'first.bin'), client.uploads.upload(bytes, 'second.bin')]);
+      const results = await Promise.all([client.upload(bytes, 'first.bin'), client.upload(bytes, 'second.bin')]);
       expect(results[0]).toEqual(results[1]);
       expect(results[0]).toMatchObject({ key: objectKey(bytes), size: bytes.length, contentType: 'application/octet-stream' });
-      expect(await client.uploads.upload(bytes, 'pretend.png', { contentType: 'image/png' })).toEqual(results[0]);
+      expect(await client.upload(bytes, 'pretend.png', { contentType: 'image/png' })).toEqual(results[0]);
       expect(await client.profile.get()).toEqual(before);
       const downloaded = await fetch(results[0]!.url, { signal: AbortSignal.timeout(30_000) });
       expect(downloaded.status).toBe(200);
@@ -81,7 +81,7 @@ describe('uploads through deployed API and real GCS', () => {
   it('uploads beyond Cloud Run request limits using multiple direct GCS chunks', async () => {
     await withLiveAccount(async ({ client }, track) => {
       const bytes = randomBytes(33 * 1024 * 1024); track(bytes);
-      const result = await client.uploads.upload(bytes, 'video.mp4', { contentType: 'video/mp4' });
+      const result = await client.upload(bytes, 'video.mp4', { contentType: 'video/mp4' });
       expect(result).toMatchObject({ key: objectKey(bytes), size: bytes.length, contentType: 'video/mp4' });
       const downloaded = new Uint8Array(await (await fetch(result.url)).arrayBuffer());
       expect(downloaded.byteLength).toBe(bytes.length);
@@ -118,19 +118,19 @@ describe('uploads through deployed API and real GCS', () => {
     await withLiveAccount(async ({ client }, track) => {
       const bytes = randomBytes(1024);
       track(bytes);
-      const privateAsset = await client.uploads.upload(bytes, 'document.bin', { access: 'private' });
+      const privateAsset = await client.upload(bytes, 'document.bin', { access: 'private' });
       expect(privateAsset).toEqual({ access: 'private', key: objectKey(bytes), contentType: 'application/octet-stream', size: bytes.length });
       const privateUrl = `https://storage.googleapis.com/rare-api-private-upload-dev/${privateAsset.key}`;
       const denied = await fetch(privateUrl, { signal: AbortSignal.timeout(30_000) });
       expect(denied.status).toBe(403);
       const publicUrl = `https://storage.googleapis.com/rare-api-public-upload-dev/${privateAsset.key}`;
       expect((await fetch(publicUrl, { signal: AbortSignal.timeout(30_000) })).status).toBe(404);
-      const publicAsset = await client.uploads.upload(bytes, 'document.bin', { access: 'public' });
+      const publicAsset = await client.upload(bytes, 'document.bin', { access: 'public' });
       expect(publicAsset.key).toBe(privateAsset.key);
       expect(publicAsset.url).toBe(publicUrl);
       expect(Buffer.from(await (await fetch(publicAsset.url)).arrayBuffer())).toEqual(bytes);
       expect((await fetch(privateUrl)).status).toBe(403);
-      expect(await client.uploads.upload(bytes, 'duplicate.bin', { access: 'private' })).toEqual(privateAsset);
+      expect(await client.upload(bytes, 'duplicate.bin', { access: 'private' })).toEqual(privateAsset);
       const metadata: unknown = JSON.parse(execFileSync('gcloud', ['--project=superrare-dev', 'storage', 'objects', 'describe', `gs://rare-api-private-upload-dev/${privateAsset.key}`, '--format=json'], { encoding: 'utf8' }));
       if (metadata === null || typeof metadata !== 'object' || !('cache_control' in metadata)) throw new Error('Missing private storage cache metadata');
       expect(metadata.cache_control).toBe('private, no-store');

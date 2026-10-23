@@ -23,7 +23,7 @@ describe('drops against deployed services', () => {
       await account.auth.loginWithWallet({ address: wallet.address, chainId: 11155111, signMessage: message => wallet.signMessage({ message }) });
       const profile = await account.profile.get();
       const bytes = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
-      const upload = await account.uploads.upload(bytes, 'drop.gif', { contentType: 'image/gif' });
+      const upload = await account.upload(bytes, 'drop.gif', { contentType: 'image/gif' });
       const startsAt = new Date(Date.now() + 86400000).toISOString();
       const drop = await account.drops.create({ type: 'NONE', startsAt, metadata: { headline: `SDK drop ${Date.now()}`, description: 'Dedicated integration announcement', destinationUrl: '', imageUrl: upload.url } });
       try {
@@ -57,7 +57,7 @@ describe('drops against deployed services', () => {
     const owner = createRareClient({ apiBaseUrl }); const other = createRareClient({ apiBaseUrl });
     try {
       for (const [account, wallet] of [[owner, ownerWallet], [other, otherWallet]] as const) await account.auth.loginWithWallet({ address: wallet.address, chainId: 11155111, signMessage: message => wallet.signMessage({ message }) });
-      const upload = await owner.uploads.upload(Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64'), 'drop.gif', { contentType: 'image/gif' });
+      const upload = await owner.upload(Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64'), 'drop.gif', { contentType: 'image/gif' });
       const input = { type: 'NONE' as const, startsAt: new Date(Date.now() + 86400000).toISOString(), metadata: { headline: `Adversarial SDK drop ${Date.now()}`, description: 'Owned by the first test account', destinationUrl: '', imageUrl: upload.url } };
       const drop = await owner.drops.create(input);
       try {
@@ -84,7 +84,7 @@ describe('drops against deployed services', () => {
     const account = createRareClient({ apiBaseUrl });
     try {
       await account.auth.loginWithWallet({ address: wallet.address, chainId: 11155111, signMessage: message => wallet.signMessage({ message }) });
-      const upload = await account.uploads.upload(Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64'), 'drop.gif', { contentType: 'image/gif' });
+      const upload = await account.upload(Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64'), 'drop.gif', { contentType: 'image/gif' });
       const input = { type: 'NONE' as const, startsAt: new Date(Date.now() + 86400000).toISOString(), metadata: { headline: `Artist policy ${Date.now()}`, description: 'Dedicated unapproved test artist', destinationUrl: '', imageUrl: upload.url } };
       const drop = await account.drops.create(input);
       try {

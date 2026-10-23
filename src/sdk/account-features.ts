@@ -122,7 +122,7 @@ export function createAccountFeatures(apiRequest: Request, request: Request): Ra
       async add(input, options) { await favoriteRequest('PUT', input, options); },
       async remove(input, options) { await favoriteRequest('DELETE', input, options); },
     },
-    uploads: { upload },
+    upload,
     following: { follow: (input, options) => changeFollow('POST', input, options), unfollow: (input, options) => changeFollow('DELETE', input, options) },
     profile: {
       async uploadAvatar(buffer, filename, requestOptions = {}) {
