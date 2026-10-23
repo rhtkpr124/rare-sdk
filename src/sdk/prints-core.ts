@@ -1,6 +1,18 @@
 import { getAddress, isAddress, isAddressEqual, isHex } from 'viem';
 import type { CartListing, CartFulfillmentKind } from './types/cart.js';
-import type { ConfigurePrintOption, PreparePrintListing, PrintListingPreparation } from './types/prints.js';
+import type { ConfigurePrintOption, PreparePrintListing, PrintListingPreparation, SignedPrintListingArtifact } from './types/prints.js';
+import { hashCartListing, validateCartListingRootArtifact } from './cart-core.js';
+
+export function validatePrintPublicationArtifact(preparation: PrintListingPreparation, artifact: SignedPrintListingArtifact): void {
+  validateCartListingRootArtifact(artifact);
+  const { listing, deadline } = parsePrintListingTerms(preparation);
+  if (String(artifact.chainId) !== preparation.chain_id || !isAddressEqual(artifact.cart, getAddress(preparation.cart_address)) ||
+    !isAddressEqual(artifact.seller, listing.seller) || artifact.root.deadline !== deadline.toString() ||
+    hashCartListing(listing, artifact.chainId, artifact.cart) !== preparation.listing_digest ||
+    artifact.entries.length !== 1 || artifact.entries[0]?.listingDigest !== preparation.listing_digest) {
+    throw new Error('Signed print artifact does not match the frozen preparation.');
+  }
+}
 
 export function validatePrintOptionConfiguration(input: ConfigurePrintOption): { valid: true } | { valid: false; message: string } {
   if (input.receipt !== undefined && input.receipt !== null &&

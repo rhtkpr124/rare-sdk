@@ -13,8 +13,9 @@ of `{ key, input }` items to `rare.prints.drops.create`, `options.configure`,
 inputs contain `{ dropId, input }`; publication inputs contain
 `{ preparationId, artifact }`; signing inputs contain `{ preparation, signedArtifact? }`.
 
-Batch results retain input order and use `{ key, status: 'fulfilled', value }` or
-`{ key, status: 'rejected', error, signedArtifact? }`. Preserve these results and
+Batch results retain input order and include an `inputDigest` binding the saved
+result to its inputs. Results use `{ key, inputDigest, status: 'fulfilled', value }` or
+`{ key, inputDigest, status: 'rejected', error, signedArtifact? }`. Preserve these results and
 pass `{ previousResults }` when retrying the same batch. The SDK skips successful
 items and processes the rest sequentially. Do not change the input associated
 with a saved key. Generate and retain each draft's `idempotencyKey` and each

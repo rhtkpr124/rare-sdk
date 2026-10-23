@@ -8,7 +8,7 @@ import { isPrintBatch } from './prints-batch-core.js';
 import { runPrintBatch } from './prints-batch-shell.js';
 import { PrintPublicationError } from './prints-errors.js';
 import { buildCartListingRootArtifact, cartDomain, hashCartListing } from './cart-core.js';
-import { parsePrintListingTerms, validatePrintListingQuantityLimit, validatePrintOptionConfiguration } from './prints-core.js';
+import { parsePrintListingTerms, validatePrintListingQuantityLimit, validatePrintOptionConfiguration, validatePrintPublicationArtifact } from './prints-core.js';
 import { requireWallet } from './wallet-shell.js';
 import { cartAbi } from '../contracts/abis/cart.js';
 import { erc721Abi, erc1155Abi, getAddress, isAddressEqual } from 'viem';
@@ -77,12 +77,13 @@ export function createPrintsNamespace(config: RareClientConfig, authenticatedFet
     if (!isPrintBatch<PrintListingSigning>(input)) return signOne(input, options);
     return runPrintBatch(input, options, async item => {
       if (item.signedArtifact === undefined) return signOne(item.preparation, options);
+      validatePrintPublicationArtifact(item.preparation, item.signedArtifact);
       try {
         return { preparation: await publishOne(item.preparation.id, item.signedArtifact), signedArtifact: item.signedArtifact };
       } catch (cause) {
         throw new PrintPublicationError(item.preparation.id, item.signedArtifact, cause);
       }
-    });
+    }, item => item.preparation);
   }
   const signOne = async (preparation: PrintListingPreparation, options: { autoApprove?: boolean } = {}): Promise<PrintPublication> => {
         const { listing, deadline, dropId } = parsePrintListingTerms(preparation);

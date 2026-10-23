@@ -60,7 +60,11 @@ describe('print batch authoring over HTTP', () => {
       expect(failed?.status).toBe('rejected');
       if (failed?.status !== 'rejected' || failed.signedArtifact === undefined) throw new Error('Signed artifact was lost');
       const previousRequestCount = requests.length;
-      const retried = await rare.prints.listings.signAndPublish([{ key: 'print', input: { preparation, signedArtifact: failed.signedArtifact } }]);
+      const changedPreparation = { ...preparation, listing_digest: `0x${'33'.repeat(32)}` };
+      const mismatched = await rare.prints.listings.signAndPublish([{ key: 'print', input: { preparation: changedPreparation, signedArtifact: failed.signedArtifact } }]);
+      expect(mismatched[0]).toMatchObject({ status: 'rejected', error: expect.objectContaining({ message: expect.stringContaining('does not match') }) });
+      expect(requests).toHaveLength(previousRequestCount);
+      const retried = await rare.prints.listings.signAndPublish([{ key: 'print', input: { preparation, signedArtifact: failed.signedArtifact } }], { previousResults: results });
       expect(retried[0]).toMatchObject({ key: 'print', status: 'fulfilled', value: { signedArtifact: failed.signedArtifact } });
       expect(requests.slice(previousRequestCount)).toEqual([`/v1/prints/listings/${preparation.id}/publish`]);
     } finally {
@@ -101,6 +105,8 @@ describe('print batch authoring over HTTP', () => {
       expect(requests).toHaveLength(0);
       const result = await rare.prints.drops.create(items);
       expect(result).toMatchObject([{ key: 'first', status: 'fulfilled', value: { id: 'first' } }, { key: 'second', status: 'rejected' }]);
+      await expect(rare.prints.drops.create([{ key: 'first', input: { ...first, name: 'Changed' } }, { key: 'second', input: second }], { previousResults: result })).rejects.toThrow('changed terms');
+      expect(requests).toHaveLength(2);
       const retried = await rare.prints.drops.create(items, { previousResults: result });
       expect(retried).toMatchObject([{ key: 'first', status: 'fulfilled', value: { id: 'first' } }, { key: 'second', status: 'fulfilled', value: { id: 'second' } }]);
       expect(requests).toHaveLength(3);

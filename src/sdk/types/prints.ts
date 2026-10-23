@@ -16,8 +16,8 @@ export type PrintSpecification = paths['/v1/prints/specifications']['get']['resp
 
 export type SignedPrintListingArtifact = CartListingRootArtifact & { signature: Hex };
 export type PrintBatchItem<T> = { key: string; input: T };
-export type PrintBatchResult<T> = { key: string; status: 'fulfilled'; value: T } |
-  { key: string; status: 'rejected'; error: unknown; signedArtifact?: SignedPrintListingArtifact };
+export type PrintBatchResult<T> = { key: string; inputDigest: string; status: 'fulfilled'; value: T } |
+  { key: string; inputDigest: string; status: 'rejected'; error: unknown; signedArtifact?: SignedPrintListingArtifact };
 /** Keep keys and operation inputs unchanged when reusing previous results. */
 export type PrintBatchOptions<T> = { previousResults?: readonly PrintBatchResult<T>[] };
 export type PrintDropCreation = Omit<PrintDrop, 'options'>;
