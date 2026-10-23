@@ -298,7 +298,7 @@ configuration out of creator controls.
 
 1. Load paper and size choices with `rare.prints.specifications.list()`.
 2. Upload the master with
-   `accountClient.uploads.upload(file, filename, { access: 'private' })`.
+   `accountClient.upload(file, filename, { access: 'private' })`.
 3. Upload display photos through the same uploader with `access: 'public'`.
 4. Create the standalone draft with `rare.prints.drops.create`. Supply
    `print.productionUploadKey` from the private result and `print.images` from

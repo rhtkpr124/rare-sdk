@@ -74,9 +74,9 @@ describe('uploads through deployed API and real GCS', () => {
       for (const access of accessModes) {
         const bytes = randomBytes(1024);
         track(bytes);
-        const uploaded = await external.uploads.upload(bytes, 'artwork.bin', { access });
+        const uploaded = await external.upload(bytes, 'artwork.bin', { access });
         expect(uploaded).toMatchObject({ access, key: objectKey(bytes), size: bytes.length });
-        expect(await client.uploads.upload(bytes, 'same-artwork.bin', { access })).toEqual(uploaded);
+        expect(await client.upload(bytes, 'same-artwork.bin', { access })).toEqual(uploaded);
       }
     });
   }, 180_000);

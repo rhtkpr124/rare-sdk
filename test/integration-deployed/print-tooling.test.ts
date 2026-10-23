@@ -48,10 +48,10 @@ describe('print tooling through deployed Rare API', () => {
       expect(saved.find(address => address.id === addressId)?.details).toEqual(details);
       expect((await accountClient.shippingAddresses.list()).find(address => address.id === addressId)?.details).toEqual(details);
       const bytes = Uint8Array.from(Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jio8AAAAASUVORK5CYII=', 'base64'));
-      const production = await accountClient.uploads.upload(bytes, 'production.png', { access: 'private', contentType: 'image/png' });
+      const production = await accountClient.upload(bytes, 'production.png', { access: 'private', contentType: 'image/png' });
       expect(production.access).toBe('private');
       expect('url' in production).toBe(false);
-      const photo = await accountClient.uploads.upload(bytes, 'preview.png', { contentType: 'image/png' });
+      const photo = await accountClient.upload(bytes, 'preview.png', { contentType: 'image/png' });
       const input: CreatePrintDrop = { idempotencyKey: randomUUID(), chainId: '11155111', name: 'SDK print tooling fixture', description: 'Draft only, no purchase or fulfillment.',
         print: { name: 'SDK print tooling fixture', description: 'Draft only, no purchase or fulfillment.', tags: ['sdk-integration'],
           productionUploadKey: production.key, images: [photo.url], specificationId: specification.id } };

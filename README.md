@@ -854,7 +854,7 @@ const rare = createRareClient({
   }),
 });
 const inbox = await rare.messaging.inbox();
-const master = await rare.uploads.upload(printFile, 'master.tiff', { access: 'private' });
+const master = await rare.upload(printFile, 'master.tiff', { access: 'private' });
 const addresses = await rare.shippingAddresses.list();
 const orders = await rare.orders.list();
 ```
@@ -869,7 +869,7 @@ JavaScript. Authenticated API errors retain the SDK's normal error handling.
 
 Signed storage uploads bypass this API transport and use the optional `apiFetch`
 implementation with `credentials: 'omit'`, without authentication headers.
-Use this same `rare.uploads.upload` method for production files and public
+Use this same `rare.upload` method for production files and public
 display images. SuperRare's existing session belongs in the application transport;
 there is no separate print uploader or upload-specific login.
 Without a transport, `createRareClient` retains its existing bearer-token
@@ -949,7 +949,7 @@ The generated reference is written to `docs/reference/`.
 quotes, frozen Listing preparations, and public print reads. It uses Rare API
 directly. Pass the authenticated account client to `createRareClient`.
 
-Upload print masters with `accountClient.uploads.upload(file, filename, { access:
+Upload print masters with `accountClient.upload(file, filename, { access:
 'private' })`. Pass the returned `key` as `print.productionUploadKey` when creating
 a standalone drop. Upload supplemental display images with public access and use
 their URLs in `print.images`. The SDK does not publish master download URLs.
