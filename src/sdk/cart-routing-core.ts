@@ -143,6 +143,14 @@ export function protectCartRoutingExactInput(maximumInput: bigint): bigint {
   return applyCartQuoteSpread(maximumInput, BigInt(cartRoutingDefaultSlippageBps));
 }
 
+/** Reconcile independently routed quotes without relaxing the settlement guarantee. */
+export function refineCartRoutingExactInput(input: bigint, minimumOutput: bigint, requiredOutput: bigint): bigint {
+  if (input <= 0n || minimumOutput <= 0n || requiredOutput <= 0n)
+    throw new CartRoutingCoreError('invalid_response', 'Execution quote amounts must be positive.');
+  const requiredInput = (input * requiredOutput + minimumOutput - 1n) / minimumOutput;
+  return protectCartRoutingExactInput(requiredInput);
+}
+
 export function buildCartRoutingQuoteResult(
   plan: CartRoutingPlan,
   universalRouter: Address,

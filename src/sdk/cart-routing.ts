@@ -12,6 +12,7 @@ import {
   resolveCartRoutingMaximumInput,
   protectCartInputQuoteOutput,
   refineCartInputQuoteOutput,
+  refineCartRoutingExactInput,
 } from './cart-routing-core.js';
 import { buildKnownPoolCartRoutingQuote, quoteKnownPoolCartInput } from './cart-routing-local.js';
 import type { RareClientConfig } from './types/client.js';
@@ -125,19 +126,29 @@ export function createCartRoutingNamespace(
             permit2Disabled: false,
           });
           const maximumInput = resolveCartRoutingMaximumInput(plan, obligation, exactOutputResponse);
-          const executionResponse = plan.mode === 'exact-output'
-            ? exactOutputResponse
-            : await requestUniswapQuote({
+          const quoteExecution = async (amount: bigint, attempt: number): Promise<typeof exactOutputResponse> => {
+            const response = await requestUniswapQuote({
                 apiKey,
                 chainId: plan.chainId,
                 tokenIn: plan.paymentCurrency,
                 tokenOut: obligation.settlementCurrency,
-                amount: protectCartRoutingExactInput(maximumInput),
+                amount,
                 swapper: plan.cart,
                 slippageBps: cartRoutingDefaultSlippageBps,
                 tradeType: 'EXACT_INPUT',
                 permit2Disabled: false,
               });
+            const minimum = response.quote.output.minimumAmount;
+            if (minimum === undefined || !/^[1-9][0-9]*$/.test(minimum))
+              throw new CartRoutingCoreError('invalid_response', 'Execution quote minimum output must be positive.');
+            if (BigInt(minimum) >= obligation.amount) return response;
+            if (attempt >= 2)
+              throw new CartRoutingCoreError('quote_unavailable', 'Unable to quote an exact input that guarantees settlement. Please request a fresh quote.');
+            return quoteExecution(refineCartRoutingExactInput(amount, BigInt(minimum), obligation.amount), attempt + 1);
+          };
+          const executionResponse = plan.mode === 'exact-output'
+            ? exactOutputResponse
+            : await quoteExecution(protectCartRoutingExactInput(maximumInput), 0);
           const swapResponse = await requestUniswapSwap({
             apiKey,
             quote: executionResponse.quote,

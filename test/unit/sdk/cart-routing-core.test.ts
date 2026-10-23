@@ -9,6 +9,7 @@ import {
   protectCartRoutingExactInput,
   protectCartInputQuoteOutput,
   refineCartInputQuoteOutput,
+  refineCartRoutingExactInput,
   resolveCartRoutingMaximumInput,
   type CartRoutingForeignObligation,
   type CartRoutingPlan,
@@ -31,6 +32,11 @@ const executeAbi = [{
 }] as const;
 
 describe('Cart routing functional core', () => {
+  it('requotes an underdelivering execution with protected integer inputs across decimals', () => {
+    expect(refineCartRoutingExactInput(38_209_572n, 986_441_575_063_330n, 1_000_000_000_000_000n)).toBe(38_928_429n);
+    expect(refineCartRoutingExactInput(101n, 99n, 100n)).toBe(104n);
+    expect(() => refineCartRoutingExactInput(1n, 0n, 1n)).toThrow('positive');
+  });
   it('protects input-budget outputs using integer arithmetic across token decimals', () => {
     expect(protectCartInputQuoteOutput(1_005_000n)).toBe(1_000_000n);
     expect(protectCartInputQuoteOutput(1_005_000_000_000_000_000n)).toBe(1_000_000_000_000_000_000n);
