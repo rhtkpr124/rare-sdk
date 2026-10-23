@@ -219,7 +219,14 @@ describe('account authentication over HTTP', () => {
       if (request.url === '/v1/account/orders?take=2') return reply(response, { data: [order], nextCursor: null });
       if (request.url === '/v1/account/orders/fixture-order') return reply(response, { data: order });
       if (request.url === '/v1/account/shipping-addresses') {
-        if (request.method === 'PUT') expect(JSON.parse(body)).toEqual(input);
+        if (request.method === 'PUT') {
+          // Match the deployed API: a JSON body without its media type is not
+          // parsed as JSON, even if JSON.parse would accept the raw bytes.
+          if (request.headers['content-type'] !== 'application/json') {
+            return reply(response, { error: { code: 'invalid_request', message: 'Check your shipping details.' } }, 400);
+          }
+          expect(JSON.parse(body)).toEqual(input);
+        }
         else expect(request.method).toBe('GET');
         return reply(response, { data: [] });
       }
