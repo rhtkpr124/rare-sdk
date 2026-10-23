@@ -8,6 +8,7 @@ import type { CreatePrintDrop, PreparePrintListing } from '../../dist/sdk/index.
 import { loadDotEnv } from '../helpers/env.js';
 import { createCreatorCartScenario } from '../helpers/cart-creator-fixture.js';
 import { getTestRpcUrl } from '../helpers/liveViem.js';
+import { resolveCurrency } from '../../src/contracts/addresses.js';
 import { isRecord, requireString } from '../../src/sdk/account-auth-core.js';
 
 loadDotEnv();
@@ -132,15 +133,49 @@ describe('print tooling through deployed Rare API', () => {
           expect(mappedEntry.listing.fulfillmentKind).toBe(1);
           await expect.poll(async () => (await rare.prints.releases.list({ universalTokenId: sourceUniversalTokenId })).some(drop => drop.id === mapped.id),
             { timeout: 60_000, interval: 2_000 }).toBe(true);
+          const nftListing = source.createdListings[0];
+          if (!nftListing) throw new Error('Mixed delivery requires a normal ERC-721 Listing.');
+          const editions = await rare.collection.deploy.erc1155({ name: `Mixed editions ${randomUUID()}`, symbol: 'MIX', baseUri: '' });
+          const edition = await rare.collection.erc1155.createToken({ contract: editions.contract, maxSupply: 10n,
+            tokenUri: 'data:application/json,%7B%22name%22%3A%22Mixed%20edition%22%7D' });
+          await rare.collection.erc1155.mint({ contract: editions.contract, tokenId: edition.tokenId, quantity: 2n });
+          const editionPublication = await rare.cart.listing.publish({ preparation: await rare.cart.listing.prepare({
+            seller: wallet.address, deadline: BigInt(Math.floor(Date.now() / 1000) + 3600), listings: [{
+              nft: { contract: editions.contract, tokenId: edition.tokenId }, fulfillmentKind: 3,
+              settlementCurrency: getAddress(entry.listing.settlementCurrency), unitPrice: 1_000_000n, quantity: 2n,
+            }],
+          }) });
+          const editionEntry = editionPublication.signedArtifact.entries[0];
+          if (!editionEntry) throw new Error('Mixed delivery requires a normal ERC-1155 Listing.');
+          const outputAmount = 10_000_000_000_000_000n;
           const batch = await rare.cart.checkout.prepare({ paymentCurrency: getAddress(entry.listing.settlementCurrency),
-            items: [entry, mappedEntry].map(selected => ({ kind: 'listing' as const, listingDigest: selected.listingDigest, quantity: 1n, recipient: wallet.address })),
+            items: [
+              { kind: 'listing', listingDigest: nftListing.listingDigest, quantity: 1n, recipient: wallet.address },
+              { kind: 'listing', listingDigest: entry.listingDigest, quantity: 2n, recipient: wallet.address },
+              { kind: 'listing', listingDigest: editionEntry.listingDigest, quantity: 2n, recipient: wallet.address },
+              { kind: 'listing', listingDigest: mappedEntry.listingDigest, quantity: 1n, recipient: wallet.address },
+              { kind: 'swap', mode: 'exact-output', outputCurrency: resolveCurrency('rare', 'sepolia'), outputAmount, recipient: wallet.address },
+            ],
             delivery: { savedAddressId: addressId } });
           if (!batch.intent.delivery || !batch.idempotencyKey) throw new Error('Batch quote lost its delivery identity.');
-          expect(batch.breakdown?.displayPrice).toBe(200_000_000n);
+          expect(batch.intent.items).toHaveLength(5);
+          expect(batch.breakdown?.displayPrice).toBeGreaterThanOrEqual(300_000_000n);
           const preparedBatch = await rare.cart.api.checkout.prepare({ ...batch.intent, delivery: batch.intent.delivery, idempotencyKey: batch.idempotencyKey });
+          const mixedLines = preparedBatch.executePurchase.lines;
+          expect(mixedLines.find(line => line.listingDigest === nftListing.listingDigest)).toMatchObject({ quantity: 1n, fulfillmentKind: 2 });
+          expect(mixedLines.find(line => line.listingDigest === editionEntry.listingDigest)).toMatchObject({ quantity: 2n, fulfillmentKind: 3 });
+          expect(mixedLines.find(line => line.listingDigest === entry.listingDigest)).toMatchObject({ quantity: 2n, fulfillmentKind: 1 });
+          expect(mixedLines.find(line => line.fulfillmentKind === 6)).toMatchObject({ amount: outputAmount });
+          expect(preparedBatch.executePurchase.actions.map(action => ({
+            quantity: action.quantity, kind: mixedLines[Number(action.lineIndex)]?.fulfillmentKind,
+          }))).toEqual(expect.arrayContaining([{ quantity: 1n, kind: 2 }, { quantity: 2n, kind: 3 }]));
           const history = await accountClient.orders.get(preparedBatch.executePurchase.order.orderId);
           expect(history.fulfillments).toHaveLength(2);
           expect(new Set(history.fulfillments.map(item => item.orderLineIndex)).size).toBe(2);
+          expect(history.fulfillments.map(item => item.orderLineIndex).sort()).toEqual([
+            mixedLines.findIndex(line => line.listingDigest === entry.listingDigest),
+            mixedLines.findIndex(line => line.listingDigest === mappedEntry.listingDigest),
+          ].sort());
           const recovered = await rare.cart.api.checkout.recover(batch.idempotencyKey);
           expect(recovered.status).toBe('READY');
           expect(recovered.preparedPurchase?.executePurchase.order.orderId).toBe(preparedBatch.executePurchase.order.orderId);
