@@ -138,7 +138,7 @@ export function createCartApiNamespace(
     search: async (params: CartApiListingSearchParams = {}): Promise<CartApiListingSearchResult> => {
       const { query, ...filters } = params;
       return getData(
-      client.GET('/v1/cart/listings/search', { params: { query: { ...filters, q: query, chainId, cartAddress: cartAddress() } } }),
+      (params.eligibility === undefined ? client : protectedClient).GET('/v1/cart/listings/search', { params: { query: { ...filters, q: query, chainId, cartAddress: cartAddress() } } }),
       'Rare API did not return Cart Listing search results.',
     );
     },

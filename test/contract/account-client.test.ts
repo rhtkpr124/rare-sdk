@@ -209,7 +209,7 @@ describe('account authentication over HTTP', () => {
         return reply(response, tokens);
       }
       if (request.url?.startsWith('/v1/cart/listings/search')) {
-        expect(request.headers.authorization).toBeUndefined();
+        expect(request.headers.authorization).toBe(request.url.includes('eligibility=eligible') ? 'Bearer access-2' : undefined);
         return reply(response, { data: [], pagination: {} });
       }
       expect(request.url?.includes('/invalidate')).toBe(true);
@@ -224,6 +224,7 @@ describe('account authentication over HTTP', () => {
       sessionStore: storage,
     });
     await rare.cart.listing.search();
+    await rare.cart.listing.search({ eligibility: 'eligible' });
     await Promise.all([rare.cart.listing.invalidate(`0x${'12'.repeat(32)}`), rare.cart.listing.invalidate(`0x${'13'.repeat(32)}`)]);
     expect(received).toEqual(['refresh', 'preview', 'preview']);
   });
