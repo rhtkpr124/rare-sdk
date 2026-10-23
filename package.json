@@ -79,12 +79,13 @@
     "CHANGELOG.md"
   ],
   "scripts": {
-    "build": "tsdown",
+    "build": "tsdown --config-loader unrun",
     "typecheck": "tsc --noEmit",
     "generate:types": "tsx scripts/generate-openapi-types.ts",
     "generate:cart-types": "tsx scripts/generate-cart-types.ts",
     "docs:build": "typedoc",
     "package:check": "tsx scripts/validate-package.ts",
+    "test:install:git": "tsx scripts/check-git-install.ts",
     "prepare": "npm run build",
     "prepublishOnly": "npm run typecheck && npm run lint && npm run test",
     "test:integration:uploads": "vitest run test/integration-deployed/uploads.test.ts",
@@ -132,6 +133,7 @@
     "typedoc-plugin-markdown": "^4.11.0",
     "typescript": "5.9.3",
     "typescript-eslint": "8.59.2",
+    "unrun": "0.3.1",
     "vitest": "4.1.5"
   },
   "main": "./dist/sdk/index.cjs",
