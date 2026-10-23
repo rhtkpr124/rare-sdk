@@ -10,7 +10,7 @@ import { getTestRpcUrl } from '../../helpers/liveViem.js';
 
 loadDotEnv();
 
-type Source = { contract: Address; tokenId: bigint; quantity: bigint; fulfillmentKind: 2 | 3 };
+type Source = { contract: Address; tokenId: bigint; quantity: bigint; fulfillmentKind: 2 | 3; sku?: Hex };
 const ruleKinds: EligibilityRuleDefinition['kind'][] = ['PRIMARY_SALE', 'EVERY_SALE', 'CURRENT_HOLDER'];
 const standards = ['ERC721', 'ERC1155'] as const;
 const available = (claims: EligibilityClaim[]) => claims.filter(claim => claim.status === 'AVAILABLE');
@@ -21,7 +21,7 @@ describe.sequential('quantity-aware eligibility across token standards', () => {
   let buyer: RareClient;
   let buyerWallet: ReturnType<typeof createWalletClient>;
   let buyerAddress: Address;
-  let reward: { contract: Address; tokenId: bigint };
+  let reward: { contract: Address; tokenId: bigint; sku: Hex };
 
   beforeAll(async () => {
     const key = process.env.E2E_BUYER_PRIVATE_KEYS?.split(/[,\s]+/u).find(Boolean);
@@ -38,7 +38,14 @@ describe.sequential('quantity-aware eligibility across token standards', () => {
     const token = await creator.rare.collection.erc1155.createToken({ contract: collection.contract, maxSupply: 100n,
       tokenUri: 'data:application/json,%7B%22name%22%3A%22Eligibility%20reward%22%7D' });
     await creator.rare.collection.erc1155.mint({ contract: collection.contract, tokenId: token.tokenId, quantity: 100n });
-    reward = { contract: collection.contract, tokenId: token.tokenId };
+    const product = await creator.rare.cart.catalog.products.create({ metadata: { title: 'Eligibility reward fixture' } });
+    const configured = await creator.rare.cart.catalog.variants.add(product.id, {
+      variants: [{ metadata: { type: 'ERC1155', chainId: String(sepolia.id),
+        tokenContract: collection.contract, tokenId: token.tokenId.toString() } }],
+    });
+    const variant = configured.variants[0];
+    if (!variant) throw new Error('Creator variant flow returned no reward SKU.');
+    reward = { contract: collection.contract, tokenId: token.tokenId, sku: variant.sku };
   }, 600_000);
 
   afterAll(async () => {
@@ -49,7 +56,7 @@ describe.sequential('quantity-aware eligibility across token standards', () => {
   const publish = async (source: Source, ruleId?: string) => {
     const preparation = await creator.rare.cart.listing.prepare({ seller: creator.seller.address,
       deadline: BigInt(Math.floor(Date.now() / 1000) + 3600), ...(ruleId === undefined ? {} : { eligibilityRuleId: ruleId }),
-      listings: [{ nft: { contract: source.contract, tokenId: source.tokenId }, fulfillmentKind: source.fulfillmentKind,
+      listings: [{ ...(source.sku === undefined ? { nft: { contract: source.contract, tokenId: source.tokenId } } : { sku: source.sku }), fulfillmentKind: source.fulfillmentKind,
         settlementCurrency: zeroAddress, unitPrice: 1_000_000_000_000n, quantity: source.quantity }] });
     const publication = await creator.rare.cart.listing.publish({ preparation, autoApprove: true });
     const entry = publication.signedArtifact.entries[0];
