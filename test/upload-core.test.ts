@@ -19,6 +19,12 @@ describe('shared uploads', () => {
     expect(() => parseUpload({ ...result, url: 'https://storage.googleapis.com/bucket/key' })).toThrow();
     expect(() => parseUpload({ ...result, access: 'unknown' })).toThrow();
   });
+  it('retains the initiating session ID when finalization returns only private object metadata', () => {
+    const metadata = { access: 'private', key: 'a'.repeat(64), contentType: 'image/png', size: 3 };
+    const sessionId = '11111111-1111-4111-8111-111111111111';
+    expect(parseUpload(metadata, sessionId)).toEqual({ ...metadata, uploadId: sessionId });
+    expect(() => parseUpload(metadata, '../other')).toThrow('invalid_upload_response');
+  });
   it('parses stored metadata and rejects malformed results', () => {
     const result = { access: 'public', key: 'a'.repeat(64), url: 'https://storage.googleapis.com/bucket/key', contentType: 'application/octet-stream', size: 3 };
     expect(parseUpload(result)).toEqual(result);

@@ -61,7 +61,7 @@ export function createAccountFeatures(apiRequest: Request, request: Request): Ra
     await transfer(0);
     const result = parseUpload(await jsonRequest(`v1/uploads/${session.id}/complete`, {
       method: 'POST', headers: { Accept: 'application/json' },
-    }, requestOptions, 300_000));
+    }, requestOptions, 300_000), session.id);
     if (result.access !== access || result.size !== plan.file.size) throw featureError('invalid_upload_response');
     return result;
   }

@@ -10,7 +10,7 @@ export function planUpload(file: Uint8Array | Blob, filename: string, contentTyp
   return { file: file instanceof Blob ? file.slice(0, size, type) : new Blob([new Uint8Array(file)], { type }), filename };
 }
 
-export function parseUpload(value: unknown): RareUpload {
+export function parseUpload(value: unknown, sessionId?: string): RareUpload {
   if (!isRecord(value)) throw featureError('invalid_upload_response');
   const key = requireString(value.key, 'upload_key');
   const contentType = requireString(value.contentType, 'upload_content_type');
@@ -19,7 +19,7 @@ export function parseUpload(value: unknown): RareUpload {
   const metadata = { key, contentType, size: value.size };
   if (value.access === 'private') {
     if ('url' in value) throw featureError('invalid_upload_response');
-    const uploadId = requireString(value.uploadId, 'upload_id');
+    const uploadId = requireString(value.uploadId ?? sessionId, 'upload_id');
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(uploadId)) throw featureError('invalid_upload_response');
     return { ...metadata, access: 'private', uploadId };
   }
