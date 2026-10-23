@@ -62,7 +62,7 @@ describe('consistent feature errors', () => {
     await storage.set({ revision: 'session', apiBaseUrl: api, authBaseUrl: `${api}/auth/v2`, clientId: 'rare-sdk', accessToken: 'access', refreshToken: 'refresh', expiresAt: Date.now() + 300_000, scope: 'rare:account offline_access' });
     const storageCalls: RequestInit[] = [];
     const apiFetch = vi.fn<typeof fetch>(async (input, init) => {
-      const url = String(input);
+      const url = input instanceof Request ? input.url : String(input);
       if (url.startsWith('https://storage.googleapis.com/')) {
         // eslint-disable-next-line functional/immutable-data
         storageCalls.push(init ?? {});
