@@ -7,6 +7,7 @@ import { privateKeyToAccount } from 'viem/accounts';
 import { sepolia } from 'viem/chains';
 import { getTestRpcUrl } from '../../helpers/liveViem.js';
 import { randomUUID } from 'node:crypto';
+import type { CreateEligibilityRule } from '../../../src/sdk/types/eligibility.js';
 
 loadDotEnv();
 
@@ -21,10 +22,10 @@ describe.sequential('SDK eligibility against the deployed Rare API', () => {
     const created = scenario.createdListings[0];
     if (listing === undefined || created === undefined) throw new Error('Eligibility fixture requires a Listing.');
     const ruleInput = { idempotencyKey: randomUUID(), definition: {
-      kind: 'PRIMARY_SALE' as const,
+      kind: 'PRIMARY_SALE',
       source: { chainId: String(scenario.chainId), tokenContract: listing.tokenContract },
       targets: [{ sku: listing.sku }],
-    } };
+    } } satisfies CreateEligibilityRule;
     const rule = await scenario.rare.eligibility.createRule(ruleInput);
     try {
       expect(rule.enabled).toBe(true);
