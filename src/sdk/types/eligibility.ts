@@ -1,6 +1,11 @@
 import type { Address, Hex } from 'viem';
 
-/** An event-driven rule issues SKU-scoped purchase rights. */
+/**
+ * An event-driven rule issues one SKU-scoped purchase right per qualifying copy.
+ * Sources may be ERC-721 or ERC-1155; the API detects the token standard.
+ * Purchase rights stay with the buyer. CURRENT_HOLDER moves unused rights first
+ * on transfer, without recreating rights that have already been consumed.
+ */
 export type EligibilityRuleDefinition = {
   kind: 'PRIMARY_SALE' | 'EVERY_SALE' | 'CURRENT_HOLDER';
   source: { chainId: string; tokenContract: string; tokenIds?: string[] };
