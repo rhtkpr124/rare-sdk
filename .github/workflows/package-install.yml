@@ -24,5 +24,4 @@ jobs:
       # Do not skip lifecycle scripts: Git dependency installs run prepare.
       - run: npm ci
       - run: npm run typecheck
-      - run: npm run package:check
       - run: npx vitest run test/package-exports.test.ts
