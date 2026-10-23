@@ -4084,6 +4084,7 @@ export interface paths {
                         };
                         /** Format: date-time */
                         effectiveFrom?: string;
+                        idempotencyKey?: string;
                     };
                 };
             };

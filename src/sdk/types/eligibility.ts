@@ -9,6 +9,8 @@ export type EligibilityRuleDefinition = {
 };
 
 export type CreateEligibilityRule = {
+  /** Stable UUID for retrying rule creation without issuing a second rule. */
+  idempotencyKey?: string;
   definition: EligibilityRuleDefinition;
   effectiveFrom?: string;
 };

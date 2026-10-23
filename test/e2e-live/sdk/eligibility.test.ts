@@ -6,6 +6,7 @@ import { createWalletClient, erc721Abi, http, isAddressEqual, isHex, zeroAddress
 import { privateKeyToAccount } from 'viem/accounts';
 import { sepolia } from 'viem/chains';
 import { getTestRpcUrl } from '../../helpers/liveViem.js';
+import { randomUUID } from 'node:crypto';
 
 loadDotEnv();
 
@@ -19,13 +20,18 @@ describe.sequential('SDK eligibility against the deployed Rare API', () => {
     const listing = scenario.listings[0];
     const created = scenario.createdListings[0];
     if (listing === undefined || created === undefined) throw new Error('Eligibility fixture requires a Listing.');
-    const rule = await scenario.rare.eligibility.createRule({ definition: {
-      kind: 'PRIMARY_SALE',
+    const ruleInput = { idempotencyKey: randomUUID(), definition: {
+      kind: 'PRIMARY_SALE' as const,
       source: { chainId: String(scenario.chainId), tokenContract: listing.tokenContract },
       targets: [{ sku: listing.sku }],
-    } });
+    } };
+    const rule = await scenario.rare.eligibility.createRule(ruleInput);
     try {
       expect(rule.enabled).toBe(true);
+      expect((await scenario.rare.eligibility.createRule(ruleInput)).id).toBe(rule.id);
+      await expect(scenario.rare.eligibility.createRule({ ...ruleInput,
+        definition: { ...ruleInput.definition, kind: 'EVERY_SALE' },
+      })).rejects.toMatchObject({ status: 409 });
       expect(rule.definition.kind).toBe('PRIMARY_SALE');
       expect((await scenario.rare.eligibility.listRules()).some(candidate => candidate.id === rule.id)).toBe(true);
       const item = scenario.listingIntent.listings[0];
@@ -89,6 +95,8 @@ describe.sequential('SDK eligibility against the deployed Rare API', () => {
           paymentCurrency: zeroAddress, items: [{ kind: 'listing', listingDigest, quantity: 1n, recipient: buyer.address }],
         });
         expect(await claims()).toEqual([]);
+        expect((await rare.cart.listing.search({ eligibility: 'eligible', sku: reward.sku })).data
+          .some(listing => listing.listingDigest === rewardListing.listingDigest)).toBe(false);
         const denied = await preview(rewardListing.listingDigest);
         await expect(rare.cart.api.checkout.prepare(denied.preparationReference)).rejects.toMatchObject({
           status: 409, message: expect.stringContaining('Insufficient unreserved claims'),
@@ -105,6 +113,8 @@ describe.sequential('SDK eligibility against the deployed Rare API', () => {
         ]);
         const [issued] = await claims();
         if (!issued) throw new Error('Indexed qualifying purchase did not issue a claim.');
+        await expect.poll(async () => (await rare.cart.listing.search({ eligibility: 'eligible', sku: reward.sku })).data
+          .some(listing => listing.listingDigest === rewardListing.listingDigest), { timeout: 30_000, interval: 2_000 }).toBe(true);
 
         const prepared = await rare.cart.api.checkout.prepare((await preview(rewardListing.listingDigest)).preparationReference);
         expect(prepared.executePurchase.order.paymentAmount).toBeLessThanOrEqual(1_000_000_000_000_000n);
