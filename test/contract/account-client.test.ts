@@ -56,6 +56,21 @@ afterEach(async () => {
 });
 
 describe('account authentication over HTTP', () => {
+  it.each(['bearer', 'application'])('preserves JSON headers for account writes through %s authentication', async (mode) => {
+    const storage = createMemoryAccountSessionStore();
+    await storage.set(session());
+    const sdk = mode === 'bearer' ? client(storage) : createRareClient({
+      transport: (path, init) => fetch(`${origin}${path}`, init),
+    });
+    handler = async (request, response, body) => {
+      expect(request.headers.authorization).toBe(mode === 'bearer' ? 'Bearer access-1' : undefined);
+      if (request.headers['content-type'] !== 'application/json') return reply(response, { error: 'invalid_request' }, 400);
+      expect(JSON.parse(body)).toEqual({ profile: { bio: 'Updated bio' } });
+      reply(response, { data: { ...profile, profile: { ...profile.profile, bio: 'Updated bio' } } });
+    };
+    expect(await sdk.profile.update({ profile: { bio: 'Updated bio' } })).toMatchObject({ profile: { bio: 'Updated bio' } });
+  });
+
   it('defaults to the production API and rejects the removed separate auth URL', async () => {
     const storage = createMemoryAccountSessionStore();
     await createRareClient({ sessionStore: storage }).auth.clearSession();

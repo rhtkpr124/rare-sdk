@@ -5,7 +5,7 @@ import { isAddress } from 'viem';
 import { parseSiweMessage, validateSiweMessage } from 'viem/siwe';
 import { DEFAULT_RARE_API_BASE_URL } from '../data-access/base-url.js';
 import {
-  isRecord, joinAuthPath, normalizeAuthBaseUrl, parseAuthErrorCode, resolveSigningOrigin,
+  isAccountRequestAuthority, isRecord, joinAuthPath, normalizeAuthBaseUrl, parseAuthErrorCode, resolveSigningOrigin,
   RareAuthError, requirePositiveNumber, requireString,
 } from './account-auth-core.js';
 import { createMemoryAccountSessionStore, parseAccountSession } from './account-session-store.js';
@@ -32,7 +32,7 @@ export function createAccountClient(options: RareAccountClientOptions | RareAcco
       const timeout = AbortSignal.timeout(timeoutMilliseconds);
       const signal = requestOptions.signal === undefined ? timeout : AbortSignal.any([timeout, requestOptions.signal]);
       try {
-        return await options.transport(`/${target.replace(/^\//, '')}`, { ...init, signal });
+        return await options.transport(`/${target.replace(/^\//, '')}`, { ...init, headers: new Headers(init.headers), signal });
       } catch (cause) {
         if (cause instanceof RareAuthError) throw cause;
         throw featureError(requestOptions.signal?.aborted ? 'cancelled' : 'transport_error');
@@ -140,6 +140,24 @@ export function createAccountClient(options: RareAccountClientOptions | RareAcco
       : (await refreshSession(session, requestOptions)).accessToken;
   });
 
+  // Manual feature calls and generated API clients use the same native request
+  // handling. HeadersInit may be an object, tuples, or a Headers instance.
+  const authenticatedRequest = async (input: RequestInfo | URL, init?: RequestInit,
+    requestOptions: RareAuthRequestOptions = {}, timeoutMilliseconds = 30_000): Promise<Response> => {
+    const pending = new Request(input, init);
+    if (!isAccountRequestAuthority(new URL(pending.url), new URL(apiBaseUrl))) throw new RareAuthError('request_authority_mismatch');
+    const timeout = AbortSignal.timeout(timeoutMilliseconds);
+    const signal = AbortSignal.any([pending.signal, timeout, ...(requestOptions.signal === undefined ? [] : [requestOptions.signal])]);
+    const token = await accessToken({ signal });
+    const headers = new Headers(pending.headers);
+    headers.set('Authorization', `Bearer ${token}`);
+    try {
+      return await fetchImpl(new Request(pending, { headers, signal, redirect: 'error', credentials: 'omit' }));
+    } catch {
+      throw featureError(requestOptions.signal?.aborted || pending.signal.aborted ? 'cancelled' : 'transport_error', 0, new URL(pending.url).pathname);
+    }
+  };
+
   const validateDevice = (value: RareDeviceAuthorization): void => {
     if (value.authBaseUrl !== authBaseUrl || value.apiBaseUrl !== apiBaseUrl || value.clientId !== clientId) {
       throw new RareAuthError('device_authority_mismatch');
@@ -183,8 +201,7 @@ export function createAccountClient(options: RareAccountClientOptions | RareAcco
 
   return {
     ...createAccountFeatures(async (path, init, requestOptions = {}, timeoutMilliseconds) => {
-      const token = await accessToken(requestOptions);
-      return applicationRequest(joinAuthPath(apiBaseUrl, path), { ...init, headers: { ...init.headers, Authorization: `Bearer ${token}` } }, requestOptions, timeoutMilliseconds);
+      return authenticatedRequest(joinAuthPath(apiBaseUrl, path), init, requestOptions, timeoutMilliseconds);
     }, applicationRequest),
     auth: {
       async startDeviceAuthorization(requestOptions = {}) {
