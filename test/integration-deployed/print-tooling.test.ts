@@ -4,7 +4,7 @@ import { privateKeyToAccount } from 'viem/accounts';
 import { sepolia } from 'viem/chains';
 import { describe, expect, it } from 'vitest';
 import { createRareClient } from '../../dist/sdk/index.js';
-import type { CreatePrintDrop } from '../../dist/sdk/index.js';
+import type { CreatePrintDrop, PreparePrintListing } from '../../dist/sdk/index.js';
 import { loadDotEnv } from '../helpers/env.js';
 import { createCreatorCartScenario } from '../helpers/cart-creator-fixture.js';
 import { getTestRpcUrl } from '../helpers/liveViem.js';
@@ -55,18 +55,31 @@ describe('print tooling through deployed Rare API', () => {
       const input: CreatePrintDrop = { idempotencyKey: randomUUID(), chainId: '11155111', name: 'SDK print tooling fixture', description: 'Draft only, no purchase or fulfillment.',
         print: { name: 'SDK print tooling fixture', description: 'Draft only, no purchase or fulfillment.', tags: ['sdk-integration'],
           productionUploadKey: production.key, images: [photo.url], specificationId: specification.id } };
-      const created = await rare.prints.drops.create(input);
+      const batchCreated = await rare.prints.drops.create([{ key: 'print', input }]);
+      const createdResult = batchCreated[0];
+      if (createdResult?.status !== 'fulfilled') throw new Error('Batch print creation failed', { cause: createdResult });
+      const created = createdResult.value;
+      expect(await rare.prints.drops.create([{ key: 'print', input }], { previousResults: batchCreated })).toEqual(batchCreated);
       dropId = created.id;
       expect((await rare.prints.drops.create(input)).id).toBe(created.id);
       expect((await rare.prints.drops.getMine(created.id)).metadata.name).toBe(input.name);
       expect((await rare.prints.drops.listMine()).some(drop => drop.id === created.id)).toBe(true);
       await rare.prints.drops.update(created.id, { name: 'Updated SDK print fixture', tags: ['updated-sdk-integration'] });
       expect((await rare.prints.drops.getMine(created.id)).metadata.name).toBe('Updated SDK print fixture');
-      const option = await rare.prints.options.configure(created.id, { displayPriceUsdCents: '10000' });
-      const frozen = await rare.prints.listings.prepare({ optionId: option.id, seller: wallet.address,
+      const configured = await rare.prints.options.configure([{ key: 'print', input: { dropId: created.id, input: { displayPriceUsdCents: '10000' } } }]);
+      if (configured[0]?.status !== 'fulfilled') throw new Error('Batch print configuration failed', { cause: configured });
+      const option = configured[0].value;
+      const preparationInput = { optionId: option.id, seller: wallet.address,
         listingSalt: keccak256(toHex(randomUUID())), deadline: String(Math.floor(Date.now() / 1000) + 86_400),
-        availableQuantity: '10', maxQuantityPerCheckout: '2', fulfillmentKind: 1 });
-      const published = await rare.prints.listings.signAndPublish(frozen, { autoApprove: false });
+        availableQuantity: '10', maxQuantityPerCheckout: '2', fulfillmentKind: 1 } satisfies PreparePrintListing;
+      const prepared = await rare.prints.listings.prepare([{ key: 'print', input: preparationInput }]);
+      if (prepared[0]?.status !== 'fulfilled') throw new Error('Batch print preparation failed', { cause: prepared });
+      const frozen = prepared[0].value;
+      expect((await rare.prints.listings.prepare(preparationInput)).id).toBe(frozen.id);
+      const signedBatch = await rare.prints.listings.signAndPublish([{ key: 'print', input: { preparation: frozen } }], { autoApprove: false });
+      if (signedBatch[0]?.status !== 'fulfilled') throw new Error('Batch print publication failed', { cause: signedBatch });
+      const published = signedBatch[0].value;
+      expect(await rare.prints.listings.signAndPublish([{ key: 'print', input: { preparation: frozen } }], { previousResults: signedBatch })).toEqual(signedBatch);
       expect(published.approvalTxHash).toBeUndefined();
       const entry = published.signedArtifact.entries[0];
       if (!entry) throw new Error('Published print Listing returned no Cart entry.');

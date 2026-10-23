@@ -28,6 +28,7 @@ describe('public SDK API surface', () => {
       'NftApprovalRequiredError',
       'PaymentApprovalRequiredError',
       'PaymentBalanceInsufficientError',
+      'PrintPublicationError',
       'RareApiError',
       'RareAuthError',
       'cartFulfillmentKinds',

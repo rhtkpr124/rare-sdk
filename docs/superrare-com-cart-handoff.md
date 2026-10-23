@@ -5,6 +5,30 @@ This handoff is for implementing Cart commerce, eligibility, and print tooling i
 policy. Do not introduce new cart requests through `gql-api`, direct database
 access, or direct Typesense access.
 
+## Author and publish one or many prints
+
+Print authoring supports the same methods for one item or a batch. Pass an array
+of `{ key, input }` items to `rare.prints.drops.create`, `options.configure`,
+`listings.prepare`, `listings.publish`, or `listings.signAndPublish`. Configuration
+inputs contain `{ dropId, input }`; publication inputs contain
+`{ preparationId, artifact }`; signing inputs contain `{ preparation, signedArtifact? }`.
+
+Batch results retain input order and use `{ key, status: 'fulfilled', value }` or
+`{ key, status: 'rejected', error, signedArtifact? }`. Preserve these results and
+pass `{ previousResults }` when retrying the same batch. The SDK skips successful
+items and processes the rest sequentially. Do not change the input associated
+with a saved key. Generate and retain each draft's `idempotencyKey` and each
+Listing's `listingSalt` before making requests. The SDK never replaces them.
+
+If publication fails after signing, retain the rejected result's `signedArtifact`
+and supply it with that item's `preparation` on retry. This retries publication
+without another signature. Single-item callers can catch `PrintPublicationError`
+and retry `listings.publish(error.preparationId, error.signedArtifact)`.
+
+Use `rare.cart.listing.search({ eligibility: 'eligible' })` for an authenticated
+catalog of open Listings and gated Listings the account can purchase. The server
+revalidates eligibility during checkout. No separate print campaign API is needed.
+
 The claims and print interfaces require the corresponding backend migrations,
 endpoints, and pipeline workers. Their presence in SDK source does not establish
 that a particular Rare API deployment supports them.
