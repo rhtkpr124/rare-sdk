@@ -371,6 +371,15 @@ export interface paths {
                                 status: "PREPARING" | "PREPARATION_FAILED" | "READY" | "EXECUTED" | "EXPIRED";
                                 paymentCurrency: string | null;
                                 paymentAmount: string | null;
+                                items?: {
+                                    lineIndex: number;
+                                    listingDigest: string;
+                                    sku: string;
+                                    quantity: string;
+                                    title: string | null;
+                                    images: string[];
+                                    printDropId: string | null;
+                                }[];
                                 /** Format: date-time */
                                 createdAt: string;
                                 /** Format: date-time */
@@ -452,6 +461,15 @@ export interface paths {
                                 status: "PREPARING" | "PREPARATION_FAILED" | "READY" | "EXECUTED" | "EXPIRED";
                                 paymentCurrency: string | null;
                                 paymentAmount: string | null;
+                                items?: {
+                                    lineIndex: number;
+                                    listingDigest: string;
+                                    sku: string;
+                                    quantity: string;
+                                    title: string | null;
+                                    images: string[];
+                                    printDropId: string | null;
+                                }[];
                                 /** Format: date-time */
                                 createdAt: string;
                                 /** Format: date-time */

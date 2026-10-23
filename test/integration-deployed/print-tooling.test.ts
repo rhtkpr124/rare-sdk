@@ -109,7 +109,10 @@ describe('print tooling through deployed Rare API', () => {
         items: [{ kind: 'listing', listingDigest: entry.listingDigest, quantity: 1n, recipient: wallet.address }],
       })).rejects.toMatchObject({ status: 409 });
       const orderId = signed.executePurchase.order.orderId;
-      expect((await accountClient.orders.get(orderId)).id).toBe(orderId);
+      const orderDetails = await accountClient.orders.get(orderId);
+      expect(orderDetails.id).toBe(orderId);
+      expect(orderDetails.items).toContainEqual(expect.objectContaining({ listingDigest: entry.listingDigest.toLowerCase(),
+        quantity: '2', printDropId: created.id, title: expect.any(String), images: expect.arrayContaining([photo.url]) }));
       expect((await accountClient.orders.list()).data.some(order => order.id === orderId)).toBe(true);
       const source = await createCreatorCartScenario({ tokenCount: 1, eligibility: true });
       try {

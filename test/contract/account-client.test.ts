@@ -209,10 +209,15 @@ describe('account authentication over HTTP', () => {
     const details = { name: 'SDK fixture', email: 'sdk@example.test', phoneNumber: '+12025550100', addressLine1: '123 Test Street',
       townOrCity: 'New York', postalOrZipCode: '10001', countryCode: 'US' };
     const input = { id: '11111111-1111-4111-8111-111111111111', label: 'Studio', details, makeDefault: false };
+    const order = { id: 'fixture-order', status: 'EXECUTED', paymentCurrency: null, paymentAmount: '0',
+      createdAt: '2026-10-23T00:00:00Z', updatedAt: '2026-10-23T00:00:00Z', fulfillments: [],
+      items: [{ lineIndex: 0, listingDigest: `0x${'11'.repeat(32)}`, sku: `0x${'22'.repeat(32)}`,
+        quantity: '2', title: 'Print edition', images: ['https://images.example.test/preview.png'], printDropId: 'fixture-print' }] };
     handler = async (request, response, body) => {
       expect(request.headers.authorization).toBe(mode === 'bearer' ? 'Bearer access-1' : undefined);
       expect(request.headers.cookie).toBe(mode === 'application' ? 'sr-session=application-owned' : undefined);
-      if (request.url === '/v1/account/orders?take=2') return reply(response, { data: [], pagination: {} });
+      if (request.url === '/v1/account/orders?take=2') return reply(response, { data: [order], nextCursor: null });
+      if (request.url === '/v1/account/orders/fixture-order') return reply(response, { data: order });
       if (request.url === '/v1/account/shipping-addresses') {
         if (request.method === 'PUT') expect(JSON.parse(body)).toEqual(input);
         else expect(request.method).toBe('GET');
@@ -225,7 +230,8 @@ describe('account authentication over HTTP', () => {
     expect(await sdk.shippingAddresses.list()).toEqual([]);
     expect(await sdk.shippingAddresses.save(input)).toEqual([]);
     expect(await sdk.shippingAddresses.delete('fixture')).toEqual([]);
-    expect((await sdk.orders.list({ take: 2 })).data).toEqual([]);
+    expect((await sdk.orders.list({ take: 2 })).data[0]?.items).toEqual(order.items);
+    expect((await sdk.orders.get(order.id)).items).toEqual(order.items);
   });
 
   it('shares unified-client refresh and session locking with Cart, keeping public reads anonymous', async () => {
