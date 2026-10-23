@@ -220,8 +220,11 @@ reindexed, or supply an explicit event cutoff. Rule creation does not schedule
 a historical backfill. For current-holder rules, explicit `source.tokenIds`
 support initialization from existing holder evidence. Replayed transfer events
 reconcile the current on-chain holder rather than the historical recipient.
-Verify the backend's supported NFT event
-adapters; do not assume ERC-1155 per-copy eligibility is supported.
+All three rules support ERC-721 and ERC-1155 sources, with one right per
+qualifying copy. Purchase rights stay with the purchaser. Holder transfers move
+unused rights first, without recreating consumed rights. Issuance and initial
+holder snapshots each support at most 100 rights per operation. Larger operations
+fail atomically, not partially. This is not a lifetime wallet limit.
 
 ### Publish a gated Listing without an open interval
 
