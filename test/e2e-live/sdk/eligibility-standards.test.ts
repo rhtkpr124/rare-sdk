@@ -51,7 +51,7 @@ describe.sequential('quantity-aware eligibility across token standards', () => {
       deadline: BigInt(Math.floor(Date.now() / 1000) + 3600), ...(ruleId === undefined ? {} : { eligibilityRuleId: ruleId }),
       listings: [{ nft: { contract: source.contract, tokenId: source.tokenId }, fulfillmentKind: source.fulfillmentKind,
         settlementCurrency: zeroAddress, unitPrice: 1_000_000_000_000n, quantity: source.quantity }] });
-    const publication = await creator.rare.cart.listing.publish({ preparation });
+    const publication = await creator.rare.cart.listing.publish({ preparation, autoApprove: true });
     const entry = publication.signedArtifact.entries[0];
     if (!entry) throw new Error('Eligibility publication returned no Listing.');
     return entry;
