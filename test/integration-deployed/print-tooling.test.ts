@@ -159,7 +159,16 @@ describe('print tooling through deployed Rare API', () => {
             delivery: { savedAddressId: addressId } });
           if (!batch.intent.delivery || !batch.idempotencyKey) throw new Error('Batch quote lost its delivery identity.');
           expect(batch.intent.items).toHaveLength(5);
-          expect(batch.breakdown?.displayPrice).toBeGreaterThanOrEqual(300_000_000n);
+          expect(batch.breakdown).toBeUndefined();
+          expect(batch.paymentAmount).toBeGreaterThan(0n);
+          expect(batch.settlements).toContainEqual({
+            currency: getAddress(resolveCurrency('rare', 'sepolia')), amount: outputAmount,
+          });
+          for (const settlement of batch.settlements) {
+            expect(settlement.amount).toBe(batch.lines
+              .filter(line => isAddressEqual(line.settlementCurrency, settlement.currency))
+              .reduce((total, line) => total + line.amount, 0n));
+          }
           const preparedBatch = await rare.cart.api.checkout.prepare({ ...batch.intent, delivery: batch.intent.delivery, idempotencyKey: batch.idempotencyKey });
           const mixedLines = preparedBatch.executePurchase.lines;
           expect(mixedLines.find(line => line.listingDigest === nftListing.listingDigest)).toMatchObject({ quantity: 1n, fulfillmentKind: 2 });
@@ -287,7 +296,7 @@ describe('print tooling through deployed Rare API', () => {
         const receiptPublished = await rare.prints.listings.signAndPublish(receiptPreparation, { autoApprove: false });
         const receiptEntry = receiptPublished.signedArtifact.entries[0];
         if (!receiptEntry) throw new Error('Receipt print Listing was not returned.');
-        expect(receiptEntry.listing).toMatchObject({ sku: option.sku, fulfillmentKind: 5, tokenId: receiptToken.tokenId });
+        expect(receiptEntry.listing).toMatchObject({ sku: option.sku, fulfillmentKind: 5, tokenId: receiptToken.tokenId.toString() });
         expect(isAddressEqual(receiptEntry.listing.tokenContract, receiptCollection.contract)).toBe(true);
         await expect.poll(async () => (await rare.prints.drops.get(created.id)).options
           .find(candidate => candidate.listingDigest === receiptEntry.listingDigest)?.receipt,
