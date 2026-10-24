@@ -4525,7 +4525,49 @@ export interface components {
                 lineIndex?: string;
                 actionIndex?: string;
             }[];
+            feeAllocations?: {
+                /** @enum {number} */
+                schemaVersion: 1;
+                allocations: {
+                    sourceLineIndex: number | null;
+                    listingDigest: string | null;
+                    adjustmentRuleId: string | null;
+                    purpose: string;
+                    /** @enum {string} */
+                    bearer: "SELLER" | "BUYER";
+                    feeSku: string;
+                    currency: string;
+                    recipient: string;
+                    /** @enum {string} */
+                    amountKind: "PER_UNIT" | "FIXED";
+                    unitAmount: string;
+                    quantity: string;
+                    grossAmount: string;
+                    calculation?: {
+                        /** @enum {string} */
+                        type: "FIXED";
+                        amount: string;
+                        /** @enum {string} */
+                        currencyMode: "COMPONENT_CURRENCY";
+                    } | {
+                        /** @enum {string} */
+                        type: "PER_UNIT";
+                        amount: string;
+                        /** @enum {string} */
+                        currencyMode: "COMPONENT_CURRENCY";
+                    } | {
+                        /** @enum {string} */
+                        type: "PERCENTAGE";
+                        basisPoints: number;
+                        /** @enum {string} */
+                        currencyMode: "COMPONENT_CURRENCY";
+                    };
+                    amount: string;
+                    finalLineIndex: number | null;
+                }[];
+            };
         };
+        /** @description A JSON object whose values may contain nested JSON data. */
     };
     responses: never;
     parameters: never;

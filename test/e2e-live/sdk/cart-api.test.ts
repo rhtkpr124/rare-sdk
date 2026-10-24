@@ -144,6 +144,32 @@ describeRareApi('SDK Cart rare-api integration', () => {
       signature: prepared.executePurchase.platformSignature,
     });
     expect(isAddressEqual(recoveredSigner, platformSigner)).toBe(true);
+    const receipt = await rare.cart.api.checkout.receipt(prepared.executePurchase.order.orderId);
+    expect(receipt.status).toBe('pending');
+    expect(receipt.issues).toEqual([]);
+    const allocations = receipt.feeAllocations?.allocations;
+    if (allocations === undefined) throw new Error('Signed checkout lost its item-level fee allocations.');
+    const sellerFees = allocations.filter(allocation => allocation.bearer === 'SELLER');
+    expect(sellerFees).toHaveLength(2);
+    expect(new Set(sellerFees.map(allocation => allocation.finalLineIndex)).size).toBe(1);
+    expect(sellerFees.map(allocation => allocation.sourceLineIndex)).toEqual([0, 1]);
+    expect(prepared.executePurchase.lines.filter(line => line.fulfillmentKind === 0)).toHaveLength(2);
+    expect(prepared.executePurchase.lines).toHaveLength(4);
+    for (const [index, line] of prepared.executePurchase.lines.entries()) {
+      if (line.fulfillmentKind !== 0) continue;
+      expect(allocations.filter(allocation => allocation.finalLineIndex === index)
+        .reduce((sum, allocation) => sum + BigInt(allocation.amount), 0n)).toBe(line.amount);
+    }
+    expect((await rare.cart.api.checkout.receipt(prepared.executePurchase.order.orderId)).feeAllocations).toEqual(receipt.feeAllocations);
+    const feeLine = prepared.executePurchase.lines.find(line => line.fulfillmentKind === 0 && line.amount > 1n);
+    if (feeLine === undefined) throw new Error('Fixture requires a divisible fee line.');
+    const expandedLines = prepared.executePurchase.lines.flatMap(line => line === feeLine
+      ? [{ ...line, amount: 1n }, { ...line, amount: line.amount - 1n }] : [line]);
+    const expandedSigner = await recoverAddress({
+      hash: hashCartPurchaseOrder({ ...prepared.executePurchase.order, orderLinesHash: hashCartOrderLines(expandedLines) }, prepared.chainId, prepared.cartAddress),
+      signature: prepared.executePurchase.platformSignature,
+    });
+    expect(isAddressEqual(expandedSigner, platformSigner)).toBe(false);
   }, 60_000);
 
   it('handles off-chain Listings and real API not-found errors', async () => {

@@ -22,6 +22,7 @@ import type {
   CartApiProduct,
   CartCheckoutIntent,
   CartCheckoutPreparation,
+  CartCheckoutReceipt,
   CartCatalogVariant,
   CartProductSearchParams,
   CartVariantSearchParams,
@@ -136,6 +137,10 @@ export function createCartApiNamespace(
   };
 
   const checkout = {
+    receipt: async (orderId: Hex): Promise<CartCheckoutReceipt> => getWrappedData(
+      client.GET('/v1/cart/orders/{orderId}/receipt', { params: { path: { orderId } } }),
+      'Rare API did not return the Cart receipt.',
+    ),
     preview: async (intent: CartCheckoutIntent): Promise<CartCheckoutPreparation> => {
       const validation = validateCartCheckoutIntent(intent);
       if (!validation.isValid) throw new Error(`Invalid Cart checkout intent: ${validation.issues.map((issue) => issue.message).join(' ')}`);

@@ -12,6 +12,7 @@ import type {
 } from './cart.js';
 
 export type CartApiCatalogMetadata = Record<string, unknown>;
+export type CartCheckoutReceipt = import('../../data-access/cart-schema.js').components['schemas']['CartReceipt'];
 
 export type CartApiProduct = {
   id: string;
@@ -340,6 +341,7 @@ export type CartApiNamespace = {
     publish: (artifact: CartListingRootArtifact & { signature: Hex }) => Promise<CartApiListingRoot>;
   };
   checkout: {
+    receipt: (orderId: Hex) => Promise<CartCheckoutReceipt>;
     preview: (intent: CartCheckoutIntent) => Promise<CartCheckoutPreparation>;
     prepare: (intent: CartCheckoutIntent) => Promise<CartApiPreparedPurchase>;
   };
