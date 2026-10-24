@@ -144,7 +144,7 @@ describe('print tooling through deployed Rare API', () => {
               nft: { contract: editions.contract, tokenId: edition.tokenId }, fulfillmentKind: 3,
               settlementCurrency: getAddress(entry.listing.settlementCurrency), unitPrice: 1_000_000n, quantity: 2n,
             }],
-          }) });
+          }), autoApprove: true });
           const editionEntry = editionPublication.signedArtifact.entries[0];
           if (!editionEntry) throw new Error('Mixed delivery requires a normal ERC-1155 Listing.');
           const outputAmount = 10_000_000_000_000_000n;
