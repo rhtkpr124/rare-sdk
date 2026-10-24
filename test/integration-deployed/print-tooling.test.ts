@@ -3,7 +3,7 @@ import { createPublicClient, createWalletClient, getAddress, http, isAddressEqua
 import { privateKeyToAccount } from 'viem/accounts';
 import { sepolia } from 'viem/chains';
 import { describe, expect, it } from 'vitest';
-import { createRareClient } from '../../dist/sdk/index.js';
+import { createRareClient, RareApiError } from '../../dist/sdk/index.js';
 import type { CreatePrintDrop, PreparePrintListing } from '../../dist/sdk/index.js';
 import { loadDotEnv } from '../helpers/env.js';
 import { createCreatorCartScenario } from '../helpers/cart-creator-fixture.js';
@@ -121,6 +121,18 @@ describe('print tooling through deployed Rare API', () => {
         if (!nft) throw new Error('Gated print fixture requires a qualifying NFT.');
         if (input.print === undefined) throw new Error('The fixture requires physical print details.');
         const sourceUniversalTokenId = `11155111-${nft.tokenContract.toLowerCase()}-${nft.tokenId}`;
+        // A mined token and Cart listing can exist before NFT indexing has completed.
+        await expect.poll(async () => {
+          try {
+            const indexed = await rare.nft.get({ contract: getAddress(nft.tokenContract), tokenId: nft.tokenId });
+            return { universalTokenId: indexed.universalTokenId, creatorAddress: indexed.creator.address.toLowerCase() };
+          } catch (error) {
+            if (error instanceof RareApiError && error.status === 404) return null;
+            throw error;
+          }
+        }, { timeout: 180_000, interval: 2_000,
+          message: `Waiting for source NFT ${sourceUniversalTokenId} to be indexed with its creator`,
+        }).toEqual({ universalTokenId: sourceUniversalTokenId, creatorAddress: wallet.address.toLowerCase() });
         const mapped = await rare.prints.drops.create({ ...input, idempotencyKey: randomUUID(),
           print: { ...input.print, sourceUniversalTokenId } });
         try {
