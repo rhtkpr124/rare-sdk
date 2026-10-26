@@ -15,6 +15,15 @@ import type { CartCheckoutIntent, CartCheckoutPreparation, CartListingIntent, Ca
 export const cartEip712Name = 'SuperRare Cart';
 export const cartEip712Version = '1';
 export const cartMerkleMaxProofDepth = 64;
+export const cartMaximumCheckoutItems = 64;
+export const cartMaximumCheckoutGas = 12_000_000n;
+
+export function planCartCheckoutGas(estimatedGas: bigint): CartValidationResult<bigint> {
+  if (estimatedGas <= 0n || estimatedGas > cartMaximumCheckoutGas) return { isValid: false,
+    issues: [issue('resource_limit_exceeded', 'gas', 'Cart checkout must use at most 12,000,000 gas.')] };
+  const bufferedGas = estimatedGas + estimatedGas / 5n;
+  return { isValid: true, value: bufferedGas > cartMaximumCheckoutGas ? cartMaximumCheckoutGas : bufferedGas };
+}
 const zeroHash = `0x${'00'.repeat(32)}` as Hex;
 const lineType = 'OrderLine(bytes32 sku,bytes32 listingDigest,uint8 fulfillmentKind,uint256 quantity,address settlementCurrency,uint256 amount,address paymentRecipient)';
 const routeType = 'PayoutRoute(bytes commands,bytes[] inputs,uint256 routerValue)';
@@ -55,7 +64,7 @@ export function buildCartVariantSearchQuery(params: CartVariantSearchParams, cha
 export function validateCartCheckoutIntent(intent: CartCheckoutIntent): CartValidationResult<CartCheckoutIntent> {
   const issues: CartValidationIssue[] = [];
   if (!isAddress(intent.paymentCurrency)) issues.push(issue('invalid_address', 'paymentCurrency', 'Checkout payment currency must be an address.'));
-  if (intent.items.length === 0 || intent.items.length > 20) issues.push(issue('invalid_length', 'items', 'Checkout must contain between 1 and 20 items.'));
+  if (intent.items.length === 0 || intent.items.length > cartMaximumCheckoutItems) issues.push(issue('invalid_length', 'items', 'Checkout must contain between 1 and 64 items.'));
   intent.items.forEach((item, index) => {
     if (item.kind === 'listing') {
       if (!isHex(item.listingDigest) || item.listingDigest.length !== 66) issues.push(issue('invalid_digest', `items[${index}].listingDigest`, 'Checkout listing digest must be bytes32.'));
@@ -457,11 +466,12 @@ export function validateCartListings(listings: readonly CartListing[]): CartVali
 
 function validateCartOrderInputs(lines: readonly CartOrderLine[], actions: readonly CartFulfillmentAction[], params: BuildCartOrderParams): CartValidationIssue[] {
   const issues: CartValidationIssue[] = [];
-  if (lines.length === 0 || lines.length > 20) issues.push(issue('invalid_length', 'lines', 'lines must include between 1 and 20 Order Lines.'));
+  if (lines.length === 0) issues.push(issue('invalid_length', 'lines', 'lines must include at least one Order Line.'));
+  const itemCount = lines.filter(line => line.listingDigest !== zeroHash || line.fulfillmentKind !== 0).length;
+  if (itemCount > cartMaximumCheckoutItems) issues.push(issue('invalid_length', 'lines', 'Checkout cannot contain more than 64 merchandise or swap items.'));
   if (params.orderId === zeroHash) issues.push(issue('zero', 'orderId', 'orderId must be nonzero.'));
   if (params.deadline <= 0n) issues.push(issue('non_positive', 'deadline', 'deadline must be positive.'));
   if (params.paymentAmount < 0n) issues.push(issue('negative', 'paymentAmount', 'paymentAmount cannot be negative.'));
-  if (actions.length > 20) issues.push(issue('invalid_length', 'actions', 'actions cannot contain more than 20 entries.'));
   lines.forEach((line, index) => {
     if (line.quantity <= 0n) issues.push(issue('non_positive', `lines[${index}].quantity`, `lines[${index}].quantity must be positive.`));
     if (line.amount < 0n) issues.push(issue('negative', `lines[${index}].amount`, `lines[${index}].amount cannot be negative.`));

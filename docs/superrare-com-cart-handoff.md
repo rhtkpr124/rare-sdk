@@ -143,6 +143,21 @@ Reuse SDK approval, simulation, execution, and receipt verification. Do not
 rebuild Cart calldata, Merkle proofs, or transaction verification in React.
 `autoApprove` defaults to false. Choose approval behavior deliberately.
 
+## Handle checkout capacity
+
+A cart supports at most 64 listing or swap selections. Quantities do not multiply
+the item count. Generated fee lines do not count toward this limit.
+
+Rare API simulates the complete transaction before returning a signed checkout
+and rejects transactions that exceed the 12,000,000 gas budget or cannot be
+simulated. The SDK checks the same budget before wallet submission. These limits
+are platform policy, not caller options. A cart with fewer than 64 selections can
+still exceed the gas budget, particularly when minting many tokens.
+
+Simulation uses server-controlled funding and allowance overrides so users can
+prepare checkout before funding or approving a wallet. These overrides change no
+on-chain state. Actual payment still requires the user's funds and approval.
+
 ## Keep checkout economics on the backend
 
 Use Rare API results for production costs, shipping, commissions, checkout fees,

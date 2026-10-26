@@ -17,6 +17,7 @@ import {
   validateCartListingRootArtifact,
   validateCartSettledOrderLines,
   validateCartApprovedSwapOutputs,
+  planCartCheckoutGas,
 } from '../../../src/sdk/cart-core.js';
 import { cartFulfillmentKinds, type CartFulfillmentAction, type CartListing, type CartOrderLine } from '../../../src/sdk/types/cart.js';
 import type { CartCheckoutPreparation } from '../../../src/sdk/types/cart-api.js';
@@ -51,6 +52,18 @@ const listings: CartListing[] = [
 ];
 
 describe('Cart functional core', () => {
+  it('buffers ordinary estimates without raising the 12 million gas ceiling', () => {
+    expect(planCartCheckoutGas(1_000_000n)).toEqual({ isValid: true, value: 1_200_000n });
+    expect(planCartCheckoutGas(11_000_000n)).toEqual({ isValid: true, value: 12_000_000n });
+    expect(planCartCheckoutGas(12_000_000n)).toEqual({ isValid: true, value: 12_000_000n });
+    expect(planCartCheckoutGas(12_000_001n).isValid).toBe(false);
+    expect(planCartCheckoutGas(0n).isValid).toBe(false);
+  });
+  it('allows 64 selections but rejects a 65th, without counting quantity as entries', () => {
+    const item = { kind: 'listing', listingDigest: bytes32('1'), quantity: 10n, recipient: seller } satisfies CartCheckoutPreparation['intent']['items'][number];
+    expect(validateCartCheckoutIntent({ paymentCurrency: zeroAddress, items: Array.from({ length: 64 }, () => item) }).isValid).toBe(true);
+    expect(validateCartCheckoutIntent({ paymentCurrency: zeroAddress, items: Array.from({ length: 65 }, () => item) }).isValid).toBe(false);
+  });
   it('keeps finalized swap promises fixed while allowing unrelated listing fee changes', () => {
     const swap: CartOrderLine = { sku: bytes32('a'), listingDigest: bytes32('0'), fulfillmentKind: 6,
       quantity: 1n, settlementCurrency: seller, amount: 100n, paymentRecipient: cart };
@@ -503,10 +516,13 @@ describe('Cart functional core', () => {
     const build = (lines: CartOrderLine[] = [line], actions: CartFulfillmentAction[] = []) => buildCartOrder({
       orderId: bytes32('c'), paymentCurrency: zeroAddress, deadline: 2_000_000_000n, paymentAmount: 1n, lines, actions,
     });
-    expect(() => build([])).toThrow('between 1 and 20');
-    expect(() => build(Array.from({ length: 21 }, () => line))).toThrow('between 1 and 20');
+    expect(() => build([])).toThrow('at least one');
+    expect(build([...Array.from({ length: 64 }, () => line),
+      ...Array.from({ length: 2 }, () => ({ ...line, listingDigest: bytes32('0'), fulfillmentKind: cartFulfillmentKinds.none })),
+    ]).lines).toHaveLength(66);
+    expect(() => build(Array.from({ length: 65 }, () => line))).toThrow('more than 64');
     expect(() => build([line], Array.from({ length: 21 }, () => ({ lineIndex: 0n, quantity: 1n, recipient: seller }))))
-      .toThrow('more than 20');
+      .not.toThrow();
     expect(build([{ ...line, amount: 0n }]).lines[0]?.amount).toBe(0n);
     expect(() => build([{ ...line, amount: -1n }])).toThrow('amount cannot be negative');
     expect(buildCartOrder({

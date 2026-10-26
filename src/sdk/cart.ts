@@ -3,7 +3,7 @@ import { cartAbi } from '../contracts/abis/cart.js';
 import { cartLensAbi } from '../contracts/abis/cart-lens.js';
 import { ETH_ADDRESS, type SupportedChain } from '../contracts/addresses.js';
 import { approvalAbi, NftApprovalRequiredError, runWithApprovalSideEffectAlert, waitForApprovalState } from './approvals-shell.js';
-import { buildCartListingRootArtifact, cartDomain, hashCartListing, hashCartListingRoot, hashCartOrder, validateCartCheckoutIntent, validateCartCheckoutPreparationForPurchase, validateCartListingIntent, validateCartListingRootArtifact, validateCartSettledOrderLines, validateCartApprovedSwapOutputs } from './cart-core.js';
+import { buildCartListingRootArtifact, cartDomain, cartMaximumCheckoutGas, planCartCheckoutGas, hashCartListing, hashCartListingRoot, hashCartOrder, validateCartCheckoutIntent, validateCartCheckoutPreparationForPurchase, validateCartListingIntent, validateCartListingRootArtifact, validateCartSettledOrderLines, validateCartApprovedSwapOutputs } from './cart-core.js';
 import { assertSufficientPaymentBalance, PaymentApprovalRequiredError, preparePaymentAmountForSpender } from './payments-shell.js';
 import { waitForSuccessfulTransactionReceipt } from './transaction-receipt.js';
 import type { RareClientConfig } from './types/client.js';
@@ -340,9 +340,17 @@ async function readCartLensPreflight(publicClient: PublicClient, lens: Address, 
 async function simulateCartCheckout(publicClient: PublicClient, cart: Address, account: Address, value: bigint,
   params: CartCheckoutParams, message: string) {
   try {
-    return await publicClient.simulateContract({ address: cart, abi: cartAbi, functionName: 'executePurchase',
+    const estimatedGas = await publicClient.estimateContractGas({ address: cart, abi: cartAbi, functionName: 'executePurchase',
       args: [params.order, params.lines, params.listings, params.authorization, params.route, params.actions, params.platformSignature],
       account, value });
+    const gasPlan = planCartCheckoutGas(estimatedGas);
+    if (!gasPlan.isValid) throw new CartPreparationError('resource_limit_exceeded', 'Cart checkout must use at most 12,000,000 gas.', gasPlan.issues);
+    const simulation = await publicClient.simulateContract({ address: cart, abi: cartAbi, functionName: 'executePurchase',
+      args: [params.order, params.lines, params.listings, params.authorization, params.route, params.actions, params.platformSignature],
+      account, value, gas: cartMaximumCheckoutGas });
+    // Do not require the wallet to fund the entire policy ceiling for a small checkout.
+    return { ...simulation, request: { ...simulation.request,
+      gas: gasPlan.value } };
   } catch (cause) {
     throw new CartExecutionError(message, { orderId: params.order.orderId, cart, cause });
   }
