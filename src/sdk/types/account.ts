@@ -134,7 +134,7 @@ export type RareAccountClient = {
     add: (postId: string, options?: RareAuthRequestOptions) => Promise<void>;
     remove: (postId: string, options?: RareAuthRequestOptions) => Promise<void>;
   };
-  favorites: {
+  artworkFavorites: {
     list: (options?: FavoritesListOptions & RareAuthRequestOptions) => Promise<SearchPageResponse<ArtworkFavorite>>;
     has: (input: FavoriteArtworkInput, options?: RareAuthRequestOptions) => Promise<boolean>;
     add: (input: FavoriteArtworkInput, options?: RareAuthRequestOptions) => Promise<void>;

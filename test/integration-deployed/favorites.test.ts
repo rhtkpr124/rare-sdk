@@ -54,25 +54,25 @@ describe('artwork favorites against deployed services', () => {
     try {
       await login(account, owner);
       await login(other, otherOwner);
-      await expect(account.favorites.add(absentId)).rejects.toMatchObject({ status: 404 });
-      const before = await account.favorites.list();
-      const otherBefore = await other.favorites.list();
-      expect(await account.favorites.has(id)).toBe(false);
-      expect(await other.favorites.has(id)).toBe(false);
+      await expect(account.artworkFavorites.add(absentId)).rejects.toMatchObject({ status: 404 });
+      const before = await account.artworkFavorites.list();
+      const otherBefore = await other.artworkFavorites.list();
+      expect(await account.artworkFavorites.has(id)).toBe(false);
+      expect(await other.artworkFavorites.has(id)).toBe(false);
       try {
-        await account.favorites.add(id);
-        await account.favorites.add(id);
-        expect(await account.favorites.has(id)).toBe(true);
-        expect(await other.favorites.has(id)).toBe(false);
-        const list = await account.favorites.list({ perPage: 1 });
+        await account.artworkFavorites.add(id);
+        await account.artworkFavorites.add(id);
+        expect(await account.artworkFavorites.has(id)).toBe(true);
+        expect(await other.artworkFavorites.has(id)).toBe(false);
+        const list = await account.artworkFavorites.list({ perPage: 1 });
         expect(list.pagination.totalCount).toBe(before.pagination.totalCount + 1);
         expect(list.data).toHaveLength(1);
         expect(list.data[0]?.universalTokenId).toBe(id);
-        const visible = await account.favorites.list({ perPage: 100 });
+        const visible = await account.artworkFavorites.list({ perPage: 100 });
         for (const favorite of visible.data) {
           await expect(api.nft.favoriteCount(nftIdentity(favorite.universalTokenId))).resolves.toBeGreaterThanOrEqual(0);
         }
-        const afterLast = await account.favorites.list({ page: visible.pagination.totalPages + 1, perPage: 100 });
+        const afterLast = await account.artworkFavorites.list({ page: visible.pagination.totalPages + 1, perPage: 100 });
         expect(afterLast.data).toEqual([]);
         expect(afterLast.pagination.totalCount).toBe(visible.pagination.totalCount);
         expect(JSON.stringify(list)).not.toContain('email');
@@ -90,14 +90,14 @@ describe('artwork favorites against deployed services', () => {
         }
         const privateResponse = await call('/v1/me/favorites', 'GET', session.accessToken);
         expect(privateResponse.headers.get('cache-control')).toContain('no-store');
-        expect(await other.favorites.list()).toEqual(otherBefore);
-        await account.favorites.remove(id);
-        await account.favorites.remove(id);
-        expect(await account.favorites.has(id)).toBe(false);
-        expect(await account.favorites.list()).toEqual(before);
+        expect(await other.artworkFavorites.list()).toEqual(otherBefore);
+        await account.artworkFavorites.remove(id);
+        await account.artworkFavorites.remove(id);
+        expect(await account.artworkFavorites.has(id)).toBe(false);
+        expect(await account.artworkFavorites.list()).toEqual(before);
         expect(await waitFavoriteCount(api, id, beforeCount)).toBe(beforeCount);
       } finally {
-        await account.favorites.remove(id);
+        await account.artworkFavorites.remove(id);
       }
     } finally {
       await Promise.all([account.auth.logout(), other.auth.logout()]);

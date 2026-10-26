@@ -377,14 +377,14 @@ Favorites require an existing account and a saved account session. Counts are pu
 
 ```ts
 const id = '1-0xb932a70a57673d89f4acffbe830e8ed7f75fb9e0-12345';
-await account.favorites.add(id);
-await account.favorites.has(id); // boolean
-await account.favorites.list({ page: 1, perPage: 20 });
-await account.favorites.remove(id);
+await account.artworkFavorites.add(id);
+await account.artworkFavorites.has(id); // boolean
+await account.artworkFavorites.list({ page: 1, perPage: 20 });
+await account.artworkFavorites.remove(id);
 await rare.nft.favoriteCount({ contract: '0xb932a70a57673d89f4acffbe830e8ed7f75fb9e0', tokenId: 12345 });
 ```
 
-`account.favorites.add`, `remove`, and `has` also accept `{ chainId, contract, tokenId }`.
+`account.artworkFavorites.add`, `remove`, and `has` also accept `{ chainId, contract, tokenId }`.
 Lists contain artwork identifiers, the favorite creation time, and `metadata.name`, with standard page metadata.
 The API derives the acting account from its session. It provides no public favorite list or list of people who favorited an artwork.
 Repeated adds and removals preserve the requested state. These methods do not authorize blockchain transactions.

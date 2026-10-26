@@ -113,7 +113,7 @@ export function createAccountFeatures(apiRequest: Request, request: Request): Ra
       async add(id, options) { await postFavorite('PUT', id, options); },
       async remove(id, options) { await postFavorite('DELETE', id, options); },
     },
-    favorites: {
+    artworkFavorites: {
       async list(options = {}) {
         const query = favoritePageQuery(options);
         return parseFavoritesPage(await jsonRequest(`v1/me/favorites?page=${query.page}&perPage=${query.perPage}`, { method: 'GET', headers: { Accept: 'application/json' } }, options));
