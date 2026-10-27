@@ -949,7 +949,7 @@ The generated reference is written to `docs/reference/`.
 quotes, frozen Listing preparations, and public print reads. It uses Rare API
 directly. Pass the authenticated account client to `createRareClient`.
 
-Upload print masters with `accountClient.upload(file, filename, { access:
+Upload print masters with `rare.upload(file, filename, { access:
 'private' })`. Pass the returned `key` as `print.productionUploadKey` when creating
 a standalone drop. Upload supplemental display images with public access and use
 their URLs in `print.images`. The SDK does not publish master download URLs.
@@ -977,13 +977,13 @@ draft through generic Cart checkout. `rare.cart.checkout.coinflow` prepares a ca
 session without a separate print payment flow.
 
 Saving an address is a separate, explicit operation. Use
-`accountClient.shippingAddresses.list`, `save`, and `delete`. Checkout does not
+`rare.shippingAddresses.list`, `save`, and `delete`. Checkout does not
 implicitly save delivery details. `save` accepts an address UUID and `makeDefault`
 to create or replace an entry and select the default.
 
-`accountClient.cart.orders.list` returns `{ data, nextCursor }` for account-owned
+`rare.cart.orders.list` returns `{ data, nextCursor }` for account-owned
 Cart orders, including NFT-only, swap-only, print, and mixed purchases.
-`accountClient.cart.orders.get(cartOrderId)` returns payment and fulfillment
+`rare.cart.orders.get(cartOrderId)` returns payment and fulfillment
 status without private address data. A fulfillment status of `COMPLETED` means
 the provider accepted the order, not that the item shipped or arrived. These
 methods do not include legacy NFT purchase history.

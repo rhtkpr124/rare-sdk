@@ -20,39 +20,38 @@ const setup = () => {
   const url = new URL(apiBaseUrl);
   if (url.protocol !== 'https:' || url.hostname === 'api.superrare.com') throw new Error('Print integration tests require a non-production HTTPS API.');
   const wallet = privateKeyToAccount(key);
-  const accountClient = createRareClient({ apiBaseUrl });
   const publicClient = createPublicClient({ chain: sepolia, transport: http(process.env.TEST_RPC_URL) });
   const walletClient = createWalletClient({ account: wallet, chain: sepolia, transport: http(process.env.TEST_RPC_URL) });
-  const rare = createRareClient({ apiBaseUrl, accountClient, publicClient, walletClient });
-  return { wallet, accountClient, rare, apiBaseUrl };
+  const rare = createRareClient({ apiBaseUrl, publicClient, walletClient });
+  return { wallet, rare, apiBaseUrl };
 };
 
 describe('print tooling through deployed Rare API', () => {
   it('publishes quantity-limited and gated prints, quotes copies, and reserves an earned claim', async () => {
-    const { wallet, accountClient, rare } = setup();
+    const { wallet, rare } = setup();
     const addressId = randomUUID();
     let addressNeedsCleanup = false;
     let dropId: string | undefined;
-    await accountClient.auth.loginWithWallet({ address: wallet.address, chainId: sepolia.id,
+    await rare.auth.loginWithWallet({ address: wallet.address, chainId: sepolia.id,
       signMessage: message => wallet.signMessage({ message }) });
     try {
       // Fail before uploads or persistent changes when this deployment is missing print tooling.
       const specifications = await rare.prints.specifications.list();
       const specification = specifications[0];
       if (!specification) throw new Error('The API returned no user-facing print specifications.');
-      const addressesBefore = await accountClient.shippingAddresses.list();
+      const addressesBefore = await rare.shippingAddresses.list();
       const details = { name: 'SDK fulfillment fixture', email: 'sdk-fixture@example.test', phoneNumber: '+12025550100',
         addressLine1: '123 Test Street', addressLine2: '', townOrCity: 'New York', stateOrCounty: 'NY',
         postalOrZipCode: '10001', countryCode: 'US' };
-      const saved = await accountClient.shippingAddresses.save({ id: addressId, label: 'SDK integration', details, makeDefault: false });
+      const saved = await rare.shippingAddresses.save({ id: addressId, label: 'SDK integration', details, makeDefault: false });
       addressNeedsCleanup = true;
       expect(saved.find(address => address.id === addressId)?.details).toEqual(details);
-      expect((await accountClient.shippingAddresses.list()).find(address => address.id === addressId)?.details).toEqual(details);
+      expect((await rare.shippingAddresses.list()).find(address => address.id === addressId)?.details).toEqual(details);
       const bytes = Uint8Array.from(Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jio8AAAAASUVORK5CYII=', 'base64'));
-      const production = await accountClient.upload(bytes, 'production.png', { access: 'private', contentType: 'image/png' });
+      const production = await rare.upload(bytes, 'production.png', { access: 'private', contentType: 'image/png' });
       expect(production.access).toBe('private');
       expect('url' in production).toBe(false);
-      const photo = await accountClient.upload(bytes, 'preview.png', { contentType: 'image/png' });
+      const photo = await rare.upload(bytes, 'preview.png', { contentType: 'image/png' });
       const input: CreatePrintDrop = { idempotencyKey: randomUUID(), chainId: '11155111', name: 'SDK print tooling fixture', description: 'Draft only, no purchase or fulfillment.',
         print: { name: 'SDK print tooling fixture', description: 'Draft only, no purchase or fulfillment.', tags: ['sdk-integration'],
           productionUploadKey: production.key, images: [photo.url], specificationId: specification.id } };
@@ -110,11 +109,11 @@ describe('print tooling through deployed Rare API', () => {
         items: [{ kind: 'listing', listingDigest: entry.listingDigest, quantity: 1n, recipient: wallet.address }],
       })).rejects.toMatchObject({ status: 409 });
       const orderId = signed.executePurchase.order.orderId;
-      const orderDetails = await accountClient.cart.orders.get(orderId);
+      const orderDetails = await rare.cart.orders.get(orderId);
       expect(orderDetails.id).toBe(orderId);
       expect(orderDetails.items).toContainEqual(expect.objectContaining({ listingDigest: entry.listingDigest.toLowerCase(),
         quantity: '2', printDropId: created.id, title: expect.any(String), images: expect.arrayContaining([photo.url]) }));
-      expect((await accountClient.cart.orders.list()).data.some(order => order.id === orderId)).toBe(true);
+      expect((await rare.cart.orders.list()).data.some(order => order.id === orderId)).toBe(true);
       const source = await createCreatorCartScenario({ tokenCount: 1, eligibility: true });
       try {
         const nft = source.listings[0];
@@ -178,7 +177,7 @@ describe('print tooling through deployed Rare API', () => {
           expect(preparedBatch.executePurchase.actions.map(action => ({
             quantity: action.quantity, kind: mixedLines[Number(action.lineIndex)]?.fulfillmentKind,
           }))).toEqual(expect.arrayContaining([{ quantity: 1n, kind: 2 }, { quantity: 2n, kind: 3 }]));
-          const history = await accountClient.cart.orders.get(preparedBatch.executePurchase.order.orderId);
+          const history = await rare.cart.orders.get(preparedBatch.executePurchase.order.orderId);
           expect(history.fulfillments).toHaveLength(2);
           expect(new Set(history.fulfillments.map(item => item.orderLineIndex)).size).toBe(2);
           expect(history.fulfillments.map(item => item.orderLineIndex).sort()).toEqual([
@@ -215,13 +214,12 @@ describe('print tooling through deployed Rare API', () => {
           if (!buyerKey || !isHex(buyerKey) || buyerKey.length !== 66) throw new Error('Set a registered, funded Sepolia E2E_BUYER_PRIVATE_KEYS wallet.');
           const buyer = privateKeyToAccount(buyerKey);
           if (isAddressEqual(buyer.address, wallet.address)) throw new Error('The print eligibility buyer must differ from the creator.');
-          const buyerAccount = createRareClient({ apiBaseUrl: source.apiBaseUrl });
-          await buyerAccount.auth.loginWithWallet({ address: buyer.address, chainId: sepolia.id,
+          const buyerRare = createRareClient({ apiBaseUrl: source.apiBaseUrl,
+            publicClient: source.publicClient, walletClient: createWalletClient({ account: buyer,
+              chain: sepolia, transport: http(getTestRpcUrl()) }) });
+          await buyerRare.auth.loginWithWallet({ address: buyer.address, chainId: sepolia.id,
             signMessage: message => buyer.signMessage({ message }) });
           try {
-            const buyerRare = createRareClient({ apiBaseUrl: source.apiBaseUrl, accountClient: buyerAccount,
-              publicClient: source.publicClient, walletClient: createWalletClient({ account: buyer,
-                chain: sepolia, transport: http(getTestRpcUrl()) }) });
             const sourceListing = source.createdListings[0];
             if (!sourceListing) throw new Error('Qualifying NFT has no published Listing.');
             const sourceQuote = await buyerRare.cart.checkout.prepare({ paymentCurrency: zeroAddress,
@@ -248,13 +246,13 @@ describe('print tooling through deployed Rare API', () => {
             expect(await claims()).toMatchObject([{ status: 'RESERVED' }]);
             // The qualifying NFT was purchased; the print Order remains unpaid and expires safely.
           } finally {
-            await buyerAccount.auth.logout();
+            await buyerRare.auth.logout();
           }
         } finally {
           await rare.eligibility.disableRule(rule.id);
         }
       } finally {
-        await source.accountClient.auth.logout();
+        await source.rare.auth.logout();
       }
       // The regular print flow can include a receipt without creating a campaign.
       // This defines a zero-supply token and signs a checkout, but does not pay
@@ -326,13 +324,13 @@ describe('print tooling through deployed Rare API', () => {
       await expect(anonymous.prints.drops.getMine(created.id)).rejects.toThrow();
       expect((await rare.prints.drops.archive(created.id)).status).toBe('ARCHIVED');
       dropId = undefined;
-      const remaining = await accountClient.shippingAddresses.delete(addressId);
+      const remaining = await rare.shippingAddresses.delete(addressId);
       addressNeedsCleanup = false;
       expect(remaining).toEqual(addressesBefore);
     } finally {
       if (dropId !== undefined) await rare.prints.drops.archive(dropId);
-      if (addressNeedsCleanup) await accountClient.shippingAddresses.delete(addressId);
-      await accountClient.auth.logout();
+      if (addressNeedsCleanup) await rare.shippingAddresses.delete(addressId);
+      await rare.auth.logout();
     }
   }, 600_000);
 });

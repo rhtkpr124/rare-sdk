@@ -87,40 +87,20 @@ Check the public interfaces in these files rather than importing SDK internals:
 - [`src/sdk/types/shipping-addresses.ts`](../src/sdk/types/shipping-addresses.ts)
 - [`src/sdk/types/orders.ts`](../src/sdk/types/orders.ts)
 
-## Share account authentication with the chain client
+## Configure one authenticated client
 
-Use the application's existing viem public and wallet clients. Supply the same
-Rare API base URL to its account and chain clients:
+Supply the application's existing viem clients and one session store:
 
 ```typescript
-const accountClient = createRareAccountClient({ apiBaseUrl, sessionStore });
-const rare = createRareClient({
-	publicClient,
-	walletClient,
-	apiBaseUrl,
-	accountClient,
-});
+const rare = createRareClient({ publicClient, walletClient, apiBaseUrl, sessionStore });
 ```
 
-Both constructors are public SDK exports. Reuse the existing session store
-instead of prompting for a second login. Wallet connection alone does not
-authenticate an account. Account identity and the wallet used for transaction
-signatures are separate inputs.
-
-`accountClient.authenticatedFetch` supplies protected API requests with account
-credentials and handles session renewal. It is restricted to its configured
-API authority and does not automatically replay mutations. See
-[Account integration](auth/integration.md) for the authentication contract.
-
-For an existing first-party cookie session, retain a thin server-side adapter
-where necessary. The SDK also accepts `apiFetch` for existing cookie-based
-integrations. Do not expose HttpOnly cookies or service credentials to browser
-code, and do not silently substitute one authentication mode for another.
-
-Keep SDK instances and private query caches scoped to the account, chain, and
-environment. Do not share account-bound clients between server requests.
-Clear private caches when an account or wallet changes. A tRPC adapter may
-forward requests, but it must not become another eligibility or fee engine.
+Account and protected Cart methods share this client's login and renewal lock.
+Wallet connection alone does not authenticate an account. Account identity and
+transaction-signing wallets remain separate. For application-owned sessions,
+configure `transport` on the same constructor instead of `sessionStore`.
+Authenticated fetch wiring stays internal; consumers call typed SDK methods.
+See [Account integration](auth/integration.md) for authentication behavior.
 
 ## Build discovery, seller, and buyer flows
 
@@ -326,7 +306,7 @@ configuration out of creator controls.
 
 1. Load paper and size choices with `rare.prints.specifications.list()`.
 2. Upload the master with
-   `accountClient.upload(file, filename, { access: 'private' })`.
+   `rare.upload(file, filename, { access: 'private' })`.
 3. Upload display photos through the same uploader with `access: 'public'`.
 4. Create the standalone draft with `rare.prints.drops.create`. Supply
    `print.productionUploadKey` from the private result and `print.images` from
@@ -431,7 +411,7 @@ The older NFT-linked print-release implementation remains separate.
 
 ## Reuse account shipping and generic checkout
 
-Use the same `accountClient` that exposes `profile.get/update`:
+Use the same `rare` client that exposes `profile.get/update`:
 
 - `shippingAddresses.list()` retrieves the private address book.
 - `shippingAddresses.save({ id, label, details, makeDefault })` creates or updates
@@ -440,7 +420,7 @@ Use the same `accountClient` that exposes `profile.get/update`:
 
 Saving requires explicit user consent. Passing delivery details to checkout does
 not save them. Load the default saved address into an editable summary and offer
-a change action. Use `accountClient.profile.get()` to prefill contact email when
+a change action. Use `rare.profile.get()` to prefill contact email when
 available; never expose that private email through public profile data.
 
 Prints use `rare.cart.checkout`, not a separate print payment engine. Add either
@@ -455,7 +435,7 @@ Each print has a separate fulfillment record and provider order. Shipping quotes
 are summed; they do not promise consolidated shipping. Pipelines owns submission
 and retries. Do not resubmit a physical order from the SDK or frontend.
 
-Read `accountClient.cart.orders.get(orderId)` for payment status and `fulfillments`.
+Read `rare.cart.orders.get(orderId)` for payment status and `fulfillments`.
 Each fulfillment includes `orderLineIndex`, status, and nullable `providerOrderId`.
 `COMPLETED` means provider acceptance, not shipment or delivery. Poll this read
 when useful; it does not initiate work.
@@ -493,8 +473,8 @@ credentials in logs.
 
 ## Read Cart orders and display fulfillment progress
 
-Use `accountClient.cart.orders.list({ after, take })` for `{ data, nextCursor }` pages,
-and `accountClient.cart.orders.get(cartOrderId)` for one account-owned Cart
+Use `rare.cart.orders.list({ after, take })` for `{ data, nextCursor }` pages,
+and `rare.cart.orders.get(cartOrderId)` for one account-owned Cart
 Order. History includes NFT-only, swap-only, print, and mixed orders.
 Order reads do not require a blockchain RPC connection. The identifier is the Cart Order's bytes32 ID, not an internal fulfillment
 UUID or provider Order ID. These methods do not include legacy NFT purchase
@@ -523,9 +503,9 @@ If the endpoint exists, add a typed SDK method using the existing transport and
 error handling. If it does not exist, add it in the owning backend layer before
 wiring the frontend. Preserve the user's task scope when proposing those changes.
 
-`createApiClient` from `@rareprotocol/rare-sdk/data-access` is the public typed
-lower-level transport. It can use `accountClient.authenticatedFetch`. Prefer a
-named reusable SDK method when the operation is needed by several consumers.
+Add a named, typed SDK method for missing authenticated capabilities. Reuse
+the internal account transport rather than exposing a raw authenticated request
+function or asking consumers to read session credentials.
 Do not import private SDK modules or replace a missing method with another
 component-local request client.
 
