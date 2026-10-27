@@ -92,7 +92,7 @@ export const contractAddresses: Partial<Record<SupportedChain, ContractAddresses
     swapRouter: getAddress('0x429c3Ee66E7f6CDA12C5BadE4104aF3277aA2305'),
     v4Quoter: getAddress('0x61B3f2011A92d183C7dbaDBdA940a7555Ccf9227'),
     cart: getAddress('0x1EBF35b3A76caEf60a009d2786A66A91D42A38Bc'),
-    cartLens: getAddress('0x7DD8e5c3560Af43700722270fBbc1D0d6079E9B5'),
+    cartLens: getAddress('0x9cfE838f95fDB8564d8F72E72E2208a3Dd124cD3'),
     cartHashes: getAddress('0x7cF7626AA1881FFeb2004705886DA42605Ec9A0F'),
   },
   mainnet: {
