@@ -1,6 +1,6 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { once } from 'node:events';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, expectTypeOf, it } from 'vitest';
 import { privateKeyToAccount } from 'viem/accounts';
 import { createPublicClient, http } from 'viem';
 import { sepolia } from 'viem/chains';
@@ -8,6 +8,8 @@ import { createSiweMessage } from 'viem/siwe';
 import { createPublicClient, http, zeroAddress } from 'viem';
 import { sepolia } from 'viem/chains';
 import { createRareClient } from '../../src/sdk/client.js';
+import type { RareApiClient, RareClient, RareClientConfig } from '../../src/sdk/types/client.js';
+import { createAccountOperations } from '../../src/sdk/account-operations.js';
 import { createMemoryAccountSessionStore } from '../../src/sdk/account-session-store.js';
 import type { RareAccountSession, RareDeviceAuthorization } from '../../src/sdk/types/account.js';
 
@@ -104,6 +106,7 @@ describe('account authentication over HTTP', () => {
   });
 
 
+
   it('keeps public messaging anonymous unless authenticated visibility is explicitly requested', async () => {
     const storage = createMemoryAccountSessionStore();
     await storage.set(session());
@@ -135,6 +138,53 @@ describe('account authentication over HTTP', () => {
   });
 
 
+  it.each(['bearer', 'application'])('uses typed creator catalog methods through %s authentication', async (mode) => {
+    const storage = createMemoryAccountSessionStore();
+    await storage.set(session());
+    const publicClient = createPublicClient({ chain: sepolia, transport: http() });
+    const sdk = mode === 'bearer'
+      ? createRareClient({ apiBaseUrl: origin, publicClient, sessionStore: storage })
+      : createRareClient({ publicClient, transport: (path, init) => fetch(`${origin}${path}`, init) });
+    const product = { id: 'catalog-product', userId: '42', status: 'DRAFT', slug: 'catalog-fixture',
+      metadata: {}, variants: [], createdAt: '2026-10-27T00:00:00Z', updatedAt: '2026-10-27T00:00:00Z' };
+    const attachment = { sku: `0x${'12'.repeat(32)}`, position: 0, metadata: {} };
+    const requests: string[] = [];
+    handler = async (request, response, body) => {
+      expect(request.headers.authorization).toBe(mode === 'bearer' ? 'Bearer access-1' : undefined);
+      expect(request.method).toBe('POST');
+      // eslint-disable-next-line functional/immutable-data
+      requests.push(request.url ?? '');
+      if (request.url === '/v1/cart/products/catalog-product/skus') {
+        expect(JSON.parse(body)).toEqual(attachment);
+        return reply(response, { data: { ...attachment, id: 'attachment', productId: product.id, isHidden: false,
+          createdAt: product.createdAt, updatedAt: product.updatedAt } });
+      }
+      if (request.url === '/v1/cart/products') expect(JSON.parse(body)).toEqual({ slug: product.slug, metadata: {} });
+      if (request.url === '/v1/cart/products/catalog-product/variants') expect(JSON.parse(body)).toEqual({ variants: [{ metadata: { type: 'ERC721', tokenId: '0' } }] });
+      return reply(response, { data: { ...product, status: request.url?.endsWith('/publish') ? 'PUBLISHED' : 'DRAFT' } });
+    };
+    expect((await sdk.cart.catalog.products.create({ slug: product.slug, metadata: {} })).id).toBe(product.id);
+    expect((await sdk.cart.catalog.products.attachSku(product.id, attachment)).sku).toBe(attachment.sku);
+    await sdk.cart.catalog.variants.add(product.id, { variants: [{ metadata: { type: 'ERC721', tokenId: '0' } }] });
+    expect((await sdk.cart.catalog.products.publish(product.id)).status).toBe('PUBLISHED');
+    expect(requests).toEqual(['/v1/cart/products', '/v1/cart/products/catalog-product/skus', '/v1/cart/products/catalog-product/variants', '/v1/cart/products/catalog-product/publish']);
+  });
+
+  it('keeps authenticated requests internal to the unified client', () => {
+    expectTypeOf<RareApiClient>().not.toHaveProperty('authenticatedFetch');
+    expectTypeOf<RareClient>().not.toHaveProperty('authenticatedFetch');
+    expectTypeOf<RareClientConfig>().not.toHaveProperty('accountClient');
+    const publicClient = createPublicClient({ chain: sepolia, transport: http() });
+    const transport = (path: string, init: RequestInit) => fetch(`${origin}${path}`, init);
+    for (const sdk of [client(), createRareClient({ apiBaseUrl: origin, publicClient }),
+      createRareClient({ transport }), createRareClient({ transport, publicClient })]) {
+      expect(sdk).not.toHaveProperty('authenticatedFetch');
+    }
+    expect(() => createRareClient({ apiBaseUrl: origin, ...{ accountClient: client() } })).toThrow('accountClient is no longer supported');
+
+  });
+
+
   it.each(['bearer', 'application'])('preserves JSON headers for account writes through %s authentication', async (mode) => {
     const storage = createMemoryAccountSessionStore();
     await storage.set(session());
@@ -150,7 +200,7 @@ describe('account authentication over HTTP', () => {
     expect(await sdk.profile.update({ profile: { bio: 'Updated bio' } })).toMatchObject({ profile: { bio: 'Updated bio' } });
   });
 
-  it.each(['existing account', 'unified client'])('shares %s refresh and session locking with Cart, keeping public reads anonymous', async (mode) => {
+  it('shares unified-client refresh and session locking with Cart, keeping public reads anonymous', async () => {
     const storage = createMemoryAccountSessionStore();
     await storage.set(session(Date.now() - 1));
     const received: string[] = [];
@@ -173,7 +223,7 @@ describe('account authentication over HTTP', () => {
     const rare = createRareClient({
       publicClient: createPublicClient({ chain: sepolia, transport: http() }),
       apiBaseUrl: origin,
-      ...(mode === 'existing account' ? { accountClient: client(storage) } : { sessionStore: storage }),
+      sessionStore: storage,
     });
     await rare.cart.api.listing.search();
     const intent = { seller: account.address, deadline: 9999999999n, listings: [{ sku: `0x${'12'.repeat(32)}` as const,
@@ -187,17 +237,17 @@ describe('account authentication over HTTP', () => {
     await storage.set(session(Date.now() - 1));
     const rare = createRareClient({
       publicClient: createPublicClient({ chain: sepolia, transport: http() }),
-      apiBaseUrl: 'https://different.example', accountClient: client(storage),
+      apiBaseUrl: 'https://different.example', sessionStore: storage,
     });
-    await expect(rare.cart.api.listing.invalidate(`0x${'11'.repeat(32)}`)).rejects.toMatchObject({ code: 'request_authority_mismatch' });
+    await expect(rare.cart.api.listing.invalidate(`0x${'11'.repeat(32)}`)).rejects.toMatchObject({ code: 'session_authority_mismatch' });
     expect(await storage.get()).toEqual(expect.objectContaining({ refreshToken: 'refresh-1' }));
   });
 
   it('does not forward credentials across API base paths or redirects, or replay unauthorized Cart mutations', async () => {
     const storage = createMemoryAccountSessionStore();
     await storage.set({ ...session(), apiBaseUrl: `${origin}/api`, authBaseUrl: `${origin}/api/auth/v2` });
-    const authenticated = createRareClient({ apiBaseUrl: `${origin}/api`, sessionStore: storage });
-    await expect(authenticated.authenticatedFetch(`${origin}/api-other/v1/cart/checkout/prepare`)).rejects.toMatchObject({ code: 'request_authority_mismatch' });
+    const { authenticatedFetch } = createAccountOperations({ apiBaseUrl: `${origin}/api`, sessionStore: storage });
+    await expect(authenticatedFetch(`${origin}/api-other/v1/cart/checkout/prepare`)).rejects.toMatchObject({ code: 'request_authority_mismatch' });
     const received: string[] = [];
     handler = async (request, response) => {
       // eslint-disable-next-line functional/immutable-data
@@ -208,9 +258,9 @@ describe('account authentication over HTTP', () => {
       }
       reply(response, { code: 'authentication_required' }, 401);
     };
-    await expect(authenticated.authenticatedFetch(`${origin}/api/redirect`, { method: 'POST' })).rejects.toThrow();
+    await expect(authenticatedFetch(`${origin}/api/redirect`, { method: 'POST' })).rejects.toThrow();
     const rare = createRareClient({ publicClient: createPublicClient({ chain: sepolia, transport: http() }),
-      apiBaseUrl: `${origin}/api`, accountClient: authenticated });
+      apiBaseUrl: `${origin}/api`, sessionStore: storage });
     await expect(rare.cart.api.listing.invalidate(`0x${'11'.repeat(32)}`)).rejects.toMatchObject({ status: 401 });
     expect(received).toHaveLength(2);
     expect(received.every(path => path.startsWith('/api/'))).toBe(true);

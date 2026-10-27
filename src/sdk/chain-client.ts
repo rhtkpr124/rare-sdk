@@ -75,7 +75,7 @@ export type * from './types/client.js';
  * });
  * ```
  */
-export function createChainClient(config: RareClientConfig, api = createRareApi({ baseUrl: config.apiBaseUrl, fetch: config.apiFetch })): RareClient {
+export function createChainClient(config: RareClientConfig, api = createRareApi({ baseUrl: config.apiBaseUrl, fetch: config.apiFetch }), authenticatedFetch?: typeof globalThis.fetch): RareClient {
   const { publicClient } = config;
   const runtimeConfig: RareClientConfig = config.walletClient === undefined
     ? config
@@ -181,7 +181,7 @@ export function createChainClient(config: RareClientConfig, api = createRareApi(
     utils: createUtilsNamespace(),
     token: createTokenNamespace(publicClient, chain),
     currency: createCurrencyNamespace(publicClient, chain),
-    cart: createCartNamespace(publicClient, runtimeConfig, chain, chainId, addresses),
+    cart: createCartNamespace(publicClient, runtimeConfig, chain, chainId, addresses, authenticatedFetch),
     search: {
       async liquidEditions(params = {}): ReturnType<RareClient['search']['liquidEditions']> {
         assertNoClientChainOverride(params, 'rare.search.liquidEditions', chain);

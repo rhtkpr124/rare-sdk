@@ -4,7 +4,7 @@ import { resolveRareApiBaseUrl } from '../data-access/base-url.js';
 import { RareAuthError } from './account-auth-core.js';
 import { createPublicApiTransport } from './api-transport.js';
 import { createRareApi, type RareApi } from './api.js';
-import { createAccountClient } from './account-operations.js';
+import { createAccountOperations } from './account-operations.js';
 import { createChainClient } from './chain-client.js';
 import { buildNftUniversalTokenId, resolveIdentityChainId } from './nft-core.js';
 import type { RareApiClient, RareApiClientConfig, RareClient, RareExternalApiClient, RareExternalApiClientConfig, RareExternalClient, RareExternalClientConfig, RareManagedClientConfig, RarePublicFeatures } from './types/client.js';
@@ -25,17 +25,16 @@ export function createRareClient(config: RareManagedClientConfig): RareClient;
 export function createRareClient(config: RareExternalApiClientConfig): RareExternalApiClient;
 export function createRareClient(config?: RareApiClientConfig): RareApiClient;
 export function createRareClient(config: RareManagedClientConfig | RareExternalClientConfig | RareApiClientConfig | RareExternalApiClientConfig = {}): RareClient | RareExternalClient | RareApiClient | RareExternalApiClient {
+  if ('accountClient' in config) throw new Error('accountClient is no longer supported. Configure sessionStore or transport on createRareClient.');
   if ('authBaseUrl' in config) throw new RareAuthError('auth_url_not_supported');
   const apiBaseUrl = resolveRareApiBaseUrl(config.apiBaseUrl);
   if (config.walletClient !== undefined && config.publicClient === undefined) throw new Error('A publicClient is required when supplying walletClient.');
   const apiFetch = config.apiFetch;
   const publicApiFetch = 'transport' in config ? createPublicApiTransport(apiBaseUrl, config.transport, apiFetch) : apiFetch;
   const api = createRareApi({ baseUrl: apiBaseUrl, fetch: publicApiFetch });
-  const authentication = (() => {
-    if ('transport' in config) return { features: createAccountClient({ transport: config.transport, fetch: apiFetch }), authenticatedFetch: undefined };
-    const features = createAccountClient({ apiBaseUrl, sessionStore: config.sessionStore, fetch: apiFetch });
-    return { features, authenticatedFetch: features.authenticatedFetch };
-  })();
+  const authentication = 'transport' in config
+    ? createAccountOperations({ transport: config.transport, fetch: apiFetch })
+    : createAccountOperations({ apiBaseUrl, sessionStore: config.sessionStore, fetch: apiFetch });
   const account = authentication.features;
   const publicFeatures = createPublicFeatures(api);
   const features = {
@@ -54,9 +53,7 @@ export function createRareClient(config: RareManagedClientConfig | RareExternalC
   };
   if (config.publicClient === undefined) return features;
 
-  const accountClient = config.accountClient ?? (authentication.authenticatedFetch === undefined ? undefined : { authenticatedFetch: authentication.authenticatedFetch });
-
-  const chain = createChainClient({ ...config, apiBaseUrl, apiFetch: publicApiFetch, accountClient }, api);
+  const chain = createChainClient({ ...config, apiBaseUrl, apiFetch: publicApiFetch }, api, authentication.authenticatedFetch);
   return { ...features, ...chain, token: { ...chain.token, getPrice: api.getTokenPrice }, collection: { ...chain.collection, events: api.getCollectionEvents }, user: features.user, drops: features.drops, posts: features.posts, messaging: features.messaging };
 
 }

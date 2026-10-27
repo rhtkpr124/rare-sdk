@@ -72,7 +72,7 @@ Keep `/auth/v2` as the auth-service passthrough, including existing device autho
 
 Keep existing SDK namespaces and commands. Extend `user.get`, `collection.get`, `search.*`, `account.profile.*` and marketplace methods rather than renaming them. In this table, `rare` means the existing `createRareClient` result and `account` means the existing `createRareAccountClient` result. SDK cells without an `account.` prefix are members of `rare`. New namespaces use the existing website domain names, including `dropAnnouncements`, `collaborations` and `notifications`.
 
-Proposed authenticated resource methods on `rare`, such as `rare.posts.create`, receive an optional authenticated-request provider from `account`. Public methods do not require it. The provider owns refresh and storage locking and binds requests to its configured Rare API origin. It attaches credentials only to that origin. It never provides a blockchain signer. Preserve the existing `RareClientConfig.account` wallet-address option; do not overload it with an account-session object. Proposed composition uses a separate `accountClient` option. Allow construction without an RPC client for API-only operations; methods that require a chain return a typed configuration error. This is an additive follow-up, not a requirement to restructure existing transaction methods now.
+Proposed authenticated resource methods on `rare`, such as `rare.posts.create`, receive an optional authenticated-request provider from `account`. Public methods do not require it. The provider owns refresh and storage locking and binds requests to its configured Rare API origin. It attaches credentials only to that origin. It never provides a blockchain signer. Preserve the existing `RareClientConfig.account` wallet-address option; do not overload it with an account-session object. The unified client receives `sessionStore` for SDK-managed authentication or `transport` for application-managed sessions; no separate account client is needed. Allow construction without an RPC client for API-only operations; methods that require a chain return a typed configuration error. This is an additive follow-up, not a requirement to restructure existing transaction methods now.
 
 Private account methods remain on `account`. Domain actions such as `posts.create` do not get duplicate `account.posts.create` aliases. Resource reads accept explicit target identifiers; mutations derive the acting account from the bearer session. User-supplied author/account IDs cannot substitute for that identity.
 
@@ -151,8 +151,7 @@ Pure validation and request/transaction planning stay separate from HTTP, storag
 These examples show proposed additions. Existing signatures and request schemas remain authoritative until implementation. Types for post bodies, mentions, images, notification categories and collection profiles should reuse existing domain types rather than introduce parallel names.
 
 ```ts
-const account = createRareAccountClient({ apiBaseUrl, sessionStore });
-const rare = createRareClient({ apiBaseUrl, accountClient: account, publicClient, walletClient });
+const rare = createRareClient({ apiBaseUrl, sessionStore, publicClient, walletClient });
 
 // Public reads do not require account login.
 await rare.posts.list({ author: address, limit: 20, cursor });

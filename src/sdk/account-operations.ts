@@ -23,9 +23,9 @@ const deviceGrant = 'urn:ietf:params:oauth:grant-type:device_code';
 const walletGrant = 'urn:superrare:params:oauth:grant-type:siwe';
 
 /** Account operations do not require a chain client or a transaction signer. */
-export function createAccountClient(options: RareAccountTransportOptions): RareAccountFeatures;
-export function createAccountClient(options?: RareAccountClientOptions): RareAccountClient;
-export function createAccountClient(options: RareAccountClientOptions | RareAccountTransportOptions = {}): RareAccountClient | RareAccountFeatures {
+export function createAccountOperations(options: RareAccountTransportOptions): { features: RareAccountFeatures; authenticatedFetch: undefined };
+export function createAccountOperations(options?: RareAccountClientOptions): { features: RareAccountClient; authenticatedFetch: typeof globalThis.fetch };
+export function createAccountOperations(options: RareAccountClientOptions | RareAccountTransportOptions = {}): { features: RareAccountClient | RareAccountFeatures; authenticatedFetch: typeof globalThis.fetch | undefined } {
   if ('transport' in options) {
     const fetchImpl = options.fetch ?? globalThis.fetch;
     const dispatch = async (target: string, init: RequestInit, requestOptions: RareAuthRequestOptions = {}, timeoutMilliseconds = 30_000): Promise<Response> => {
@@ -44,7 +44,7 @@ export function createAccountClient(options: RareAccountClientOptions | RareAcco
       try { return await fetchImpl(url, { ...init, redirect: 'error', credentials: 'omit', signal }); }
       catch { throw featureError(requestOptions.signal?.aborted ? 'cancelled' : 'transport_error'); }
     };
-    return createAccountFeatures(dispatch, storageRequest);
+    return { features: createAccountFeatures(dispatch, storageRequest), authenticatedFetch: undefined };
   }
   if ('authBaseUrl' in options) throw new RareAuthError('auth_url_not_supported');
   const apiBaseUrl = new URL(options.apiBaseUrl ?? DEFAULT_RARE_API_BASE_URL).href.replace(/\/+$/u, '');
@@ -199,8 +199,7 @@ export function createAccountClient(options: RareAccountClientOptions | RareAcco
     return { status: 'authorized', session: await install(tokenSession(value), expectedGeneration, authorization.sessionRevision) };
   };
 
-  return {
-    authenticatedFetch: authenticatedRequest,
+  const features: RareAccountClient = {
     ...createAccountFeatures(async (path, init, requestOptions = {}, timeoutMilliseconds) => {
       return authenticatedRequest(joinAuthPath(apiBaseUrl, path), init, requestOptions, timeoutMilliseconds);
     }, applicationRequest),
@@ -290,6 +289,7 @@ export function createAccountClient(options: RareAccountClientOptions | RareAcco
       },
     },
   };
+  return { features, authenticatedFetch: authenticatedRequest };
 }
 
 function validateVerificationUri(value: unknown): string {

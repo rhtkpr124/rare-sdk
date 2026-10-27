@@ -59,8 +59,6 @@ export type RareClientConfig = {
    * Optional fetch implementation for API-backed SDK methods.
    */
   apiFetch?: typeof fetch;
-  /** Share an existing account login with protected Cart API operations. Public reads stay anonymous. */
-  accountClient?: Pick<RareAccountClient, 'authenticatedFetch'>;
   /**
    * Optional Uniswap Trade API key used when token trades require the hosted
    * Uniswap route.

@@ -80,10 +80,10 @@ const rare = createRareClient({ publicClient, walletClient, apiBaseUrl, sessionS
 
 Listing preparation, publication, invalidation, and signed checkout preparation
 send the account's bearer token. Public catalog reads, Listing reads, and checkout
-quotes remain anonymous. `rare.authenticatedFetch` also works with the
-lower-level `createApiClient(apiBaseUrl, rare.authenticatedFetch)`.
-It refuses other API origins or base paths, omits cookies, follows no redirects,
-and does not replay a mutation after a failure. For application-owned sessions,
+quotes remain anonymous. Authenticated requests stay internal to the SDK and
+share the unified client's session and renewal lock. They refuse other API
+origins or base paths, omit cookies, follow no redirects, and do not replay a
+mutation after a failure. For application-owned sessions,
 pass `transport` instead. The application owns authentication and session renewal.
 
 ```ts

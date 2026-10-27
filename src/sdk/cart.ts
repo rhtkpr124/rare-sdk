@@ -41,8 +41,9 @@ export function createCartNamespace(
   chain: SupportedChain,
   chainId: number,
   addresses: { cart?: Address; cartLens?: Address },
+  authenticatedFetch?: typeof globalThis.fetch,
 ): CartNamespace {
-  const api = createCartApiNamespace({ baseUrl: config.apiBaseUrl, fetch: config.apiFetch }, { chainId, cartAddress: addresses.cart }, config.accountClient?.authenticatedFetch);
+  const api = createCartApiNamespace({ baseUrl: config.apiBaseUrl, fetch: config.apiFetch }, { chainId, cartAddress: addresses.cart }, authenticatedFetch);
   const requireCart = (): Address => {
     if (!addresses.cart) throw new Error(`Cart is not deployed on "${chain}". Available on: sepolia.`);
     return addresses.cart;

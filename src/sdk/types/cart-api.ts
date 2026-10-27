@@ -323,13 +323,22 @@ export type CartApiPreparedPurchase = {
   };
 };
 
+export type CreateCartProduct = import('../../data-access/cart-schema.js').paths['/v1/cart/products']['post']['requestBody']['content']['application/json'];
+export type AddCartVariants = import('../../data-access/cart-schema.js').paths['/v1/cart/products/{productId}/variants']['post']['requestBody']['content']['application/json'];
+export type AttachCartSku = import('../../data-access/cart-schema.js').components['schemas']['CartProductSkuRequest'];
+export type CartProductSku = import('../../data-access/cart-schema.js').components['schemas']['CartProductSku'];
+
 export type CartApiNamespace = {
   catalog: {
     products: {
+      create: (input: CreateCartProduct, options?: { idempotencyKey?: string }) => Promise<CartApiProduct>;
+      attachSku: (productId: string, input: AttachCartSku) => Promise<CartProductSku>;
+      publish: (id: string) => Promise<CartApiProduct>;
       search: (params?: CartProductSearchParams) => Promise<CartProductSearchResult>;
       get: (id: string) => Promise<CartApiProduct>;
     };
     variants: {
+      add: (productId: string, input: AddCartVariants) => Promise<CartApiProduct>;
       search: (params?: CartVariantSearchParams) => Promise<CartVariantSearchResult>;
     };
   };

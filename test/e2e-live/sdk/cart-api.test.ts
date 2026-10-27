@@ -10,6 +10,7 @@ import {
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { createRareClient } from '../../../src/sdk/client.js';
+import type { RareClient } from '../../../src/sdk/types/client.js';
 import type { CartFulfillmentKind, CartListing } from '../../../src/sdk/types/cart.js';
 import { cartAbi } from '../../../src/contracts/abis/cart.js';
 import { getCartAddress } from '../../../src/contracts/addresses.js';
@@ -311,7 +312,7 @@ async function postCartFixture<T = unknown>(
 }
 
 async function waitForListingSearch(
-  rare: ReturnType<typeof createRareClient>,
+  rare: RareClient,
   sku: `0x${string}`,
   digest: `0x${string}`,
 ): Promise<void> {

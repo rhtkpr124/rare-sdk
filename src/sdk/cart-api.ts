@@ -29,6 +29,10 @@ import type {
   CartListingIntent,
   CartListingPreviewWire,
   CartListingRootArtifactWire,
+  CreateCartProduct,
+  AddCartVariants,
+  AttachCartSku,
+  CartProductSku,
 } from './types/cart-api.js';
 
 type CartApiTransport = {
@@ -71,6 +75,15 @@ export function createCartApiNamespace(
 
   const catalog = {
     products: {
+      create: async (input: CreateCartProduct, options: { idempotencyKey?: string } = {}): Promise<CartApiProduct> => normalizeProduct(await getWrappedData(
+        protectedClient.POST('/v1/cart/products', { body: input, ...(options.idempotencyKey === undefined ? {} : { headers: { 'idempotency-key': options.idempotencyKey } }) }), 'Rare API did not return the created Product.',
+      )),
+      attachSku: async (productId: string, input: AttachCartSku): Promise<CartProductSku> => getWrappedData(
+        protectedClient.POST(`/v1/cart/products/${encodeURIComponent(productId)}/skus`, { body: input }), 'Rare API did not return the Product-SKU association.',
+      ),
+      publish: async (id: string): Promise<CartApiProduct> => normalizeProduct(await getWrappedData(
+        protectedClient.POST(`/v1/cart/products/${encodeURIComponent(id)}/publish`, {}), 'Rare API did not return the published Product.',
+      )),
       search: async (params: CartProductSearchParams = {}): Promise<CartApiPage<CartApiProduct>> => {
         const page = await getData<CartApiPage<CartApiProduct>>(
           client.GET('/v1/cart/products', { params: { query: params } }), 'Rare API did not return Cart Products.',
@@ -82,6 +95,9 @@ export function createCartApiNamespace(
       )),
     },
     variants: {
+      add: async (productId: string, input: AddCartVariants): Promise<CartApiProduct> => normalizeProduct(await getWrappedData(
+        protectedClient.POST(`/v1/cart/products/${encodeURIComponent(productId)}/variants`, { body: input }), 'Rare API did not return the configured Variants.',
+      )),
       search: async (params: CartVariantSearchParams = {}): Promise<CartApiPage<CartCatalogVariant>> => getData(
         client.GET('/v1/cart/variants', { params: { query: buildCartVariantSearchQuery(params, scope.chainId) } }),
         'Rare API did not return Cart Variants.',
