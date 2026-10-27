@@ -237,8 +237,9 @@ describe('account authentication over HTTP', () => {
     expect(await sdk.shippingAddresses.list()).toEqual([]);
     expect(await sdk.shippingAddresses.save(input)).toEqual([]);
     expect(await sdk.shippingAddresses.delete('fixture')).toEqual([]);
-    expect((await sdk.orders.list({ take: 2 })).data[0]?.items).toEqual(order.items);
-    expect((await sdk.orders.get(order.id)).items).toEqual(order.items);
+    expect((await sdk.cart.orders.list({ take: 2 })).data[0]?.items).toEqual(order.items);
+    expect((await sdk.cart.orders.get(order.id)).items).toEqual(order.items);
+    expect('orders' in sdk).toBe(false);
   });
 
   it('shares unified-client refresh and session locking with Cart, keeping public reads anonymous', async () => {
@@ -255,6 +256,10 @@ describe('account authentication over HTTP', () => {
         expect(request.headers.authorization).toBe(request.url.includes('eligibility=eligible') ? 'Bearer access-2' : undefined);
         return reply(response, { data: [], pagination: {} });
       }
+      if (request.url === '/v1/account/orders') {
+        expect(request.headers.authorization).toBe('Bearer access-2');
+        return reply(response, { data: [], nextCursor: null });
+      }
       expect(request.url?.includes('/invalidate')).toBe(true);
       expect(request.headers.authorization).toBe('Bearer access-2');
       // eslint-disable-next-line functional/immutable-data
@@ -269,6 +274,7 @@ describe('account authentication over HTTP', () => {
     await rare.cart.listing.search();
     await rare.cart.listing.search({ eligibility: 'eligible' });
     await Promise.all([rare.cart.listing.invalidate(`0x${'12'.repeat(32)}`), rare.cart.listing.invalidate(`0x${'13'.repeat(32)}`)]);
+    expect(await rare.cart.orders.list()).toEqual({ data: [], nextCursor: null });
     expect(received).toEqual(['refresh', 'preview', 'preview']);
   });
 

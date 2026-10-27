@@ -1,3 +1,4 @@
+import { createCartOrdersNamespace } from './cart-orders.js';
 import { createNotificationsClient } from './notifications-client.js';
 import { createApiClient } from '../data-access/client.js';
 import { createMessagingClient } from './messaging-client.js';
@@ -103,18 +104,7 @@ export function createAccountFeatures(apiRequest: Request, request: Request): Ra
     return result;
   };
   return {
-    orders: {
-      async list(input = {}, options = {}) {
-        const result = await accountApiClient.GET('/v1/account/orders', { params: { query: input }, signal: options.signal });
-        if (result.data === undefined) throw new Error('Rare API did not return fulfillment Orders.');
-        return result.data;
-      },
-      async get(id, options = {}) {
-        const result = await accountApiClient.GET('/v1/account/orders/{id}', { params: { path: { id } }, signal: options.signal });
-        if (result.data === undefined) throw new Error('Rare API did not return the fulfillment Order.');
-        return result.data.data;
-      },
-    },
+    cart: { orders: createCartOrdersNamespace(accountApiClient) },
     shippingAddresses: {
       async list(options = {}) {
         const result = await accountApiClient.GET('/v1/account/shipping-addresses', { signal: options.signal });

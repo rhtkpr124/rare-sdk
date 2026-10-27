@@ -110,11 +110,11 @@ describe('print tooling through deployed Rare API', () => {
         items: [{ kind: 'listing', listingDigest: entry.listingDigest, quantity: 1n, recipient: wallet.address }],
       })).rejects.toMatchObject({ status: 409 });
       const orderId = signed.executePurchase.order.orderId;
-      const orderDetails = await accountClient.orders.get(orderId);
+      const orderDetails = await accountClient.cart.orders.get(orderId);
       expect(orderDetails.id).toBe(orderId);
       expect(orderDetails.items).toContainEqual(expect.objectContaining({ listingDigest: entry.listingDigest.toLowerCase(),
         quantity: '2', printDropId: created.id, title: expect.any(String), images: expect.arrayContaining([photo.url]) }));
-      expect((await accountClient.orders.list()).data.some(order => order.id === orderId)).toBe(true);
+      expect((await accountClient.cart.orders.list()).data.some(order => order.id === orderId)).toBe(true);
       const source = await createCreatorCartScenario({ tokenCount: 1, eligibility: true });
       try {
         const nft = source.listings[0];
@@ -178,7 +178,7 @@ describe('print tooling through deployed Rare API', () => {
           expect(preparedBatch.executePurchase.actions.map(action => ({
             quantity: action.quantity, kind: mixedLines[Number(action.lineIndex)]?.fulfillmentKind,
           }))).toEqual(expect.arrayContaining([{ quantity: 1n, kind: 2 }, { quantity: 2n, kind: 3 }]));
-          const history = await accountClient.orders.get(preparedBatch.executePurchase.order.orderId);
+          const history = await accountClient.cart.orders.get(preparedBatch.executePurchase.order.orderId);
           expect(history.fulfillments).toHaveLength(2);
           expect(new Set(history.fulfillments.map(item => item.orderLineIndex)).size).toBe(2);
           expect(history.fulfillments.map(item => item.orderLineIndex).sort()).toEqual([

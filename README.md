@@ -856,7 +856,7 @@ const rare = createRareClient({
 const inbox = await rare.messaging.inbox();
 const master = await rare.upload(printFile, 'master.tiff', { access: 'private' });
 const addresses = await rare.shippingAddresses.list();
-const orders = await rare.orders.list();
+const orders = await rare.cart.orders.list();
 ```
 
 The transport receives API-relative paths such as `/v1/messaging/conversations`,
@@ -981,8 +981,9 @@ Saving an address is a separate, explicit operation. Use
 implicitly save delivery details. `save` accepts an address UUID and `makeDefault`
 to create or replace an entry and select the default.
 
-`accountClient.orders.list` returns `{ data, nextCursor }` for account-owned
-fulfillment Orders. `orders.get(cartOrderId)` returns payment and fulfillment
+`accountClient.cart.orders.list` returns `{ data, nextCursor }` for account-owned
+Cart orders, including NFT-only, swap-only, print, and mixed purchases.
+`accountClient.cart.orders.get(cartOrderId)` returns payment and fulfillment
 status without private address data. A fulfillment status of `COMPLETED` means
 the provider accepted the order, not that the item shipped or arrived. These
 methods do not include legacy NFT purchase history.

@@ -6,7 +6,7 @@ import type { ArtworkFavorite, FavoriteArtworkInput, FavoritesListOptions } from
 import type { SearchPageResponse } from '../api.js';
 import type { UserSelector } from '../user-core.js';
 import type { ShippingAddressesNamespace } from './shipping-addresses.js';
-import type { AccountOrdersNamespace } from './orders.js';
+import type { CartOrdersNamespace } from './orders.js';
 /** Sensitive credentials. Never print this object in logs or status output. */
 export type RareAccountSession = {
   revision: string;
@@ -118,7 +118,7 @@ export type RareUploadMethod = {
 
 export type RareAccountClient = {
   shippingAddresses: ShippingAddressesNamespace;
-  orders: AccountOrdersNamespace;
+  cart: { orders: CartOrdersNamespace };
   messaging: RareMessagingClient;
   notifications: RareNotificationsClient;
   drops: {

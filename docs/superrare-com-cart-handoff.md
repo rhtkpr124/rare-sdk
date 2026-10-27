@@ -455,7 +455,7 @@ Each print has a separate fulfillment record and provider order. Shipping quotes
 are summed; they do not promise consolidated shipping. Pipelines owns submission
 and retries. Do not resubmit a physical order from the SDK or frontend.
 
-Read `accountClient.orders.get(orderId)` for payment status and `fulfillments`.
+Read `accountClient.cart.orders.get(orderId)` for payment status and `fulfillments`.
 Each fulfillment includes `orderLineIndex`, status, and nullable `providerOrderId`.
 `COMPLETED` means provider acceptance, not shipment or delivery. Poll this read
 when useful; it does not initiate work.
@@ -491,11 +491,12 @@ card UI. Card checkout requires USDC as its payment currency. Keep card setup
 and crypto execution under one checkout UI, and do not expose provider session
 credentials in logs.
 
-## Recover Orders and display fulfillment progress
+## Read Cart orders and display fulfillment progress
 
-Use `accountClient.orders.list({ after, take })` for `{ data, nextCursor }` pages,
-and `accountClient.orders.get(cartOrderId)` for one account-owned fulfillment
-Order. The identifier is the Cart Order's bytes32 ID, not an internal fulfillment
+Use `accountClient.cart.orders.list({ after, take })` for `{ data, nextCursor }` pages,
+and `accountClient.cart.orders.get(cartOrderId)` for one account-owned Cart
+Order. History includes NFT-only, swap-only, print, and mixed orders.
+Order reads do not require a blockchain RPC connection. The identifier is the Cart Order's bytes32 ID, not an internal fulfillment
 UUID or provider Order ID. These methods do not include legacy NFT purchase
 history and do not return private postal snapshots.
 

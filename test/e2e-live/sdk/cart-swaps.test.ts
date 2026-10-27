@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { createWalletClient, erc20Abi, http, isHex, zeroAddress } from 'viem';
+import { createWalletClient, erc20Abi, http, isHex, toHex, zeroAddress } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { sepolia } from 'viem/chains';
 import { createRareClient, type RareClient, type CartCheckoutIntentItem } from '../../../dist/sdk/index.js';
@@ -61,6 +61,10 @@ describe.sequential('SDK standalone Cart swap purchases', () => {
     const before = await readOutputBalance();
     const result = await rare.cart.checkout.purchase({ preparation, autoApprove: true });
     expect(result.receipt.status).toBe('success');
+    const history = await rare.cart.orders.get(result.orderId);
+    expect(history.fulfillments).toEqual([]);
+    expect(history.items).toEqual([expect.objectContaining({ lineIndex: 0, quantity: '1' })]);
+    expect((await rare.cart.orders.list({ after: toHex(BigInt(result.orderId) - 1n, { size: 32 }), take: 1 })).data[0]?.id).toBe(result.orderId);
     expect(await readOutputBalance() - before).toBe(outputLine.amount);
   }, 180_000);
 });
