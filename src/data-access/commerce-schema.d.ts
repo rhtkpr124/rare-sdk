@@ -345,7 +345,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List your fulfillment Orders */
+        /** List your Cart Orders */
         get: {
             parameters: {
                 query?: {
@@ -368,7 +368,7 @@ export interface paths {
                             data: {
                                 id: string;
                                 /** @enum {string} */
-                                status: "PREPARING" | "PREPARATION_FAILED" | "READY" | "EXECUTED" | "EXPIRED";
+                                status: "PENDING" | "CONFIRMED" | "FULFILLED" | "FAILED" | "CANCELLED";
                                 paymentCurrency: string | null;
                                 paymentAmount: string | null;
                                 items?: {
@@ -376,8 +376,11 @@ export interface paths {
                                     listingDigest: string;
                                     sku: string;
                                     quantity: string;
+                                    /** @enum {string} */
+                                    fulfillmentStatus: "PENDING" | "SUBMITTED" | "SHIPPED" | "FULFILLED" | "FAILED" | "CANCELLED";
                                     title: string | null;
                                     images: string[];
+                                    /** Format: uuid */
                                     printDropId: string | null;
                                 }[];
                                 /** Format: date-time */
@@ -389,7 +392,7 @@ export interface paths {
                                     kind: string;
                                     orderLineIndex: number;
                                     /** @enum {string} */
-                                    status: "PENDING" | "PROCESSING" | "RETRY" | "COMPLETED" | "FAILED";
+                                    status: "PENDING" | "SUBMITTED" | "SHIPPED" | "FULFILLED" | "FAILED" | "CANCELLED";
                                     providerOrderId: string | null;
                                     /** Format: date-time */
                                     createdAt: string;
@@ -458,7 +461,7 @@ export interface paths {
                             data: {
                                 id: string;
                                 /** @enum {string} */
-                                status: "PREPARING" | "PREPARATION_FAILED" | "READY" | "EXECUTED" | "EXPIRED";
+                                status: "PENDING" | "CONFIRMED" | "FULFILLED" | "FAILED" | "CANCELLED";
                                 paymentCurrency: string | null;
                                 paymentAmount: string | null;
                                 items?: {
@@ -466,8 +469,11 @@ export interface paths {
                                     listingDigest: string;
                                     sku: string;
                                     quantity: string;
+                                    /** @enum {string} */
+                                    fulfillmentStatus: "PENDING" | "SUBMITTED" | "SHIPPED" | "FULFILLED" | "FAILED" | "CANCELLED";
                                     title: string | null;
                                     images: string[];
+                                    /** Format: uuid */
                                     printDropId: string | null;
                                 }[];
                                 /** Format: date-time */
@@ -479,7 +485,7 @@ export interface paths {
                                     kind: string;
                                     orderLineIndex: number;
                                     /** @enum {string} */
-                                    status: "PENDING" | "PROCESSING" | "RETRY" | "COMPLETED" | "FAILED";
+                                    status: "PENDING" | "SUBMITTED" | "SHIPPED" | "FULFILLED" | "FAILED" | "CANCELLED";
                                     providerOrderId: string | null;
                                     /** Format: date-time */
                                     createdAt: string;

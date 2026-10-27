@@ -61,7 +61,8 @@ describe.sequential('SDK standalone Cart swap purchases', () => {
     const before = await readOutputBalance();
     const result = await rare.cart.checkout.purchase({ preparation, autoApprove: true });
     expect(result.receipt.status).toBe('success');
-    const history = await rare.cart.orders.get(result.orderId);
+    await expect.poll(async () => (await rare.cart.orders.get(result.orderId)).status, { timeout: 180_000, interval: 2_000 }).toBe('FULFILLED');
+        const history = await rare.cart.orders.get(result.orderId);
     expect(history.fulfillments).toEqual([]);
     expect(history.items).toEqual([expect.objectContaining({ lineIndex: 0, quantity: '1' })]);
     expect((await rare.cart.orders.list({ after: toHex(BigInt(result.orderId) - 1n, { size: 32 }), take: 1 })).data[0]?.id).toBe(result.orderId);

@@ -111,8 +111,9 @@ describe('print tooling through deployed Rare API', () => {
       const orderId = signed.executePurchase.order.orderId;
       const orderDetails = await rare.cart.orders.get(orderId);
       expect(orderDetails.id).toBe(orderId);
+      expect(orderDetails.status).toBe('PENDING');
       expect(orderDetails.items).toContainEqual(expect.objectContaining({ listingDigest: entry.listingDigest.toLowerCase(),
-        quantity: '2', printDropId: created.id, title: expect.any(String), images: expect.arrayContaining([photo.url]) }));
+        quantity: '2', fulfillmentStatus: 'PENDING', printDropId: created.id, title: expect.any(String), images: expect.arrayContaining([photo.url]) }));
       expect((await rare.cart.orders.list()).data.some(order => order.id === orderId)).toBe(true);
       const source = await createCreatorCartScenario({ tokenCount: 1, eligibility: true });
       try {
@@ -178,6 +179,8 @@ describe('print tooling through deployed Rare API', () => {
             quantity: action.quantity, kind: mixedLines[Number(action.lineIndex)]?.fulfillmentKind,
           }))).toEqual(expect.arrayContaining([{ quantity: 1n, kind: 2 }, { quantity: 2n, kind: 3 }]));
           const history = await rare.cart.orders.get(preparedBatch.executePurchase.order.orderId);
+          expect(history.status).toBe('PENDING');
+          expect(history.items?.every(item => item.fulfillmentStatus === 'PENDING')).toBe(true);
           expect(history.fulfillments).toHaveLength(2);
           expect(new Set(history.fulfillments.map(item => item.orderLineIndex)).size).toBe(2);
           expect(history.fulfillments.map(item => item.orderLineIndex).sort()).toEqual([

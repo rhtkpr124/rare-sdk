@@ -7,6 +7,6 @@ export type CartOrdersPage = paths['/v1/account/orders']['get']['responses'][200
 export type CartOrdersNamespace = {
   /** Lists account-owned Cart orders, including NFT, print, swap and mixed purchases. */
   list: (input?: { after?: string; take?: number }, options?: RareAuthRequestOptions) => Promise<CartOrdersPage>;
-  /** COMPLETED fulfillment means provider acceptance, not shipment or delivery. */
+  /** CONFIRMED means payment succeeded; FULFILLED means every item is delivered. */
   get: (id: string, options?: RareAuthRequestOptions) => Promise<CartOrder>;
 };

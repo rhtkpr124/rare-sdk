@@ -984,9 +984,12 @@ to create or replace an entry and select the default.
 `rare.cart.orders.list` returns `{ data, nextCursor }` for account-owned
 Cart orders, including NFT-only, swap-only, print, and mixed purchases.
 `rare.cart.orders.get(cartOrderId)` returns payment and fulfillment
-status without private address data. A fulfillment status of `COMPLETED` means
-the provider accepted the order, not that the item shipped or arrived. These
-methods do not include legacy NFT purchase history.
+status without private address data. Orders use `PENDING`, `CONFIRMED`,
+`FULFILLED`, `FAILED`, and `CANCELLED`. On-chain items are fulfilled when execution
+is indexed; mixed orders stay confirmed while physical delivery is outstanding.
+Item `fulfillmentStatus` and provider records distinguish `PENDING`, `SUBMITTED`,
+`SHIPPED`, `FULFILLED`, `FAILED`, and `CANCELLED`. `SUBMITTED` means provider
+acceptance, not delivery. These methods do not include legacy NFT purchase history.
 
 Run `npm run test:integration:prints` against a non-production feature deployment.
 The test requires `RARE_ACCOUNT_TEST_API_URL` or `RARE_API_BASE_URL`, plus a registered

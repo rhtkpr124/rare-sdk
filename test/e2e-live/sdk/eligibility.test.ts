@@ -105,6 +105,7 @@ describe.sequential('SDK eligibility against the deployed Rare API', () => {
         expect(sourcePreparation.paymentAmount).toBeLessThanOrEqual(1_000_000_000_000_000n);
         const sourcePurchase = await rare.cart.checkout.purchase({ preparation: sourcePreparation });
         expect(sourcePurchase.receipt.status).toBe('success');
+        await expect.poll(async () => (await rare.cart.orders.get(sourcePurchase.orderId)).status, { timeout: 180_000, interval: 2_000 }).toBe('FULFILLED');
         const history = await rare.cart.orders.get(sourcePurchase.orderId);
         expect(history.fulfillments).toEqual([]);
         expect(history.items).toContainEqual(expect.objectContaining({ listingDigest: sourceListing.listingDigest.toLowerCase(), quantity: '1' }));
