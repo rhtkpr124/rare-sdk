@@ -2565,13 +2565,13 @@ export interface paths {
                 query: {
                     chainId: string | number;
                     cartAddress: string;
+                    eligibility?: "eligible";
                     q?: string;
                     sku?: string;
                     seller?: string;
                     fulfillmentKind?: number | null;
                     settlementCurrency?: string;
                     productId?: string;
-                    eligibility?: "eligible";
                     sortBy?: "newest" | "oldest" | "priceAsc" | "priceDesc" | "deadlineAsc";
                     page?: number;
                     perPage?: number;
@@ -4629,66 +4629,7 @@ export interface components {
                 }[];
             };
         };
-        /** @description A JSON object whose values may contain nested JSON data. */
-    
-        CartFeeCreate: {
-            /** @enum {string} */
-            phase: "LISTING_CONFIGURATION" | "CHECKOUT";
-            code: string;
-            calculation: {
-                /** @enum {string} */
-                type: "FIXED";
-                amount: string;
-                /** @enum {string} */
-                currencyMode: "COMPONENT_CURRENCY";
-            } | {
-                /** @enum {string} */
-                type: "PER_UNIT";
-                amount: string;
-                /** @enum {string} */
-                currencyMode: "COMPONENT_CURRENCY";
-            } | {
-                /** @enum {string} */
-                type: "PERCENTAGE";
-                basisPoints: number;
-                /** @enum {string} */
-                currencyMode: "COMPONENT_CURRENCY";
-            };
-            recipient: {
-                /** @enum {string} */
-                type: "FIXED";
-                address: string;
-            } | {
-                /** @enum {string} */
-                type: "TOKEN_CREATOR";
-            };
-            /** @default {} */
-            scope: {
-                chainIds?: string[];
-                sellerAddresses?: string[];
-                nfts?: {
-                    chainId: string;
-                    contract: string;
-                    tokenId: string;
-                }[];
-                collections?: {
-                    chainId: string;
-                    contract: string;
-                }[];
-                skus?: string[];
-                fulfillmentKinds?: number[];
-                settlementCurrencies?: string[];
-                paymentCurrencies?: string[];
-                productIds?: string[];
-                saleTypes?: ("PRIMARY_SALE" | "SECONDARY_SALE")[];
-            };
-            priority: number;
-            /** Format: date-time */
-            validFrom?: string | null;
-            /** Format: date-time */
-            validUntil?: string | null;
-        };
-};
+    };
     responses: never;
     parameters: never;
     requestBodies: never;

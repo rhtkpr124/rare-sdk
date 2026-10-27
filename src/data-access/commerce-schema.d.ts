@@ -1225,7 +1225,7 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** Configure the initial print option and quote production */
+        /** Configure artwork pricing and physical print specifications */
         put: {
             parameters: {
                 query?: never;
@@ -1483,7 +1483,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Freeze print production economics before seller signing */
+        /** Freeze artwork price and physical print specifications before seller signing */
         post: {
             parameters: {
                 query?: never;
@@ -1621,7 +1621,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Publish a seller-signed Root using frozen print economics */
+        /** Publish a seller-signed Root with frozen artwork pricing */
         post: {
             parameters: {
                 query?: never;
@@ -1890,6 +1890,7 @@ export interface paths {
                                 };
                                 breakdown: {
                                     displayPrice: string;
+                                    production: string;
                                     shipping: string;
                                     networkFee: string;
                                     total: string;
@@ -1987,7 +1988,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Prepare a single-print Order with quoted delivery */
+        /** Prepare a single-print Order with buyer-funded production and shipping */
         post: {
             parameters: {
                 query?: never;

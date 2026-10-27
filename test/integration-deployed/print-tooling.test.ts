@@ -95,7 +95,11 @@ describe('print tooling through deployed Rare API', () => {
       await expect(rare.cart.checkout.prepare({ paymentCurrency: getAddress(entry.listing.settlementCurrency),
         items: [{ kind: 'listing', listingDigest: entry.listingDigest, quantity: 3n, recipient: wallet.address }],
         delivery: { savedAddressId: addressId } })).rejects.toMatchObject({ status: 422 });
+      expect(checkout.breakdown?.production).toBeGreaterThan(0n);
       expect(checkout.breakdown?.shipping).toBeGreaterThanOrEqual(0n);
+      if (!checkout.breakdown) throw new Error('Print checkout requires a cost breakdown.');
+      expect(checkout.breakdown.total).toBe(checkout.breakdown.displayPrice + checkout.breakdown.production + checkout.breakdown.shipping + checkout.breakdown.networkFee);
+      expect(option.metadata).not.toHaveProperty('productionQuote');
       expect(checkout.breakdown?.total).toBe(checkout.paymentAmount);
       if (!checkout.idempotencyKey || !checkout.intent.delivery) throw new Error('Delivery quote did not retain its idempotency key and delivery intent.');
       const request = { ...checkout.intent, delivery: checkout.intent.delivery, idempotencyKey: checkout.idempotencyKey };

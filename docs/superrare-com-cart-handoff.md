@@ -313,8 +313,8 @@ configuration out of creator controls.
    private result, `print.images` from public upload URLs, and a supported
    `print.specificationId`. Every print requires its own production file.
 5. Call `rare.prints.options.configure(dropId, { displayPriceUsdCents })` for
-   pricing and the production estimate. Current print Listings settle in USDC;
-   this does not restrict the buyer's supported payment currencies.
+   the artwork price. This does not call Prodigi. Current print Listings settle in USDC;
+   This does not restrict the buyer's supported payment currencies.
 6. Prepare the frozen terms with `rare.prints.listings.prepare`, then call
    `rare.prints.listings.signAndPublish(preparation)`.
    Set `eligibilityRuleId` here to publish a claim-gated Listing atomically.
@@ -324,6 +324,14 @@ configuration out of creator controls.
    `availableQuantity` remains the total edition supply, not the checkout limit.
    One UI action can await both signing and publication, then redirect to the
    public print page.
+
+Production and shipping are buyer-funded checkout charges, added on top of the
+artwork price. Rare API quotes the configured Prodigi product for the selected
+copies and shipping country at checkout. The signed order freezes these costs;
+its fee allocations retain each item and charge purpose for receipts and refunds.
+Listing preparation and availability do not request provider quotes or deduct
+production from seller proceeds. Display the server-provided `breakdown.production`
+and `breakdown.shipping` alongside the artwork price and checkout fee.
 
 The standard upload limit is 250 MiB. Print attachment accepts JPEG and PNG
 uploads. New drafts and photo edits accept at most four supplemental photos;

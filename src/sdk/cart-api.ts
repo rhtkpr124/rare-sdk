@@ -213,7 +213,7 @@ export function createCartApiNamespace(
       return { ...preparation,
         ...(intent.delivery === undefined ? {} : { idempotencyKey: globalThis.crypto.randomUUID() }),
         ...(wire.breakdown === undefined ? {} : { breakdown: {
-          displayPrice: BigInt(wire.breakdown.displayPrice), shipping: BigInt(wire.breakdown.shipping),
+          displayPrice: BigInt(wire.breakdown.displayPrice), production: BigInt(wire.breakdown.production), shipping: BigInt(wire.breakdown.shipping),
           networkFee: BigInt(wire.breakdown.networkFee), total: BigInt(wire.breakdown.total),
         } }),
       };
