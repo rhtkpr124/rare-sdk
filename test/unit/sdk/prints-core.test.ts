@@ -1,7 +1,8 @@
 import { describe, expect, expectTypeOf, it } from 'vitest';
 import { zeroAddress, zeroHash } from 'viem';
+import type { paths } from '../../../src/data-access/commerce-schema.js';
 import { parsePrintListingTerms, validatePrintListingQuantityLimit, validatePrintOptionConfiguration } from '../../../src/sdk/prints-core.js';
-import type { ConfigurePrintOption, CreatePrintDrop, PreparePrintListing, PrintListingPreparation } from '../../../src/sdk/types/prints.js';
+import type { ConfigurePrintOption, CreatePrintDrop, PreparePrintListing, PrintListingPreparation, PrintDrop, PublicPrintDrop } from '../../../src/sdk/types/prints.js';
 
 const listing = { listingSalt: zeroHash, seller: zeroAddress, sku: zeroHash, fulfillmentKind: 1,
   tokenContract: zeroAddress, tokenId: '0', settlementCurrency: zeroAddress, minimumUnitPrice: '15000000',
@@ -45,16 +46,22 @@ describe('frozen print Listing terms', () => {
       expect(validatePrintListingQuantityLimit({ ...input, maxQuantityPerCheckout }).valid).toBe(false);
     }
   });
-  it('does not offer multi-copy ERC-721 transfer fulfillment', () => {
-    expect(validatePrintListingQuantityLimit({ ...input, fulfillmentKind: 2 })).toEqual({ valid: true });
-    expect(validatePrintListingQuantityLimit({ ...input, fulfillmentKind: 2, maxQuantityPerCheckout: '2' }).valid).toBe(false);
-    for (const fulfillmentKind of [1, 3, 5] as const) {
+  it('supports multiple copies with physical fulfillment and optional receipt minting', () => {
+    const fulfillmentKinds: readonly NonNullable<PreparePrintListing['fulfillmentKind']>[] = [1, 5];
+    for (const fulfillmentKind of fulfillmentKinds) {
       expect(validatePrintListingQuantityLimit({ ...input, fulfillmentKind, maxQuantityPerCheckout: '2' })).toEqual({ valid: true });
     }
   });
-  it('requires private upload keys rather than public master URLs for new standalone prints', () => {
-    expectTypeOf<NonNullable<CreatePrintDrop['print']>>().toHaveProperty('productionUploadKey').toEqualTypeOf<string>();
-    expectTypeOf<NonNullable<CreatePrintDrop['print']>>().not.toHaveProperty('productionImageUri');
+  it('requires physical print details and keeps NFT attribution separate from creation and response identity', () => {
+    expectTypeOf<CreatePrintDrop['chainId']>().toEqualTypeOf<'11155111'>();
+    expectTypeOf<CreatePrintDrop['print']>().toEqualTypeOf<NonNullable<CreatePrintDrop['print']>>();
+    expectTypeOf<CreatePrintDrop['print']>().toHaveProperty('productionUploadKey').toEqualTypeOf<string>();
+    expectTypeOf<CreatePrintDrop['print']>().toHaveProperty('sourceUniversalTokenId');
+    expectTypeOf<CreatePrintDrop['print']>().not.toHaveProperty('productionImageUri');
+    expectTypeOf<CreatePrintDrop>().not.toHaveProperty('universalTokenId');
+    expectTypeOf<PrintDrop>().not.toHaveProperty('universal_token_id');
+    expectTypeOf<PublicPrintDrop>().not.toHaveProperty('universalTokenId');
+    expectTypeOf<paths>().not.toHaveProperty('/v1/prints/orders/{id}');
   });
   it('retains zero token IDs and converts frozen amounts without changing seller economics', () => {
     const terms = parsePrintListingTerms(preparation({ dropId, configured: { listing }, intent: { deadline: '2000000000' } }));
@@ -69,8 +76,10 @@ describe('frozen print Listing terms', () => {
     }
   });
   it('rejects invalid fulfillment kinds rather than signing an unrelated operation', () => {
-    expect(() => parsePrintListingTerms(preparation({ dropId, configured: { listing: { ...listing, fulfillmentKind: 6 } },
-      intent: { deadline: '2000000000' } }))).toThrow('unsupported fulfillment kind');
+    for (const fulfillmentKind of [2, 3, 6]) {
+      expect(() => parsePrintListingTerms(preparation({ dropId, configured: { listing: { ...listing, fulfillmentKind } },
+        intent: { deadline: '2000000000' } }))).toThrow('unsupported fulfillment kind');
+    }
   });
   it('requires the owned drop identity before any approval preflight', () => {
     expect(() => parsePrintListingTerms(preparation({ configured: { listing }, intent: { deadline: '2000000000' } }))).toThrow('owned drop');

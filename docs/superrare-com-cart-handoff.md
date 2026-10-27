@@ -308,20 +308,19 @@ configuration out of creator controls.
 2. Upload the master with
    `rare.upload(file, filename, { access: 'private' })`.
 3. Upload display photos through the same uploader with `access: 'public'`.
-4. Create the standalone draft with `rare.prints.drops.create`. Supply
-   `print.productionUploadKey` from the private result and `print.images` from
-   public upload URLs. Do not supply `productionImageUri` for a new standalone
-   print.
+4. Create the draft with `rare.prints.drops.create`. Supply an explicit `chainId`
+   and the required `print` details. Use `print.productionUploadKey` from the
+   private result, `print.images` from public upload URLs, and a supported
+   `print.specificationId`. Every print requires its own production file.
 5. Call `rare.prints.options.configure(dropId, { displayPriceUsdCents })` for
    pricing and the production estimate. Current print Listings settle in USDC;
    this does not restrict the buyer's supported payment currencies.
 6. Prepare the frozen terms with `rare.prints.listings.prepare`, then call
-   `rare.prints.listings.signAndPublish(preparation, { autoApprove: false })`.
+   `rare.prints.listings.signAndPublish(preparation)`.
    Set `eligibilityRuleId` here to publish a claim-gated Listing atomically.
    The rule must belong to the creator and target this print option's SKU.
    Set `maxQuantityPerCheckout` to the maximum copies in one purchase.
    It defaults to `"1"` and accepts positive integer strings up to `"1000"`.
-   ERC-721 transfer fulfillment requires a limit of `"1"`.
    `availableQuantity` remains the total edition supply, not the checkout limit.
    One UI action can await both signing and publication, then redirect to the
    public print page.
@@ -396,18 +395,10 @@ Use `quantity` on the generic Cart draft item for multiple copies of one print.
 Read each public print option's `maxQuantityPerCheckout` and `eligibilityRuleId`
 to present quantity controls and eligibility. Rare API enforces the limit again
 before signing. Changing quantity requires a new checkout idempotency key and
-a fresh quote. Claims are reserved per copy, not once per Order. Delivery carts
-still support one Listing at a time.
-
-NFT transfer fulfillments can require collection approval. Handle
-`NftApprovalRequiredError` with explicit consent before retrying
-`signAndPublish` with `autoApprove: true`. Preserve any returned `approvalTxHash`.
-An `ApprovalSideEffectError` means the approval may remain active even though
-the later signature or publication failed.
+a fresh quote. Claims are reserved per copy, not once per Order. Delivery carts can include physical prints, NFT transfers, and swaps.
 
 Use `rare.prints.drops.get/activity` for public detail and activity reads, and
 `rare.prints.releases.list({ universalTokenId })` for linked-artwork discovery.
-The older NFT-linked print-release implementation remains separate.
 
 ## Reuse account shipping and generic checkout
 

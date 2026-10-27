@@ -947,23 +947,20 @@ The generated reference is written to `docs/reference/`.
 
 `rare.prints` exposes creator-owned drops, supported specifications, production
 quotes, frozen Listing preparations, and public print reads. It uses Rare API
-directly. Pass the authenticated account client to `createRareClient`.
+directly and shares the account session configured through `createRareClient`.
 
 Upload print masters with `rare.upload(file, filename, { access:
 'private' })`. Pass the returned `key` as `print.productionUploadKey` when creating
 a standalone drop. Upload supplemental display images with public access and use
-their URLs in `print.images`. The SDK does not publish master download URLs.
+their URLs in `print.images`. Every draft requires an explicit `chainId` and
+`print` details, including a supported `print.specificationId`. Optional
+`print.sourceUniversalTokenId` attributes a creator-owned NFT and appears in
+`drop.metadata.sourceUniversalTokenId`. The SDK does not publish master download URLs.
 
 Prepare seller terms with `rare.prints.listings.prepare`, then call
 `rare.prints.listings.signAndPublish(preparation)` to sign and publish the frozen
 terms. This helper checks the chain, configured Cart contract, seller, and Listing
 digest before requesting the wallet signature.
-NFT transfer fulfillments require Cart collection approval. A missing approval
-raises `NftApprovalRequiredError` before the signature request. Pass
-`{ autoApprove: true }` as the second argument to explicitly authorize the existing
-Cart approval flow. The SDK verifies NFT ownership first and returns
-`approvalTxHash` when it submits an approval. If signing or publication fails after
-approval, `ApprovalSideEffectError` identifies the approval that remains active.
 
 Use `rare.prints.drops.update` for presentation edits. Production file and
 specification changes are allowed only before pricing is configured. Later

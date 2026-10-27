@@ -27,9 +27,6 @@ export function validatePrintListingQuantityLimit(input: PreparePrintListing): {
   if (typeof quantity !== 'string' || !/^[1-9][0-9]*$/u.test(quantity) || quantity.length > 4 || BigInt(quantity) > 1000n) {
     return { valid: false, message: 'Print checkout quantity limits must be positive integer strings from 1 to 1000.' };
   }
-  if (input.fulfillmentKind === 2 && quantity !== '1') {
-    return { valid: false, message: 'An ERC-721 transfer print Listing can allow only one copy per checkout.' };
-  }
   return { valid: true };
 }
 
@@ -47,7 +44,7 @@ const integer = (value: unknown): bigint => {
   return BigInt(value);
 };
 const fulfillmentKind = (value: unknown): CartFulfillmentKind => {
-  if (value === 1 || value === 2 || value === 3 || value === 5) return value;
+  if (value === 1 || value === 5) return value;
   throw new Error('Print preparation contains an unsupported fulfillment kind.');
 };
 

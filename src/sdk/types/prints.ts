@@ -2,6 +2,7 @@ import type { paths } from '../../data-access/commerce-schema.js';
 import type { CartListingRootArtifact } from './cart.js';
 import type { Hex } from 'viem';
 
+/** Every draft requires a chain and private production file. NFT source attribution is optional. */
 export type CreatePrintDrop = paths['/v1/prints/drops']['post']['requestBody']['content']['application/json'];
 export type PrintDrop = paths['/v1/prints/drops/mine/{id}']['get']['responses'][200]['content']['application/json']['data'];
 export type PublicPrintDrop = paths['/v1/prints/drops/{id}']['get']['responses'][200]['content']['application/json']['data'];
@@ -21,7 +22,7 @@ export type PrintBatchResult<T> = { key: string; inputDigest: string; status: 'f
 /** Keep keys and operation inputs unchanged when reusing previous results. */
 export type PrintBatchOptions<T> = { previousResults?: readonly PrintBatchResult<T>[] };
 export type PrintDropCreation = Omit<PrintDrop, 'options'>;
-export type PrintPublication = { preparation: PrintListingPreparation; signedArtifact: SignedPrintListingArtifact; approvalTxHash?: Hex };
+export type PrintPublication = { preparation: PrintListingPreparation; signedArtifact: SignedPrintListingArtifact };
 export type PrintOptionConfiguration = { dropId: string; input: ConfigurePrintOption };
 export type PrintListingPublication = { preparationId: string; artifact: SignedPrintListingArtifact };
 export type PrintListingSigning = { preparation: PrintListingPreparation; signedArtifact?: SignedPrintListingArtifact };
@@ -43,8 +44,8 @@ export type PrintPublishOperation = {
   (items: readonly PrintBatchItem<PrintListingPublication>[], options?: PrintBatchOptions<PrintListingPreparation>): Promise<PrintBatchResult<PrintListingPreparation>[]>;
 };
 export type PrintSignAndPublishOperation = {
-  (preparation: PrintListingPreparation, options?: { autoApprove?: boolean }): Promise<PrintPublication>;
-  (items: readonly PrintBatchItem<PrintListingSigning>[], options?: PrintBatchOptions<PrintPublication> & { autoApprove?: boolean }): Promise<PrintBatchResult<PrintPublication>[]>;
+  (preparation: PrintListingPreparation): Promise<PrintPublication>;
+  (items: readonly PrintBatchItem<PrintListingSigning>[], options?: PrintBatchOptions<PrintPublication>): Promise<PrintBatchResult<PrintPublication>[]>;
 };
 
 /** Print authoring uses the account session; purchasing uses rare.cart.checkout. */

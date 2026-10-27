@@ -97,8 +97,10 @@ describe('print batch authoring over HTTP', () => {
     const apiBaseUrl = `http://127.0.0.1:${address.port}`;
     const rare = createRareClient({ apiBaseUrl, publicClient: createPublicClient({ chain: sepolia, transport: http() }),
       transport: (path, init) => fetch(`${apiBaseUrl}${path}`, init) });
-    const first: CreatePrintDrop = { name: 'First', chainId: '11155111', idempotencyKey: randomUUID() };
-    const second: CreatePrintDrop = { name: 'Second', chainId: '11155111', idempotencyKey: randomUUID() };
+    const print = { name: 'Print edition', description: 'Archival print', tags: [],
+      productionUploadKey: 'a'.repeat(64), images: ['https://example.com/preview.png'], specificationId: 'archival-a4' };
+    const first: CreatePrintDrop = { name: 'First', chainId: '11155111', idempotencyKey: randomUUID(), print };
+    const second: CreatePrintDrop = { name: 'Second', chainId: '11155111', idempotencyKey: randomUUID(), print };
     const items = [{ key: 'first', input: first }, { key: 'second', input: second }];
     try {
       await expect(rare.prints.drops.create([{ key: 'duplicate', input: first }, { key: 'duplicate', input: second }])).rejects.toThrow('unique');
@@ -111,6 +113,8 @@ describe('print batch authoring over HTTP', () => {
       expect(retried).toMatchObject([{ key: 'first', status: 'fulfilled', value: { id: 'first' } }, { key: 'second', status: 'fulfilled', value: { id: 'second' } }]);
       expect(requests).toHaveLength(3);
       expect(requests[1]).toBe(requests[2]);
+      expect(JSON.parse(requests[0] ?? '')).toEqual(first);
+      expect(JSON.parse(requests[2] ?? '')).toEqual(second);
     } finally {
       server.closeAllConnections();
       await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));

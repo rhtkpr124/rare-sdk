@@ -562,7 +562,6 @@ export interface paths {
                             data: {
                                 /** Format: uuid */
                                 id: string;
-                                universalTokenId: string | null;
                                 productId: string | null;
                                 metadata: {
                                     [key: string]: unknown;
@@ -706,7 +705,6 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string;
                                 user_id: string;
-                                universal_token_id: string | null;
                                 product_id: string | null;
                                 chain_id: string | null;
                                 /** @enum {string} */
@@ -820,10 +818,9 @@ export interface paths {
                     "application/json": {
                         /** Format: uuid */
                         idempotencyKey: string;
-                        universalTokenId?: components["schemas"]["UniversalTokenId"];
                         /** @enum {string} */
-                        chainId?: "11155111";
-                        print?: {
+                        chainId: "11155111";
+                        print: {
                             sourceUniversalTokenId?: components["schemas"]["UniversalTokenId"];
                             name: string;
                             description: string;
@@ -850,7 +847,6 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string;
                                 user_id: string;
-                                universal_token_id: string | null;
                                 product_id: string | null;
                                 chain_id: string | null;
                                 /** @enum {string} */
@@ -977,7 +973,6 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string;
                                 user_id: string;
-                                universal_token_id: string | null;
                                 product_id: string | null;
                                 chain_id: string | null;
                                 /** @enum {string} */
@@ -1118,7 +1113,6 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string;
                                 user_id: string;
-                                universal_token_id: string | null;
                                 product_id: string | null;
                                 chain_id: string | null;
                                 /** @enum {string} */
@@ -1394,7 +1388,6 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string;
                                 user_id: string;
-                                universal_token_id: string | null;
                                 product_id: string | null;
                                 chain_id: string | null;
                                 /** @enum {string} */
@@ -1519,7 +1512,7 @@ export interface paths {
                         /** Format: uuid */
                         eligibilityRuleId?: string;
                         maxQuantityPerCheckout?: string;
-                        fulfillmentKind?: 1 | 2 | 3 | 5;
+                        fulfillmentKind?: 1 | 5;
                     };
                 };
             };
@@ -2605,7 +2598,6 @@ export interface paths {
                             data: {
                                 /** Format: uuid */
                                 id: string;
-                                universalTokenId: string | null;
                                 productId: string | null;
                                 metadata: {
                                     [key: string]: unknown;
@@ -2706,87 +2698,6 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["CartErrorResponse"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/prints/orders/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Your fulfillment status */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            /** Format: uuid */
-                            id: string;
-                            order_id: string;
-                            /** @enum {string} */
-                            status: "PENDING" | "PROCESSING" | "RETRY" | "COMPLETED" | "FAILED";
-                            provider_order_id: string | null;
-                            /** Format: date-time */
-                            created_at: string;
-                            /** Format: date-time */
-                            updated_at: string;
-                        };
-                    };
-                };
-                /** @description Operation unavailable */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            error: string;
-                        };
-                    };
-                };
-                /** @description Operation unavailable */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            error: string;
-                        };
-                    };
-                };
-                /** @description Operation unavailable */
-                503: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            error: string;
-                        };
                     };
                 };
             };
