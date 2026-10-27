@@ -34,7 +34,7 @@ describe.sequential('SDK Cart rare-api integration', () => {
   }, 360_000);
 
   afterAll(async () => {
-    await scenario?.accountClient.auth.logout();
+    await scenario?.rare.auth.logout();
   });
 
   it('searches Cart Products and Variants independently', async () => {
@@ -166,12 +166,10 @@ describe.sequential('SDK Cart rare-api integration', () => {
   }, 60_000);
 
   it('rejects unauthorized variant attachment and returns real API not-found errors', async () => {
-    const { rare, runId, product, apiBaseUrl, apiFetch } = scenario;
-    const response = await apiFetch(new URL(`/v1/cart/products/${product.id}/variants`, apiBaseUrl), {
-      method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ universalTokenIds: ['11155111-0x0000000000000000000000000000000000000001-0'] }),
-    });
-    expect(response.status).toBe(409);
+    const { rare, runId, product } = scenario;
+    await expect(rare.cart.catalog.variants.add(product.id, {
+      universalTokenIds: ['11155111-0x0000000000000000000000000000000000000001-0'],
+    })).rejects.toMatchObject({ status: 409 });
 
     const missingListingDigest = keccak256(toBytes(`missing:${runId}`));
     await expect(rare.cart.api.listing.get(missingListingDigest)).rejects.toThrow();
