@@ -15,7 +15,7 @@ describe.sequential('SDK eligibility against the deployed Rare API', () => {
   let scenario: Awaited<ReturnType<typeof createCreatorCartScenario>>;
 
   beforeAll(async () => { scenario = await createCreatorCartScenario({ tokenCount: 3, eligibility: true }); }, 360_000);
-  afterAll(async () => { await scenario?.accountClient.auth.logout(); });
+  afterAll(async () => { await scenario?.rare.auth.logout(); });
 
   it('creates an owned rule, opts a Listing in and out, and disables the rule', async () => {
     const listing = scenario.listings[0];
@@ -73,14 +73,13 @@ describe.sequential('SDK eligibility against the deployed Rare API', () => {
     if (!key || !isHex(key) || key.length !== 66) throw new Error('Set E2E_BUYER_PRIVATE_KEYS to a registered, funded Sepolia buyer.');
     const buyer = privateKeyToAccount(key);
     if (isAddressEqual(buyer.address, scenario.seller.address)) throw new Error('Eligibility buyer and creator must be different wallets.');
-    const accountClient = createRareClient({ apiBaseUrl: scenario.apiBaseUrl });
-    await accountClient.auth.loginWithWallet({ address: buyer.address, chainId: scenario.chainId,
+    const rare = createRareClient({ publicClient: scenario.publicClient,
+      walletClient: createWalletClient({ account: buyer, chain: sepolia, transport: http(getTestRpcUrl()) }),
+      apiBaseUrl: scenario.apiBaseUrl });
+    await rare.auth.loginWithWallet({ address: buyer.address, chainId: scenario.chainId,
       signMessage: message => buyer.signMessage({ message }) });
     try {
-      await accountClient.profile.get();
-      const rare = createRareClient({ publicClient: scenario.publicClient,
-        walletClient: createWalletClient({ account: buyer, chain: sepolia, transport: http(getTestRpcUrl()) }),
-        apiBaseUrl: scenario.apiBaseUrl, accountClient });
+      await rare.profile.get();
       const rule = await scenario.rare.eligibility.createRule({ definition: {
         kind: 'EVERY_SALE',
         source: { chainId: String(scenario.chainId), tokenContract: source.tokenContract, tokenIds: [source.tokenId.toString()] },
@@ -142,7 +141,7 @@ describe.sequential('SDK eligibility against the deployed Rare API', () => {
         await scenario.rare.eligibility.disableRule(rule.id);
       }
     } finally {
-      await accountClient.auth.logout();
+      await rare.auth.logout();
     }
   }, 600_000);
 });

@@ -12,16 +12,15 @@ loadDotEnv();
 
 describe('SDK mixed Listing and currency swap checkout', () => {
   it('receives an NFT and exact ERC20 output in the same Cart transaction', async () => {
+    const key = process.env.E2E_BUYER_PRIVATE_KEYS?.split(/[,\s]+/u).find(Boolean);
+    if (!key || !isHex(key) || key.length !== 66) throw new Error('Mixed Cart test requires a funded Sepolia buyer.');
+    const buyer = privateKeyToAccount(key);
     const scenario = await createCreatorCartScenario({ tokenCount: 1 });
-    const accountClient = createRareClient({ apiBaseUrl: scenario.apiBaseUrl });
+    const rare = createRareClient({ publicClient: scenario.publicClient, apiBaseUrl: scenario.apiBaseUrl,
+      walletClient: createWalletClient({ account: buyer, chain: sepolia, transport: http(getTestRpcUrl()) }) });
     try {
-      const key = process.env.E2E_BUYER_PRIVATE_KEYS?.split(/[,\s]+/u).find(Boolean);
-      if (!key || !isHex(key) || key.length !== 66) throw new Error('Mixed Cart test requires a funded Sepolia buyer.');
-      const buyer = privateKeyToAccount(key);
-      await accountClient.auth.loginWithWallet({ address: buyer.address, chainId: scenario.chainId,
+      await rare.auth.loginWithWallet({ address: buyer.address, chainId: scenario.chainId,
         signMessage: message => buyer.signMessage({ message }) });
-      const rare = createRareClient({ publicClient: scenario.publicClient, apiBaseUrl: scenario.apiBaseUrl, accountClient,
-        walletClient: createWalletClient({ account: buyer, chain: sepolia, transport: http(getTestRpcUrl()) }) });
       const listing = scenario.listings[0];
       const published = scenario.createdListings[0];
       if (!listing || !published) throw new Error('Mixed Cart fixture returned no NFT Listing.');
@@ -42,8 +41,8 @@ describe('SDK mixed Listing and currency swap checkout', () => {
       await expect(scenario.publicClient.readContract({ address: listing.tokenContract, abi: erc721Abi,
         functionName: 'ownerOf', args: [listing.tokenId] })).resolves.toBe(buyer.address);
     } finally {
-      await accountClient.auth.logout();
-      await scenario.accountClient.auth.logout();
+      await rare.auth.logout();
+      await scenario.rare.auth.logout();
     }
   }, 600_000);
 });

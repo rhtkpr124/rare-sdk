@@ -50,7 +50,7 @@ describe.sequential('quantity-aware eligibility across token standards', () => {
 
   afterAll(async () => {
     await buyer?.auth.logout();
-    await creator?.accountClient.auth.logout();
+    await creator?.rare.auth.logout();
   });
 
   const publish = async (source: Source, ruleId?: string) => {
