@@ -400,7 +400,7 @@ and retries. Do not resubmit a physical order from the SDK or frontend.
 
 Read `rare.cart.orders.get(orderId)` for payment status and `fulfillments`.
 Each fulfillment includes `orderLineIndex`, status, and nullable `providerOrderId`.
-`COMPLETED` means provider acceptance, not shipment or delivery. Poll this read
+`SUBMITTED` means provider acceptance, not shipment or delivery. Poll this read
 when useful; it does not initiate work.
 
 After an interrupted signed checkout, call
@@ -442,6 +442,12 @@ Order reads do not require a blockchain RPC connection.
 The identifier is the Cart Order's bytes32 ID, not an internal fulfillment UUID or provider Order ID. These methods do not include legacy NFT purchase
 history and do not return private postal snapshots.
 
+Orders expose a generic lifecycle: `PENDING`, `CONFIRMED`, `FULFILLED`, `FAILED`,
+and `CANCELLED`. `CONFIRMED` means the purchase succeeded. `FULFILLED` means every
+merchandise item is delivered. NFT and currency-swap items become fulfilled when
+execution is indexed. Mixed orders stay confirmed while physical delivery is
+outstanding.
+
 Keep payment state separate from each line's fulfillment state. Fulfillment
 `SUBMITTED` means the provider accepted the order. Later provider reads can move
 physical items to `IN_PRODUCTION`, `PARTIALLY_SHIPPED`, `SHIPPED`, or `CANCELLED`.
@@ -463,6 +469,9 @@ stored state; they never make the buyer wait for a provider request. Tracking
 is account-private and is not projected into public catalog or activity data.
 No additional carrier service is needed; carrier-confirmed delivery is not
 provided by this integration.
+
+Checkout recovery retains its internal authorization statuses such as `READY`
+and `EXECUTED`; those are separate from the public order lifecycle.
 
 Persist enough account-scoped recovery state to reconnect a confirmed payment
 to its Cart Order. Poll stored backend status with the application's query
