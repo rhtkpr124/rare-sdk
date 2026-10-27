@@ -1,6 +1,6 @@
 import { getAddress, isAddress, isAddressEqual, isHex } from 'viem';
-import type { CartListing, CartFulfillmentKind } from './types/cart.js';
-import type { ConfigurePrintOption, PreparePrintListing, PrintListingPreparation, SignedPrintListingArtifact } from './types/prints.js';
+import type { CartListing } from './types/cart.js';
+import type { PreparePrintListing, PrintListingPreparation, SignedPrintListingArtifact } from './types/prints.js';
 import { hashCartListing, validateCartListingRootArtifact } from './cart-core.js';
 
 export function validatePrintPublicationArtifact(preparation: PrintListingPreparation, artifact: SignedPrintListingArtifact): void {
@@ -12,14 +12,6 @@ export function validatePrintPublicationArtifact(preparation: PrintListingPrepar
     artifact.entries.length !== 1 || artifact.entries[0]?.listingDigest !== preparation.listing_digest) {
     throw new Error('Signed print artifact does not match the frozen preparation.');
   }
-}
-
-export function validatePrintOptionConfiguration(input: ConfigurePrintOption): { valid: true } | { valid: false; message: string } {
-  if (input.receipt !== undefined && input.receipt !== null &&
-    (typeof input.receipt.sku !== 'string' || !isHex(input.receipt.sku) || input.receipt.sku.length !== 66)) {
-    return { valid: false, message: 'A print receipt requires a 32-byte ERC-1155 variant SKU.' };
-  }
-  return { valid: true };
 }
 
 export function validatePrintListingQuantityLimit(input: PreparePrintListing): { valid: true } | { valid: false; message: string } {
@@ -43,8 +35,8 @@ const integer = (value: unknown): bigint => {
   if (typeof value !== 'string' || !/^(0|[1-9][0-9]*)$/u.test(value) || BigInt(value) >= 2n ** 256n) throw new Error('Print preparation contains an invalid integer.');
   return BigInt(value);
 };
-const fulfillmentKind = (value: unknown): CartFulfillmentKind => {
-  if (value === 1 || value === 5) return value;
+const fulfillmentKind = (value: unknown): 1 => {
+  if (value === 1) return value;
   throw new Error('Print preparation contains an unsupported fulfillment kind.');
 };
 
@@ -65,13 +57,5 @@ export function parsePrintListingTerms(preparation: PrintListingPreparation): { 
     minimumUnitPrice: integer(value.minimumUnitPrice), availableQuantity: integer(value.availableQuantity),
     paymentRecipient: address(value.paymentRecipient),
   };
-  if (snapshot.receipt !== undefined) {
-    if (!record(snapshot.receipt)) throw new Error('Print preparation contains an invalid receipt.');
-    hex(snapshot.receipt.sku);
-    if (snapshot.receipt.chainId !== preparation.chain_id || listing.fulfillmentKind !== 5 ||
-      !isAddressEqual(address(snapshot.receipt.tokenContract), listing.tokenContract) || integer(snapshot.receipt.tokenId) !== listing.tokenId) {
-      throw new Error('Print receipt does not match the frozen ERC-1155 mint terms.');
-    }
-  }
   return { dropId: snapshot.dropId, deadline: integer(snapshot.intent.deadline), listing };
 }

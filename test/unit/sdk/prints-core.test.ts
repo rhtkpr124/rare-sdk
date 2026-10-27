@@ -1,7 +1,7 @@
 import { describe, expect, expectTypeOf, it } from 'vitest';
 import { zeroAddress, zeroHash } from 'viem';
 import type { paths } from '../../../src/data-access/commerce-schema.js';
-import { parsePrintListingTerms, validatePrintListingQuantityLimit, validatePrintOptionConfiguration } from '../../../src/sdk/prints-core.js';
+import { parsePrintListingTerms, validatePrintListingQuantityLimit } from '../../../src/sdk/prints-core.js';
 import type { ConfigurePrintOption, CreatePrintDrop, PreparePrintListing, PrintListingPreparation, PrintDrop, PublicPrintDrop } from '../../../src/sdk/types/prints.js';
 
 const listing = { listingSalt: zeroHash, seller: zeroAddress, sku: zeroHash, fulfillmentKind: 1,
@@ -16,40 +16,17 @@ const preparation = (snapshot: PrintListingPreparation['snapshot']): PrintListin
 
 describe('frozen print Listing terms', () => {
   const input: PreparePrintListing = { optionId: dropId, seller: zeroAddress, listingSalt: zeroHash,
-    deadline: '2000000000', availableQuantity: '10', fulfillmentKind: 1 };
-  it('supports receipt configuration and server-derived fulfillment through the existing methods', () => {
-    expectTypeOf<ConfigurePrintOption>().toHaveProperty('receipt');
-    const withoutKind: PreparePrintListing = { optionId: dropId, seller: zeroAddress, listingSalt: zeroHash,
-      deadline: '2000000000', availableQuantity: '10' };
-    expect(validatePrintListingQuantityLimit(withoutKind)).toEqual({ valid: true });
-    expect(validatePrintOptionConfiguration({ displayPriceUsdCents: '2500', receipt: { sku: zeroHash } })).toEqual({ valid: true });
-    expect(validatePrintOptionConfiguration({ displayPriceUsdCents: '2500', receipt: null })).toEqual({ valid: true });
-    expect(validatePrintOptionConfiguration({ displayPriceUsdCents: '2500' })).toEqual({ valid: true });
-    expect(validatePrintOptionConfiguration({ displayPriceUsdCents: '2500', receipt: { sku: 'invalid' } }).valid).toBe(false);
-  });
-  it('keeps the print SKU distinct from its receipt and verifies the frozen mint target', () => {
-    const receipt = { sku: `0x${'a'.repeat(64)}`, chainId: '11155111', tokenContract: zeroAddress, tokenId: '7' };
-    const snapshot = { dropId, receipt, configured: { listing: { ...listing, fulfillmentKind: 5, tokenId: '7' } }, intent: { deadline: '2000000000' } };
-    const terms = parsePrintListingTerms(preparation(snapshot));
-    expect(terms.listing.sku).toBe(zeroHash);
-    expect(terms.listing.fulfillmentKind).toBe(5);
-    expect(terms.listing.tokenId).toBe(7n);
-    for (const changed of [{ ...receipt, chainId: '1' }, { ...receipt, tokenId: '8' }]) {
-      expect(() => parsePrintListingTerms(preparation({ ...snapshot, receipt: changed }))).toThrow('does not match');
-    }
-    expect(() => parsePrintListingTerms(preparation({ ...snapshot, configured: { listing } }))).toThrow('does not match');
+    deadline: '2000000000', availableQuantity: '10' };
+  it('exposes physical print configuration without an NFT receipt or fulfillment selector', () => {
+    expectTypeOf<ConfigurePrintOption>().not.toHaveProperty('receipt');
+    expectTypeOf<PreparePrintListing>().not.toHaveProperty('fulfillmentKind');
+    expectTypeOf<PublicPrintDrop['options'][number]>().not.toHaveProperty('receipt');
   });
   it('validates copy limits before remote preparation and preserves the one-copy default', () => {
     expect(validatePrintListingQuantityLimit(input)).toEqual({ valid: true });
     expect(validatePrintListingQuantityLimit({ ...input, maxQuantityPerCheckout: '1000' })).toEqual({ valid: true });
     for (const maxQuantityPerCheckout of ['0', '-1', '1.5', '01', '1001', '999999999999999999999']) {
       expect(validatePrintListingQuantityLimit({ ...input, maxQuantityPerCheckout }).valid).toBe(false);
-    }
-  });
-  it('supports multiple copies with physical fulfillment and optional receipt minting', () => {
-    const fulfillmentKinds: readonly NonNullable<PreparePrintListing['fulfillmentKind']>[] = [1, 5];
-    for (const fulfillmentKind of fulfillmentKinds) {
-      expect(validatePrintListingQuantityLimit({ ...input, fulfillmentKind, maxQuantityPerCheckout: '2' })).toEqual({ valid: true });
     }
   });
   it('requires physical print details and keeps NFT attribution separate from creation and response identity', () => {
@@ -76,7 +53,7 @@ describe('frozen print Listing terms', () => {
     }
   });
   it('rejects invalid fulfillment kinds rather than signing an unrelated operation', () => {
-    for (const fulfillmentKind of [2, 3, 6]) {
+    for (const fulfillmentKind of [0, 2, 3, 4, 5, 6]) {
       expect(() => parsePrintListingTerms(preparation({ dropId, configured: { listing: { ...listing, fulfillmentKind } },
         intent: { deadline: '2000000000' } }))).toThrow('unsupported fulfillment kind');
     }

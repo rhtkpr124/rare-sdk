@@ -8,7 +8,7 @@ import { isPrintBatch } from './prints-batch-core.js';
 import { runPrintBatch } from './prints-batch-shell.js';
 import { PrintPublicationError } from './prints-errors.js';
 import { buildCartListingRootArtifact, cartDomain, hashCartListing } from './cart-core.js';
-import { parsePrintListingTerms, validatePrintListingQuantityLimit, validatePrintOptionConfiguration, validatePrintPublicationArtifact } from './prints-core.js';
+import { parsePrintListingTerms, validatePrintListingQuantityLimit, validatePrintPublicationArtifact } from './prints-core.js';
 import { requireWallet } from './wallet-shell.js';
 import { cartAbi } from '../contracts/abis/cart.js';
 import { getAddress, isAddressEqual } from 'viem';
@@ -38,8 +38,6 @@ export function createPrintsNamespace(config: RareClientConfig, authenticatedFet
   function configure(items: readonly PrintBatchItem<PrintOptionConfiguration>[], options?: PrintBatchOptions<PrintOption>): Promise<PrintBatchResult<PrintOption>[]>;
   function configure(input: string | readonly PrintBatchItem<PrintOptionConfiguration>[], options?: ConfigurePrintOption | PrintBatchOptions<PrintOption>) {
     const operation = (value: PrintOptionConfiguration) => {
-      const validation = validatePrintOptionConfiguration(value.input);
-      if (!validation.valid) return Promise.reject(new Error(validation.message));
       return data(client.PUT('/v1/prints/drops/{id}/options/standard', { params: { path: { id: value.dropId } }, body: value.input }));
     };
     if (typeof input === 'string') {

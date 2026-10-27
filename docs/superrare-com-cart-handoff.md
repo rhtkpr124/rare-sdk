@@ -285,7 +285,7 @@ expiration are different deadlines.
 
 For an NFT-linked physical print, set `print.sourceUniversalTokenId` when creating
 the standalone drop. This is attribution, not an instruction to transfer the NFT.
-It is independent of eligibility and receipt minting. The API verifies the source
+It is independent of eligibility and NFT purchases. The API verifies the source
 artwork belongs to the creator. Use `rare.prints.releases.list({ universalTokenId })`
 to find its published prints.
 
@@ -296,7 +296,7 @@ targets. There is no bulk setup helper or campaign requirement.
 
 Use `rare.cart.catalog.products.create`, `getMine`, and `archive`, and
 `rare.cart.catalog.variants.add` for creator-owned catalog resources such as a
-shared receipt SKU. Pass `{ idempotencyKey }` as the second argument to Product
+separately purchasable NFT variants. Pass `{ idempotencyKey }` as the second argument to Product
 creation. Variant creation is not automatically retried; after an ambiguous
 response, inspect `getMine` before issuing another mutation.
 
@@ -343,53 +343,22 @@ configured. Later physical changes require a replacement drop and SKU. Price
 changes require freshly prepared and signed Listing terms. Existing paid Orders
 keep their original fulfillment snapshots.
 
-### Include an ERC-1155 receipt with a print
+### Compose NFTs and physical prints
 
-Configure the receipt through the regular print option API. No campaign is
-required. `receipt.sku` references an existing creator-owned ERC-1155 variant
-on the print's settlement chain. Different print variants can share that receipt
-variant while keeping their own print SKUs and production files.
+A print is a physical variant. Configure its price through
+`rare.prints.options.configure`, then prepare and publish its print listing.
+Print preparation always uses off-chain fulfillment; it does not mint an NFT.
 
-```typescript
-const option = await rare.prints.options.configure(dropId, {
-	displayPriceUsdCents: '2500',
-	receipt: { sku: receiptSku },
-});
+If the creator also offers an NFT, publish its ordinary NFT variant and listing
+separately. Group related variants under the Product and add either or both
+listing digests to the same `rare.cart.checkout.prepare` call. Include delivery
+information when the Cart contains physical items. Each item retains its own
+price, quantity, authorization and fulfillment.
 
-const preparation = await rare.prints.listings.prepare({
-	optionId: option.id,
-	seller: sellerAddress,
-	listingSalt,
-	deadline,
-	availableQuantity: '100',
-	maxQuantityPerCheckout: '2',
-});
-
-await rare.prints.listings.signAndPublish(preparation);
-```
-
-The API derives ERC-1155 mint fulfillment. Do not pass `fulfillmentKind` for
-this flow. Existing explicit fulfillment kinds remain supported when they match
-the configured option. Eligibility is independent: include `eligibilityRuleId`
-in listing preparation when the print requires a claim.
-
-The selected seller must be the receipt token's creator, and the supported Rare
-ERC-1155 contract must authorize Cart as a minter before listing preparation.
-Use `rare.collection.erc1155.setMinterApproval` to grant that permission. A defined
-token can be used before any copies have been minted. NFT indexing is not required.
-
-Each purchased print mints one receipt token to the Cart item's recipient. A
-quantity of two produces two physical copies and two receipt units. The token
-is included in the print price, not purchased through a separate free listing.
-
-Omit `receipt` during a price update to preserve its configuration. Set
-`receipt: null` to remove it for future listing preparations. Prepare and sign
-fresh listing terms after a change. Previously prepared listings and paid orders
-retain their frozen receipt and physical fulfillment configuration.
-
-Public print options expose their frozen `receipt` configuration, or `null`
-when absent. The SDK verifies that a receipt snapshot matches the signed listing's
-chain, mint kind, token contract, and token ID before requesting a signature.
+`print.sourceUniversalTokenId` links the print to its source artwork for
+attribution and discovery. It does not bundle or mint that NFT. Eligibility is
+independent: set `eligibilityRuleId` during print listing preparation when the
+print requires a claim.
 
 Use `quantity` on the generic Cart draft item for multiple copies of one print.
 Read each public print option's `maxQuantityPerCheckout` and `eligibilityRuleId`
@@ -531,7 +500,7 @@ explicitly for the CLI. Use registered dedicated test accounts and Sepolia RPC
 configuration. Do not rely on an environment file's default deployment.
 
 The SDK print suite covers address storage, private/public uploads, creator edits,
-configuration, source-linked discovery, creator receipt variants, atomic gated
+configuration, source-linked discovery, separate NFT and print Cart items, atomic gated
 publication, quantity limits, multi-copy and multi-print delivery quotes,
 idempotent signed Order preparation, recovery, and per-line account Order reads.
 The CLI suite covers its corresponding
