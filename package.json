@@ -141,7 +141,8 @@
     "buffer": "6.0.3",
     "merkletreejs": "0.6.0",
     "openapi-fetch": "0.17.0",
-    "viem": "2.54.6"
+    "viem": "2.54.6",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

@@ -9,11 +9,11 @@ import { isPrivateKeyString } from '../../src/sdk/validation.js';
 import type { RareNotification } from '../../src/sdk/types/notifications.js';
 import { messagingOrigin, required, withMessagingActors, retryPublicSend, type MessagingActor } from './messaging-live.js';
 
-const notifications = async (actor: MessagingActor, room: string, cursor?: string, pages = 0): Promise<RareNotification[]> => {
-  if (pages >= 100) throw new Error('Notification traversal exceeded 100 pages');
-  const page = await actor.account.notifications.list({ cursor, limit: 50 });
+const notifications = async (actor: MessagingActor, room: string, pageNumber = 1): Promise<RareNotification[]> => {
+  if (pageNumber > 100) throw new Error('Notification traversal exceeded 100 pages');
+  const page = await actor.account.notifications.list({ page: pageNumber, perPage: 50 });
   const matches = page.data.filter(row => row.category === 'messagingActivity' && row.payload.conversationId === room);
-  return page.nextCursor === null ? matches : [...matches, ...await notifications(actor, room, page.nextCursor, pages + 1)];
+  return page.pagination.page >= page.pagination.totalPages ? matches : [...matches, ...await notifications(actor, room, pageNumber + 1)];
 };
 const delivered = async (actor: MessagingActor, room: string, excluded: readonly string[], deadline = Date.now() + 90_000): Promise<RareNotification> => {
   const match = (await notifications(actor, room)).find(row => !excluded.includes(row.id));
