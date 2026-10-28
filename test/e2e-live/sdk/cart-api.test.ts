@@ -63,7 +63,7 @@ describe.sequential('SDK Cart rare-api integration', () => {
         items: publication.signedArtifact.entries.map(entry => ({ kind: 'listing', listingDigest: entry.listingDigest, quantity: 1n, recipient: seller.address })),
       });
       expect(preview.intent.items).toHaveLength(64);
-      const signed = await rare.cart.api.checkout.prepare(preview.preparationReference);
+      const signed = await rare.cart.checkout.authorize(preview);
       expect(signed.executePurchase.lines.filter(line => line.fulfillmentKind === 5)).toHaveLength(64);
       expect(signed.executePurchase.lines.length).toBeGreaterThan(64);
       expect(signed.executePurchase.platformSignature).not.toBe('0x');
@@ -101,7 +101,7 @@ describe.sequential('SDK Cart rare-api integration', () => {
         const preview = await rare.cart.checkout.prepare({ paymentCurrency: zeroAddress, items: [{
           kind: 'listing', listingDigest: entry.listingDigest, quantity, recipient: seller.address,
         }] });
-        return rare.cart.api.checkout.prepare(preview.preparationReference);
+        return rare.cart.checkout.authorize(preview);
       };
       // A one-token control proves permissions and the fixture are executable.
       expect((await prepare(1n)).executePurchase.platformSignature).not.toBe('0x');
