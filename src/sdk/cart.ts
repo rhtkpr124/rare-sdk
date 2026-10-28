@@ -10,6 +10,7 @@ import type { RareClientConfig } from './types/client.js';
 import { cartFulfillmentKinds, type CartCheckoutParams, type CartListing, type CartNamespace, type CartPurchaseParams, type CartPurchaseResult } from './types/cart.js';
 import { requireWallet } from './wallet-shell.js';
 import { createCartApiNamespace } from './cart-api.js';
+import type { CartCheckoutPreparation } from './types/cart-api.js';
 
 export type * from './types/cart.js';
 export type * from './types/cart-api.js';
@@ -83,7 +84,6 @@ export function createCartNamespace(
   };
 
   return {
-    api,
     catalog: { products: api.catalog.products, variants: api.catalog.variants },
     approval: {
       status(tokenContract, owner) {
@@ -146,11 +146,14 @@ export function createCartNamespace(
       },
       search: api.listing.search,
       get: api.listing.get,
+      invalidate: api.listing.invalidate,
       cancel(listingDigest) { return writeSimple('cancelListing', [listingDigest]); },
       cancelRoot(rootDigest) { return writeSimple('cancelListingRoot', [rootDigest]); },
       invalidateNonce() { return writeSimple('invalidateListingNonce'); },
     },
     checkout: {
+      receipt: api.checkout.receipt,
+      authorize(preparation) { return authorizeCartCheckout(api, chainId, requireCart(), preparation); },
       prepare(intent) {
         const validation = validateCartCheckoutIntent(intent);
         if (!validation.isValid) throw new CartPreparationError('invalid_intent', 'Cart checkout intent is invalid.', validation.issues);
@@ -209,16 +212,26 @@ async function purchaseCartCheckout(
     }
   }
 
-  const preparedPurchase = await api.checkout.prepare(params.preparation.intent);
-  const swapValidation = validateCartApprovedSwapOutputs(params.preparation.lines, preparedPurchase.executePurchase.lines);
-  if (!swapValidation.isValid) {
-    throw new CartPreparationError('quote_changed', 'The quoted token outputs changed. Review a fresh quote before purchasing.', swapValidation.issues);
-  }
+  const preparedPurchase = await authorizeCartCheckout(api, chainId, cart, params.preparation);
   const execution = await executeCartCheckout(publicClient, config, chainId, cart, lens, {
     ...preparedPurchase.executePurchase,
     autoApprove: params.autoApprove,
   });
   return { ...execution, preparation: params.preparation, preparedPurchase };
+}
+
+async function authorizeCartCheckout(
+  api: ReturnType<typeof createCartApiNamespace>, chainId: number, cart: Address,
+  preparation: CartCheckoutPreparation,
+) {
+  const validation = validateCartCheckoutPreparationForPurchase(preparation, { chainId: BigInt(chainId), cart });
+  if (!validation.isValid) throw new CartPreparationError('invalid_preparation', 'Cart checkout preparation cannot be authorized.', validation.issues);
+  const preparedPurchase = await api.checkout.prepare(preparation.intent);
+  const swapValidation = validateCartApprovedSwapOutputs(preparation.lines, preparedPurchase.executePurchase.lines);
+  if (!swapValidation.isValid) {
+    throw new CartPreparationError('quote_changed', 'The quoted token outputs changed. Review a fresh quote before purchasing.', swapValidation.issues);
+  }
+  return preparedPurchase;
 }
 
 async function executeCartCheckout(publicClient: PublicClient, config: RareClientConfig, chainId: number, cart: Address, lens: Address | undefined, params: CartCheckoutParams) {

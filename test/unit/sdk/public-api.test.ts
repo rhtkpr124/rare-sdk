@@ -58,14 +58,15 @@ describe('public SDK API surface', () => {
 
     expect(rare.chain).toBe('mainnet');
     expect(rare.chainId).toBe(1);
-    expect(rare.cart.api.catalog.products).not.toHaveProperty('create');
-    expect(rare.cart.api.catalog.products.search).toBeTypeOf('function');
-    expect(rare.cart.api.catalog.variants.search).toBeTypeOf('function');
-    expect(rare.cart.api.catalog).not.toHaveProperty('skus');
-    expect(rare.cart.api.listing).not.toHaveProperty('create');
-    expect(rare.cart.api.listing.search).toBeTypeOf('function');
-    expect(rare.cart.api.checkout.preview).toBeTypeOf('function');
-    expect(rare.cart.api.checkout.prepare).toBeTypeOf('function');
+    expect(rare.cart).not.toHaveProperty('api');
+    expect(rare.cart.catalog.products.create).toBeTypeOf('function');
+    expect(rare.cart.catalog.products.search).toBeTypeOf('function');
+    expect(rare.cart.catalog.variants.search).toBeTypeOf('function');
+    expect(rare.cart.catalog).not.toHaveProperty('skus');
+    expect(rare.cart.listing).not.toHaveProperty('create');
+    expect(rare.cart.listing.search).toBeTypeOf('function');
+    expect(rare.cart.checkout.receipt).toBeTypeOf('function');
+    expect(rare.cart.checkout.prepare).toBeTypeOf('function');
     expect(rare.cart.catalog.products.search).toBeTypeOf('function');
     expect(rare.cart.catalog.variants.search).toBeTypeOf('function');
     expect(rare.cart.listing.prepare).toBeTypeOf('function');

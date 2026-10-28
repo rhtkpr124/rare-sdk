@@ -5,7 +5,7 @@ import { privateKeyToAccount } from 'viem/accounts';
 import { createPublicClient, http } from 'viem';
 import { sepolia } from 'viem/chains';
 import { createSiweMessage } from 'viem/siwe';
-import { createPublicClient, http, zeroAddress } from 'viem';
+import { createPublicClient, http } from 'viem';
 import { sepolia } from 'viem/chains';
 import { createRareClient } from '../../src/sdk/client.js';
 import type { RareApiClient, RareClient, RareClientConfig } from '../../src/sdk/types/client.js';
@@ -214,7 +214,7 @@ describe('account authentication over HTTP', () => {
         expect(request.headers.authorization).toBeUndefined();
         return reply(response, { data: [], pagination: {} });
       }
-      expect(request.url?.startsWith('/v1/cart/listings/preview')).toBe(true);
+      expect(request.url?.includes('/invalidate')).toBe(true);
       expect(request.headers.authorization).toBe('Bearer access-2');
       // eslint-disable-next-line functional/immutable-data
       received.push('preview');
@@ -225,10 +225,8 @@ describe('account authentication over HTTP', () => {
       apiBaseUrl: origin,
       sessionStore: storage,
     });
-    await rare.cart.api.listing.search();
-    const intent = { seller: account.address, deadline: 9999999999n, listings: [{ sku: `0x${'12'.repeat(32)}` as const,
-      settlementCurrency: zeroAddress, unitPrice: 0n, quantity: 1n }] };
-    await Promise.all([rare.cart.api.listing.preview(intent), rare.cart.api.listing.preview(intent)]);
+    await rare.cart.listing.search();
+    await Promise.all([rare.cart.listing.invalidate(`0x${'12'.repeat(32)}`), rare.cart.listing.invalidate(`0x${'13'.repeat(32)}`)]);
     expect(received).toEqual(['refresh', 'preview', 'preview']);
   });
 
@@ -239,7 +237,7 @@ describe('account authentication over HTTP', () => {
       publicClient: createPublicClient({ chain: sepolia, transport: http() }),
       apiBaseUrl: 'https://different.example', sessionStore: storage,
     });
-    await expect(rare.cart.api.listing.invalidate(`0x${'11'.repeat(32)}`)).rejects.toMatchObject({ code: 'session_authority_mismatch' });
+    await expect(rare.cart.listing.invalidate(`0x${'11'.repeat(32)}`)).rejects.toMatchObject({ code: 'session_authority_mismatch' });
     expect(await storage.get()).toEqual(expect.objectContaining({ refreshToken: 'refresh-1' }));
   });
 
@@ -261,7 +259,7 @@ describe('account authentication over HTTP', () => {
     await expect(authenticatedFetch(`${origin}/api/redirect`, { method: 'POST' })).rejects.toThrow();
     const rare = createRareClient({ publicClient: createPublicClient({ chain: sepolia, transport: http() }),
       apiBaseUrl: `${origin}/api`, sessionStore: storage });
-    await expect(rare.cart.api.listing.invalidate(`0x${'11'.repeat(32)}`)).rejects.toMatchObject({ status: 401 });
+    await expect(rare.cart.listing.invalidate(`0x${'11'.repeat(32)}`)).rejects.toMatchObject({ status: 401 });
     expect(received).toHaveLength(2);
     expect(received.every(path => path.startsWith('/api/'))).toBe(true);
   });

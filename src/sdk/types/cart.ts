@@ -111,7 +111,6 @@ export type CartValidationIssue = { code: string; field: string; message: string
 export type CartValidationResult<T> = { isValid: true; value: T } | { isValid: false; issues: CartValidationIssue[] };
 
 export type CartNamespace = {
-  api: CartApiNamespace;
   catalog: {
     products: CartApiNamespace['catalog']['products'];
     variants: CartApiNamespace['catalog']['variants'];
@@ -126,11 +125,15 @@ export type CartNamespace = {
     publish: (params: CartListingPublishParams) => Promise<CartListingPublishResult>;
     search: CartApiNamespace['listing']['search'];
     get: CartApiNamespace['listing']['get'];
+    invalidate: CartApiNamespace['listing']['invalidate'];
     cancel: (listingDigest: Hex) => Promise<{ txHash: Hash; receipt: TransactionReceipt }>;
     cancelRoot: (rootDigest: Hex) => Promise<{ txHash: Hash; receipt: TransactionReceipt }>;
     invalidateNonce: () => Promise<{ txHash: Hash; receipt: TransactionReceipt }>;
   };
   checkout: {
+    receipt: CartApiNamespace['checkout']['receipt'];
+    /** Authorizes a reviewed quote and reserves any required claims, without paying. */
+    authorize: (preparation: CartCheckoutPreparation) => Promise<CartApiPreparedPurchase>;
     prepare: (intent: CartCheckoutIntent) => Promise<CartCheckoutPreparation>;
     purchase: (params: CartPurchaseParams) => Promise<CartPurchaseResult>;
   };
