@@ -117,9 +117,7 @@ export function createAccountFeatures(apiRequest: Request, request: Request): Ra
         return result.data.data;
       },
       async delete(id, options = {}) {
-        const result = await accountApiClient.DELETE('/v1/account/shipping-addresses/{id}', { params: { path: { id } }, signal: options.signal });
-        if (result.data === undefined) throw new Error('Rare API did not return remaining shipping addresses.');
-        return result.data.data;
+        await accountApiClient.DELETE('/v1/account/shipping-addresses/{id}', { params: { path: { id } }, signal: options.signal });
       },
     },
     notifications: createNotificationsClient(postRequest),

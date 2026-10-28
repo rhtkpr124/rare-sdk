@@ -6,6 +6,6 @@ export type ShippingAddress = paths['/v1/account/shipping-addresses']['get']['re
 export type ShippingDetails = ShippingAddress['details'];
 export type ShippingAddressesNamespace = {
   list: (options?: RareAuthRequestOptions) => Promise<ShippingAddress[]>;
-  save: (input: SaveShippingAddress, options?: RareAuthRequestOptions) => Promise<ShippingAddress[]>;
-  delete: (id: string, options?: RareAuthRequestOptions) => Promise<ShippingAddress[]>;
+  save: (input: SaveShippingAddress, options?: RareAuthRequestOptions) => Promise<ShippingAddress>;
+  delete: (id: string, options?: RareAuthRequestOptions) => Promise<void>;
 };

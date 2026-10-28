@@ -97,7 +97,7 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description Private account address book */
+                /** @description Saved private shipping address */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -124,7 +124,7 @@ export interface paths {
                                     countryCode: string;
                                 };
                                 isDefault: boolean;
-                            }[];
+                            };
                         };
                     };
                 };
@@ -167,36 +167,12 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Private account address book */
-                200: {
+                /** @description Shipping address deleted */
+                204: {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content: {
-                        "application/json": {
-                            data: {
-                                /** Format: uuid */
-                                id: string;
-                                label: string;
-                                details: {
-                                    name: string;
-                                    /** Format: email */
-                                    email: string;
-                                    phoneNumber: string;
-                                    addressLine1: string;
-                                    /** @default  */
-                                    addressLine2: string;
-                                    townOrCity: string;
-                                    /** @default  */
-                                    stateOrCounty: string;
-                                    /** @default  */
-                                    postalOrZipCode: string;
-                                    countryCode: string;
-                                };
-                                isDefault: boolean;
-                            }[];
-                        };
-                    };
+                    content?: never;
                 };
                 /** @description Invalid shipping details */
                 400: {
@@ -349,8 +325,8 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
-                    after?: string;
-                    take?: number;
+                    page?: number;
+                    perPage?: number;
                 };
                 header?: never;
                 path?: never;
@@ -422,7 +398,7 @@ export interface paths {
                                     updatedAt: string;
                                 }[];
                             }[];
-                            nextCursor: string | null;
+                            pagination: components["schemas"]["Pagination"];
                         };
                     };
                 };
@@ -991,8 +967,8 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
-                    after?: string;
-                    take?: number;
+                    page?: number;
+                    perPage?: number;
                 };
                 header?: never;
                 path?: never;
@@ -1036,6 +1012,7 @@ export interface paths {
                                     updated_at: string;
                                 }[];
                             }[];
+                            pagination: components["schemas"]["Pagination"];
                         };
                     };
                 };
@@ -2433,7 +2410,8 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
-                    after?: string;
+                    page?: number;
+                    perPage?: number;
                 };
                 header?: never;
                 path: {
@@ -2456,7 +2434,7 @@ export interface paths {
                                     username: string;
                                     avatar: string | null;
                                 } | null;
-                                events: {
+                                data: {
                                     /** Format: uuid */
                                     id: string;
                                     /** @enum {string} */
@@ -2471,8 +2449,7 @@ export interface paths {
                                     chainId: string;
                                     transactionHash: string;
                                 }[];
-                                /** Format: uuid */
-                                nextCursor: string | null;
+                                pagination: components["schemas"]["Pagination"];
                             };
                         };
                     };
@@ -2751,6 +2728,16 @@ export interface components {
                 listingDigest?: string;
                 lineIndex?: number;
             };
+        };
+        Pagination: {
+            /** @example 1 */
+            page: number;
+            /** @example 20 */
+            perPage: number;
+            /** @example 100 */
+            totalCount: number;
+            /** @example 5 */
+            totalPages: number;
         };
         /** @description A JSON object whose values may contain nested JSON data. */
         CartJsonObject: {

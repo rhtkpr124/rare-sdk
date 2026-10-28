@@ -1,6 +1,7 @@
 import type { paths } from '../../data-access/commerce-schema.js';
 import type { CartListingRootArtifact } from './cart.js';
 import type { Hex } from 'viem';
+import type { SearchPageResponse } from '../api.js';
 
 /** Every draft requires a chain and private production file. NFT source attribution is optional. */
 export type CreatePrintDrop = paths['/v1/prints/drops']['post']['requestBody']['content']['application/json'];
@@ -53,11 +54,11 @@ export type PrintsNamespace = {
   drops: {
     create: PrintCreateOperation;
     update: (id: string, input: UpdatePrintDrop) => Promise<Omit<PrintDrop, 'options'>>;
-    listMine: (options?: { after?: string; take?: number }) => Promise<PrintDrop[]>;
+    listMine: (options?: { page?: number; perPage?: number }) => Promise<SearchPageResponse<PrintDrop>>;
     getMine: (id: string) => Promise<PrintDrop>;
     get: (id: string) => Promise<PublicPrintDrop>;
     archive: (id: string) => Promise<Omit<PrintDrop, 'options'>>;
-    activity: (id: string, options?: { after?: string }) => Promise<PrintActivity>;
+    activity: (id: string, options?: { page?: number; perPage?: number }) => Promise<PrintActivity>;
   };
   releases: { list: (input: { universalTokenId: string }) => Promise<PublicPrintDrop[]> };
   options: { configure: PrintConfigureOperation };

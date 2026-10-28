@@ -216,7 +216,7 @@ describe('account authentication over HTTP', () => {
     handler = async (request, response, body) => {
       expect(request.headers.authorization).toBe(mode === 'bearer' ? 'Bearer access-1' : undefined);
       expect(request.headers.cookie).toBe(mode === 'application' ? 'sr-session=application-owned' : undefined);
-      if (request.url === '/v1/account/orders?take=2') return reply(response, { data: [order], nextCursor: null });
+      if (request.url === '/v1/account/orders?page=1&perPage=2') return reply(response, { data: [order], pagination: { page: 1, perPage: 2, totalCount: 1, totalPages: 1 } });
       if (request.url === '/v1/account/orders/fixture-order') return reply(response, { data: order });
       if (request.url === '/v1/account/shipping-addresses') {
         if (request.method === 'PUT') {
@@ -226,18 +226,19 @@ describe('account authentication over HTTP', () => {
             return reply(response, { error: { code: 'invalid_request', message: 'Check your shipping details.' } }, 400);
           }
           expect(JSON.parse(body)).toEqual(input);
+          return reply(response, { data: { id: input.id, label: input.label, details, isDefault: true } });
         }
         else expect(request.method).toBe('GET');
         return reply(response, { data: [] });
       }
       expect(request.url).toBe('/v1/account/shipping-addresses/fixture');
       expect(request.method).toBe('DELETE');
-      return reply(response, { data: [] });
+      response.writeHead(204); response.end();
     };
     expect(await sdk.shippingAddresses.list()).toEqual([]);
-    expect(await sdk.shippingAddresses.save(input)).toEqual([]);
-    expect(await sdk.shippingAddresses.delete('fixture')).toEqual([]);
-    expect((await sdk.cart.orders.list({ take: 2 })).data[0]?.items).toEqual(order.items);
+    expect(await sdk.shippingAddresses.save(input)).toEqual({ id: input.id, label: input.label, details, isDefault: true });
+    expect(await sdk.shippingAddresses.delete('fixture')).toBeUndefined();
+    expect((await sdk.cart.orders.list({ perPage: 2 })).data[0]?.items).toEqual(order.items);
     expect((await sdk.cart.orders.get(order.id)).items).toEqual(order.items);
     expect('orders' in sdk).toBe(false);
   });
@@ -256,9 +257,9 @@ describe('account authentication over HTTP', () => {
         expect(request.headers.authorization).toBe(request.url.includes('eligibility=eligible') ? 'Bearer access-2' : undefined);
         return reply(response, { data: [], pagination: {} });
       }
-      if (request.url === '/v1/account/orders') {
+      if (request.url === '/v1/account/orders?page=1&perPage=20') {
         expect(request.headers.authorization).toBe('Bearer access-2');
-        return reply(response, { data: [], nextCursor: null });
+        return reply(response, { data: [], pagination: { page: 1, perPage: 20, totalCount: 0, totalPages: 0 } });
       }
       expect(request.url?.includes('/invalidate')).toBe(true);
       expect(request.headers.authorization).toBe('Bearer access-2');
@@ -274,7 +275,7 @@ describe('account authentication over HTTP', () => {
     await rare.cart.listing.search();
     await rare.cart.listing.search({ eligibility: 'eligible' });
     await Promise.all([rare.cart.listing.invalidate(`0x${'12'.repeat(32)}`), rare.cart.listing.invalidate(`0x${'13'.repeat(32)}`)]);
-    expect(await rare.cart.orders.list()).toEqual({ data: [], nextCursor: null });
+    expect(await rare.cart.orders.list()).toEqual({ data: [], pagination: { page: 1, perPage: 20, totalCount: 0, totalPages: 0 } });
     expect(received).toEqual(['refresh', 'preview', 'preview']);
   });
 
@@ -327,6 +328,34 @@ describe('account authentication over HTTP', () => {
     expect(rare.cart).not.toHaveProperty('api');
     expect(await rare.cart.purchaseEligibility.claims.list({ page: 2, perPage: 10 })).toEqual({ data: [], pagination });
     await expect(rare.cart.purchaseEligibility.rules.list({ page: 0 })).rejects.toThrow();
+  });
+
+  it('authorizes saved references and delivery drafts without changing their checkout identities', async () => {
+    const storage = createMemoryAccountSessionStore();
+    await storage.set(session());
+    const rare = createRareClient({ publicClient: createPublicClient({ chain: sepolia, transport: http() }), apiBaseUrl: origin, sessionStore: storage });
+    const address = '0x0000000000000000000000000000000000000000';
+    const digest = `0x${'11'.repeat(32)}`;
+    const idempotencyKey = '11111111-1111-4111-8111-111111111111';
+    const wire = { schemaVersion: 1, chainId: String(sepolia.id), cartAddress: rare.contracts.cart, preparedAt: new Date().toISOString(),
+      executePurchase: { order: { orderId: digest, paymentCurrency: address, deadline: '9999999999', paymentAmount: '1',
+        orderLinesHash: digest, payoutRouteHash: digest, fulfillmentActionsHash: digest },
+        lines: [], listings: [], authorization: { listingRoots: [], listingRootSignatures: [], listingRootIndexes: [], listingProofs: [] },
+        route: { commands: '0x', inputs: [], routerValue: '0' }, actions: [], platformSignature: '0x00' } };
+    handler = async (request, response, body) => {
+      expect(request.headers.authorization).toBe('Bearer access-1');
+      const data: unknown = JSON.parse(body);
+      if (request.headers['idempotency-key'] === undefined) expect(data).toEqual({ preparationReference: 'original-reference' });
+      else {
+        expect(request.headers['idempotency-key']).toBe(idempotencyKey);
+        expect(data).toMatchObject({ items: [{ quantity: '1' }], delivery: { savedAddressId: idempotencyKey } });
+      }
+      reply(response, { data: wire });
+    };
+    expect((await rare.cart.checkout.authorize({ preparationReference: 'original-reference' })).executePurchase.order.orderId).toBe(digest);
+    expect((await rare.cart.checkout.authorize({ idempotencyKey, paymentCurrency: '0x0000000000000000000000000000000000000000',
+      items: [{ kind: 'listing', listingDigest: `0x${'11'.repeat(32)}`, quantity: 1n }], delivery: { savedAddressId: idempotencyKey } })).executePurchase.order.orderId).toBe(digest);
+    await expect(rare.cart.checkout.authorize({ preparationReference: '' })).rejects.toThrow();
   });
 
   it('defaults to the production API and rejects the removed separate auth URL', async () => {

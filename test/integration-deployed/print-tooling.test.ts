@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { createRareClient } from '../../dist/sdk/index.js';
 import type { CreatePrintDrop, PreparePrintListing } from '../../dist/sdk/index.js';
 import { loadDotEnv } from '../helpers/env.js';
+import { findCartOrderInHistory } from '../helpers/cart-order-history.js';
 import { createCreatorCartScenario } from '../helpers/cart-creator-fixture.js';
 import { getTestRpcUrl } from '../helpers/liveViem.js';
 import { resolveCurrency } from '../../src/contracts/addresses.js';
@@ -44,7 +45,8 @@ describe('print tooling through deployed Rare API', () => {
         postalOrZipCode: '10001', countryCode: 'US' };
       const saved = await rare.shippingAddresses.save({ id: addressId, label: 'SDK integration', details, makeDefault: false });
       addressNeedsCleanup = true;
-      expect(saved.find(address => address.id === addressId)?.details).toEqual(details);
+      expect(saved.id).toBe(addressId);
+      expect(saved.details).toEqual(details);
       expect((await rare.shippingAddresses.list()).find(address => address.id === addressId)?.details).toEqual(details);
       const bytes = Uint8Array.from(Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jio8AAAAASUVORK5CYII=', 'base64'));
       const production = await rare.upload(bytes, 'production.png', { access: 'private', contentType: 'image/png' });
@@ -62,7 +64,7 @@ describe('print tooling through deployed Rare API', () => {
       dropId = created.id;
       expect((await rare.prints.drops.create(input)).id).toBe(created.id);
       expect((await rare.prints.drops.getMine(created.id)).metadata.name).toBe(input.name);
-      expect((await rare.prints.drops.listMine()).some(drop => drop.id === created.id)).toBe(true);
+      expect((await rare.prints.drops.listMine({ perPage: 100 })).data.some(drop => drop.id === created.id)).toBe(true);
       await rare.prints.drops.update(created.id, { name: 'Updated SDK print fixture', tags: ['updated-sdk-integration'] });
       expect((await rare.prints.drops.getMine(created.id)).metadata.name).toBe('Updated SDK print fixture');
       const configured = await rare.prints.options.configure([{ key: 'print', input: { dropId: created.id, input: { displayPriceUsdCents: '10000' } } }]);
@@ -87,7 +89,7 @@ describe('print tooling through deployed Rare API', () => {
         maxQuantityPerCheckout: '2', eligibilityRuleId: null,
       });
       expect('productionUploadKey' in publicDrop.metadata).toBe(false);
-      expect((await rare.prints.drops.activity(created.id)).events).toEqual([]);
+      expect((await rare.prints.drops.activity(created.id)).data).toEqual([]);
       const checkout = await rare.cart.checkout.prepare({ paymentCurrency: getAddress(entry.listing.settlementCurrency),
         items: [{ kind: 'listing', listingDigest: entry.listingDigest, quantity: 2n, recipient: wallet.address }], delivery: { savedAddressId: addressId } });
       expect(checkout.breakdown?.displayPrice).toBe(200_000_000n);
@@ -102,22 +104,20 @@ describe('print tooling through deployed Rare API', () => {
       expect(option.metadata).not.toHaveProperty('productionQuote');
       expect(checkout.breakdown?.total).toBe(checkout.paymentAmount);
       if (!checkout.idempotencyKey || !checkout.intent.delivery) throw new Error('Delivery quote did not retain its idempotency key and delivery intent.');
-      const request = { ...checkout.intent, delivery: checkout.intent.delivery, idempotencyKey: checkout.idempotencyKey };
-      const signed = await rare.cart.api.checkout.prepare(request);
-      expect((await rare.cart.api.checkout.prepare(request)).executePurchase.order.orderId).toBe(signed.executePurchase.order.orderId);
+      const signed = await rare.cart.checkout.authorize(checkout);
+      expect((await rare.cart.checkout.authorize(checkout)).executePurchase.order.orderId).toBe(signed.executePurchase.order.orderId);
       expect(signed.executePurchase.order.paymentAmount).toBe(checkout.paymentAmount);
       expect(signed.executePurchase.lines.find(line => line.listingDigest === entry.listingDigest)?.quantity).toBe(2n);
       expect(signed.executePurchase.actions).toEqual([]);
-      await expect(rare.cart.api.checkout.prepare({ ...request,
-        items: [{ kind: 'listing', listingDigest: entry.listingDigest, quantity: 1n, recipient: wallet.address }],
-      })).rejects.toMatchObject({ status: 409 });
+      const changedQuote = await rare.cart.checkout.prepare({ ...checkout.intent, items: [{ kind: 'listing', listingDigest: entry.listingDigest, quantity: 1n, recipient: wallet.address }] });
+      await expect(rare.cart.checkout.authorize({ ...changedQuote, idempotencyKey: checkout.idempotencyKey })).rejects.toMatchObject({ status: 409 });
       const orderId = signed.executePurchase.order.orderId;
       const orderDetails = await rare.cart.orders.get(orderId);
       expect(orderDetails.id).toBe(orderId);
       expect(orderDetails.status).toBe('PENDING');
       expect(orderDetails.items).toContainEqual(expect.objectContaining({ listingDigest: entry.listingDigest.toLowerCase(),
         quantity: '2', fulfillmentStatus: 'PENDING', printDropId: created.id, title: expect.any(String), images: expect.arrayContaining([photo.url]) }));
-      expect((await rare.cart.orders.list()).data.some(order => order.id === orderId)).toBe(true);
+      expect((await findCartOrderInHistory(rare.cart.orders, orderId))?.id).toBe(orderId);
       const source = await createCreatorCartScenario({ tokenCount: 1, eligibility: true });
       try {
         const nft = source.listings[0];
@@ -176,7 +176,7 @@ describe('print tooling through deployed Rare API', () => {
               .filter(line => isAddressEqual(line.settlementCurrency, settlement.currency))
               .reduce((total, line) => total + line.amount, 0n));
           }
-          const preparedBatch = await rare.cart.api.checkout.prepare({ ...batch.intent, delivery: batch.intent.delivery, idempotencyKey: batch.idempotencyKey });
+          const preparedBatch = await rare.cart.checkout.authorize(batch);
           const mixedLines = preparedBatch.executePurchase.lines;
           expect(mixedLines.find(line => line.listingDigest === nftListing.listingDigest)).toMatchObject({ quantity: 1n, fulfillmentKind: 2 });
           expect(mixedLines.find(line => line.listingDigest === editionEntry.listingDigest)).toMatchObject({ quantity: 2n, fulfillmentKind: 3 });
@@ -194,13 +194,13 @@ describe('print tooling through deployed Rare API', () => {
             mixedLines.findIndex(line => line.listingDigest === entry.listingDigest),
             mixedLines.findIndex(line => line.listingDigest === mappedEntry.listingDigest),
           ].sort());
-          const recovered = await rare.cart.api.checkout.recover(batch.idempotencyKey);
+          const recovered = await rare.cart.checkout.recover(batch.idempotencyKey);
           expect(recovered.status).toBe('READY');
           expect(recovered.preparedPurchase?.executePurchase.order.orderId).toBe(preparedBatch.executePurchase.order.orderId);
         } finally {
           await rare.prints.drops.archive(mapped.id);
         }
-        const rule = await rare.eligibility.createRule({ definition: {
+        const rule = await rare.cart.purchaseEligibility.rules.create({ definition: {
           kind: 'EVERY_SALE', source: { chainId: '11155111', tokenContract: nft.tokenContract },
           targets: [{ sku: option.sku }],
         } });
@@ -217,9 +217,8 @@ describe('print tooling through deployed Rare API', () => {
             items: [{ kind: 'listing', listingDigest: gatedEntry.listingDigest, quantity: 1n, recipient: wallet.address }],
             delivery: { savedAddressId: addressId } });
           if (!gatedQuote.intent.delivery || !gatedQuote.idempotencyKey) throw new Error('Gated quote lost its delivery identity.');
-          await expect(rare.cart.api.checkout.prepare({ ...gatedQuote.intent, delivery: gatedQuote.intent.delivery,
-            idempotencyKey: gatedQuote.idempotencyKey })).rejects.toMatchObject({ status: 409 });
-          expect(await rare.eligibility.listClaims({ ruleId: rule.id })).toEqual([]);
+          await expect(rare.cart.checkout.authorize(gatedQuote)).rejects.toMatchObject({ status: 409 });
+          expect((await rare.cart.purchaseEligibility.claims.list({ ruleId: rule.id })).data).toEqual([]);
           const buyerKey = process.env.E2E_BUYER_PRIVATE_KEYS?.split(/[,\s]+/u).find(Boolean);
           if (!buyerKey || !isHex(buyerKey) || buyerKey.length !== 66) throw new Error('Set a registered, funded Sepolia E2E_BUYER_PRIVATE_KEYS wallet.');
           const buyer = privateKeyToAccount(buyerKey);
@@ -236,22 +235,20 @@ describe('print tooling through deployed Rare API', () => {
               items: [{ kind: 'listing', listingDigest: sourceListing.listingDigest, quantity: 1n, recipient: buyer.address }] });
             expect(sourceQuote.paymentAmount).toBeLessThanOrEqual(1_000_000_000_000_000n);
             expect((await buyerRare.cart.checkout.purchase({ preparation: sourceQuote })).receipt.status).toBe('success');
-            const claims = () => buyerRare.eligibility.listClaims({ ruleId: rule.id });
+            const claims = () => buyerRare.cart.purchaseEligibility.claims.list({ ruleId: rule.id, perPage: 100 }).then(page => page.data);
             await expect.poll(claims, { timeout: 180_000, interval: 2_000 }).toMatchObject([{ status: 'AVAILABLE' }]);
             const twoCopies = await buyerRare.cart.checkout.prepare({ paymentCurrency: getAddress(gatedEntry.listing.settlementCurrency),
               items: [{ kind: 'listing', listingDigest: gatedEntry.listingDigest, quantity: 2n, recipient: buyer.address }],
               delivery: { recipientDetails: details } });
             if (!twoCopies.intent.delivery || !twoCopies.idempotencyKey) throw new Error('Multi-copy quote lost its delivery identity.');
-            await expect(buyerRare.cart.api.checkout.prepare({ ...twoCopies.intent, delivery: twoCopies.intent.delivery,
-              idempotencyKey: twoCopies.idempotencyKey })).rejects.toMatchObject({ status: 409 });
+            await expect(buyerRare.cart.checkout.authorize(twoCopies)).rejects.toMatchObject({ status: 409 });
             expect(await claims()).toMatchObject([{ status: 'AVAILABLE' }]);
             const buyerQuote = await buyerRare.cart.checkout.prepare({ paymentCurrency: getAddress(gatedEntry.listing.settlementCurrency),
               items: [{ kind: 'listing', listingDigest: gatedEntry.listingDigest, quantity: 1n, recipient: buyer.address }],
               delivery: { recipientDetails: details } });
             if (!buyerQuote.intent.delivery || !buyerQuote.idempotencyKey) throw new Error('Eligible print quote lost its delivery identity.');
-            const buyerRequest = { ...buyerQuote.intent, delivery: buyerQuote.intent.delivery, idempotencyKey: buyerQuote.idempotencyKey };
-            const reserved = await buyerRare.cart.api.checkout.prepare(buyerRequest);
-            expect((await buyerRare.cart.api.checkout.prepare(buyerRequest)).executePurchase.order.orderId)
+            const reserved = await buyerRare.cart.checkout.authorize(buyerQuote);
+            expect((await buyerRare.cart.checkout.authorize(buyerQuote)).executePurchase.order.orderId)
               .toBe(reserved.executePurchase.order.orderId);
             expect(await claims()).toMatchObject([{ status: 'RESERVED' }]);
             // The qualifying NFT was purchased; the print Order remains unpaid and expires safely.
@@ -259,7 +256,7 @@ describe('print tooling through deployed Rare API', () => {
             await buyerRare.auth.logout();
           }
         } finally {
-          await rare.eligibility.disableRule(rule.id);
+          await rare.cart.purchaseEligibility.rules.disable(rule.id);
         }
       } finally {
         await source.rare.auth.logout();
@@ -275,7 +272,8 @@ describe('print tooling through deployed Rare API', () => {
       dropId = undefined;
       const remaining = await rare.shippingAddresses.delete(addressId);
       addressNeedsCleanup = false;
-      expect(remaining).toEqual(addressesBefore);
+      expect(remaining).toBeUndefined();
+      expect(await rare.shippingAddresses.list()).toEqual(addressesBefore);
     } finally {
       if (dropId !== undefined) await rare.prints.drops.archive(dropId);
       if (addressNeedsCleanup) await rare.shippingAddresses.delete(addressId);

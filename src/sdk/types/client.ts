@@ -179,7 +179,6 @@ export type RareChainFeatures = {
   token: TokenNamespace;
   currency: CurrencyNamespace;
   cart: CartNamespace;
-  eligibility: EligibilityNamespace;
   prints: PrintsNamespace;
 }
 

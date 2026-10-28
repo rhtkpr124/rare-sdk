@@ -1,4 +1,6 @@
 import { createApiClient } from '../data-access/client.js';
+import type { SearchPageResponse } from './api.js';
+import { favoritePageQuery } from './favorites-core.js';
 import { toCartListingRootArtifactWire } from './cart-api.js';
 import type { RareClientConfig } from './types/client.js';
 import type { PrintsNamespace, CreatePrintDrop, PrintDropCreation, PrintBatchItem, PrintBatchOptions, PrintBatchResult,
@@ -18,6 +20,11 @@ import { resolveChainFromPublicClient } from './wallet-shell.js';
 export function createPrintsNamespace(config: RareClientConfig, authenticatedFetch?: typeof globalThis.fetch): PrintsNamespace {
   const publicClient = createApiClient(config.apiBaseUrl, config.apiFetch);
   const client = createApiClient(config.apiBaseUrl, authenticatedFetch ?? config.apiFetch);
+  const page = async <T>(request: Promise<{ data?: SearchPageResponse<T> }>): Promise<SearchPageResponse<T>> => {
+    const result = await request;
+    if (result.data === undefined) throw new Error('Rare API did not return print data.');
+    return result.data;
+  };
   const data = async <T>(request: Promise<{ data?: { data: T } }>): Promise<T> => {
     const response = await request;
     if (response.data === undefined) throw new Error('Rare API did not return print data.');
@@ -113,11 +120,11 @@ export function createPrintsNamespace(config: RareClientConfig, authenticatedFet
     drops: {
       create,
       update: (id, input) => data(client.PATCH('/v1/prints/drops/{id}', { params: { path: { id } }, body: input })),
-      listMine: (options = {}) => data(client.GET('/v1/prints/drops/mine', { params: { query: options } })),
+      listMine: (options = {}) => page(client.GET('/v1/prints/drops/mine', { params: { query: favoritePageQuery(options) } })),
       getMine: id => data(client.GET('/v1/prints/drops/mine/{id}', { params: { path: { id } } })),
       get: id => data(publicClient.GET('/v1/prints/drops/{id}', { params: { path: { id } } })),
       archive: id => data(client.POST('/v1/prints/drops/{id}/archive', { params: { path: { id } } })),
-      activity: (id, options = {}) => data(publicClient.GET('/v1/prints/drops/{id}/activity', { params: { path: { id }, query: options } })),
+      activity: (id, options = {}) => data(publicClient.GET('/v1/prints/drops/{id}/activity', { params: { path: { id }, query: favoritePageQuery(options) } })),
     },
     releases: { list: input => data(publicClient.GET('/v1/prints/releases', { params: { query: input } })) },
     options: { configure },

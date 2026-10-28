@@ -2,7 +2,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createRareClient } from '../../../dist/sdk/index.js';
 import { createCreatorCartScenario } from '../../helpers/cart-creator-fixture.js';
 import { loadDotEnv } from '../../helpers/env.js';
-import { createWalletClient, erc721Abi, http, isAddressEqual, isHex, toHex, zeroAddress } from 'viem';
+import { createWalletClient, erc721Abi, http, isAddressEqual, isHex, zeroAddress } from 'viem';
+import { findCartOrderInHistory } from '../../helpers/cart-order-history.js';
 import { privateKeyToAccount } from 'viem/accounts';
 import { sepolia } from 'viem/chains';
 import { getTestRpcUrl } from '../../helpers/liveViem.js';
@@ -109,7 +110,7 @@ describe.sequential('SDK eligibility against the deployed Rare API', () => {
         const history = await rare.cart.orders.get(sourcePurchase.orderId);
         expect(history.fulfillments).toEqual([]);
         expect(history.items).toContainEqual(expect.objectContaining({ listingDigest: sourceListing.listingDigest.toLowerCase(), quantity: '1' }));
-        expect((await rare.cart.orders.list({ after: toHex(BigInt(sourcePurchase.orderId) - 1n, { size: 32 }), take: 1 })).data[0]?.id).toBe(sourcePurchase.orderId);
+        expect((await findCartOrderInHistory(rare.cart.orders, sourcePurchase.orderId))?.id).toBe(sourcePurchase.orderId);
         await expect(scenario.rare.cart.orders.get(sourcePurchase.orderId)).rejects.toMatchObject({ status: 404 });
         await expect(scenario.publicClient.readContract({ address: source.tokenContract, abi: erc721Abi,
           functionName: 'ownerOf', args: [source.tokenId] })).resolves.toBe(buyer.address);

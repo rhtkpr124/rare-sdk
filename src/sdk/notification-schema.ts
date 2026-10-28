@@ -250,9 +250,69 @@ const messagingActivityNotificationPayloadSchema = strictObject({
   }).optional(),
 })
 
+const safeTrackingUrlSchema = z.url().refine((value) => {
+  const url = new URL(value)
+  return url.protocol === 'https:' && url.username === '' && url.password === ''
+}, 'Tracking URLs must use HTTPS without credentials')
+
+const commerceNotificationItemSchema = strictObject({
+  sku: z.string().min(1).max(255),
+  quantity: z.string().regex(/^[1-9]\d*$/),
+  title: z.string().min(1).max(1000),
+  imageUrl: z.url().optional(),
+})
+
+const commerceNotificationShipmentSchema = strictObject({
+  id: z.string().min(1).max(255),
+  carrier: z.string().max(255).nullable(),
+  trackingNumber: z.string().max(255).nullable(),
+  trackingUrl: safeTrackingUrlSchema.nullable(),
+  dispatchedAt: z.string().datetime().nullable(),
+})
+
+const cartOrderNotificationPayloadSchema = strictObject({
+  orderId: z.string().min(1).max(255),
+  chainId: z.number().int().positive(),
+  items: z.array(commerceNotificationItemSchema).min(1).max(64),
+  amounts: z.array(notificationAmountSchema).max(64),
+  transactionHash: z
+    .string()
+    .regex(/^0x[\da-fA-F]{64}$/)
+    .optional(),
+})
+
+const printTrackingNotificationPayloadSchema =
+  cartOrderNotificationPayloadSchema.extend({
+    fulfillmentId: z.string().min(1).max(255),
+    shipments: z.array(commerceNotificationShipmentSchema).min(1).max(1000),
+  })
+
+const printAttentionNotificationPayloadSchema =
+  cartOrderNotificationPayloadSchema.extend({
+    fulfillmentId: z.string().min(1).max(255),
+    issueCodes: z.array(z.string().min(1).max(255)).max(100),
+    status: z.string().min(1).max(255),
+  })
+
 const persistedNotificationPayloadSchema = z.discriminatedUnion(
   'category',
   [
+    strictObject({
+      category: z.literal('cartOrderConfirmed'),
+      payload: cartOrderNotificationPayloadSchema,
+    }),
+    strictObject({
+      category: z.literal('cartSaleReceived'),
+      payload: cartOrderNotificationPayloadSchema,
+    }),
+    strictObject({
+      category: z.literal('printTracking'),
+      payload: printTrackingNotificationPayloadSchema,
+    }),
+    strictObject({
+      category: z.literal('printAttention'),
+      payload: printAttentionNotificationPayloadSchema,
+    }),
     strictObject({
       category: z.literal('messagingActivity'),
       payload: messagingActivityNotificationPayloadSchema,

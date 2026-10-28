@@ -34,37 +34,6 @@ The claims and print interfaces require the corresponding backend migrations,
 endpoints, and pipeline workers. Their presence in SDK source does not establish
 that a particular Rare API deployment supports them.
 
-## Current handoff status
-
-Verification on October 19, 2026 used SDK revision `fff36d7` from
-[SDK PR #24](https://github.com/superrare/rare-sdk/pull/24), based on the
-[claims SDK PR #23](https://github.com/superrare/rare-sdk/pull/23).
-[CLI PR #140](https://github.com/superrare/rare-cli/pull/140) pins that SDK revision
-and sits above CLI claims PR #139. Later documentation-only commits do not change
-the tested SDK behavior.
-
-The owning monorepo changes are split across persistence
-[#1975](https://github.com/superrare/superrare-monorepo/pull/1975), creator and
-checkout APIs [#1976](https://github.com/superrare/superrare-monorepo/pull/1976),
-and fulfillment [#1978](https://github.com/superrare/superrare-monorepo/pull/1978).
-PR #1978 remains the backend deployment tip. The frontend migration is not part
-of those changes.
-
-The last SDK and CLI live runs targeted the
-[Sepolia feature API](https://rare-api-367a-25x4ysoo5a-ue.a.run.app/). Account
-authentication and uploads succeeded, but `POST /v1/prints/drops` returned HTTP
-400 for the new `productionUploadKey` contract. Rebuild the backend before
-rerunning the full print flow. No checkout payment or physical provider order
-was submitted by those runs.
-
-Default verification passed 532 SDK tests, 206 CLI tests, and 1,497 Rare API tests.
-The SDK retained 14 existing skips, and the CLI retained three. Real PostgreSQL,
-GCS, and Redis checks passed for ownership, private uploads, immutable snapshots,
-and configuration conflicts. The additional signed-download test could not sign
-with local user ADC. Development runtime signing permissions were verified;
-no IAM changes were needed. Actual deployed signed-download verification remains
-pending the rebuild.
-
 ## Check the application and deployment versions
 
 Before changing the frontend, inspect its dependency pins and installed exports.
@@ -118,7 +87,7 @@ artifact, then `rare.cart.listing.publish` to sign and publish it. Use
 `rare.cart.approval` for collection approval status and changes. The SDK exposes
 Listing cancellation, root cancellation, and nonce invalidation under
 `rare.cart.listing`; backend invalidation is a separate policy operation under
-`rare.cart.api.listing.invalidate`.
+`rare.cart.listing.invalidate`.
 
 For buyers:
 
@@ -132,8 +101,7 @@ mixed Listing/swap orders share the same preparation and purchase methods.
 Both modes produce fixed signed payment and output amounts. Execution movement
 changes protocol spread rather than reducing the promised output. A connected
 wallet supplies a missing swap recipient; wallet-independent callers must pass
-the recipient explicitly. Physical-delivery checkout still supports print
-Listing items only.
+the recipient explicitly. Physical delivery applies to print items in a mixed checkout. NFT and swap items keep their own fulfillment behavior.
 
 1. Call `rare.cart.checkout.prepare(intent)` for an unsigned preview.
 2. Display its payment amount, settlement details, fees, and expiration.
@@ -141,11 +109,17 @@ Listing items only.
 4. Use the returned receipt and Order ID to reconcile confirmation and subsequent
    fulfillment status.
 
-Despite its name, `rare.cart.checkout.prepare` produces an unsigned preview.
-The lower-level `rare.cart.api.checkout.prepare(preparationReference)` obtains
-the executable signed Order. The high-level `purchase` method performs that
-finalization before execution. `rare.cart.checkout.execute` executes an existing
-signed payload; it does not issue another authorization.
+Use `rare.cart.checkout.authorize(preparation)` when you need a signed Order
+without submitting payment. It preserves the reviewed quote and reserves any
+required claims. The `purchase` method performs authorization before execution.
+Use `rare.cart.checkout.execute` to execute an existing signed payload without
+issuing another authorization.
+
+For a saved unsigned attempt, `authorize` also accepts its original delivery
+draft with `idempotencyKey`, or `{ preparationReference }` for a cached quote.
+These recovery inputs return the signed terms for review without making a
+payment. Preserve the original identity and validate those terms against the
+saved buyer approval before calling `execute`.
 
 Reuse SDK approval, simulation, execution, and receipt verification. Do not
 rebuild Cart calldata, Merkle proofs, or transaction verification in React.
@@ -174,7 +148,7 @@ not itself a reason to re-request an unchanged production or shipping quote.
 
 ## Add creator eligibility controls
 
-Use `rare.eligibility` for the authenticated creator's rules and the buyer's
+Use `rare.cart.purchaseEligibility` for the authenticated creator's rules and the buyer's
 claims. No method accepts an account ID override. The supported rule types are:
 
 - `PRIMARY_SALE`: a qualifying primary purchase grants a right that the purchaser
@@ -189,8 +163,8 @@ token IDs. Targets identify permitted SKUs. A target's optional `tokenId` maps a
 source NFT to its corresponding SKU. Several targets can share one claim, so
 the buyer can choose one SKU without receiving a separate right for each choice.
 
-Create a rule with `createRule`, retrieve the creator's rules with `listRules`,
-and disable a rule with `disableRule`. Disabling stops new grants and new
+Create a rule with `rules.create`, retrieve the creator's rules with `rules.list`,
+and disable a rule with `rules.disable`. Disabling stops new grants and new
 checkout authorizations; it cannot revoke an already-signed Order. Rule
 definitions are not editable through this interface.
 
@@ -238,15 +212,15 @@ configuration. Publication attaches the requirement atomically with the
 Listing. Do not publish an open Listing and attach its gate afterward: an
 Order signed during that interval would remain executable.
 
-For an existing Listing, use `setListingRequirement` or
-`clearListingRequirement`, passing its chain, Cart address, and Listing digest.
+For an existing Listing, use `listingRequirements.set` or
+`listingRequirements.clear`, passing its chain, Cart address, and Listing digest.
 These operations affect future authorizations, not existing signed Orders.
 Listings without a requirement remain open. See
 [Eligibility client](eligibility.md) for the complete method list.
 
 ## Display buyer claims without enforcing them in the browser
 
-Call `rare.cart.purchaseEligibility.claims.list({ sku, take, skip })` to retrieve the signed-in
+Call `rare.cart.purchaseEligibility.claims.list({ sku, page, perPage })` to retrieve the signed-in
 account's rights. Its statuses are `AVAILABLE`, `RESERVED`, `CONSUMED`, and
 `REVOKED`. There is no separate `EXPIRED` status in the current SDK model.
 Use `expiresAt` and the backend response rather than inventing another state.
@@ -409,7 +383,7 @@ Each fulfillment includes `orderLineIndex`, status, and nullable `providerOrderI
 when useful; it does not initiate work.
 
 After an interrupted signed checkout, call
-`rare.cart.api.checkout.recover(idempotencyKey)`. It returns the original payload
+`rare.cart.checkout.recover(idempotencyKey)`. It returns the original payload
 only to the account and wallet that prepared it. `UNKNOWN` is not permission to
 assume payment failed. Never silently replace an unresolved signed Order.
 
@@ -426,10 +400,9 @@ in the selected payment currency.
 Retain the complete preparation, including its `idempotencyKey` and delivery intent, for
 `rare.cart.checkout.purchase({ preparation, autoApprove })` and recovery.
 
-The lower-level `rare.cart.api.checkout.prepare` accepts the full delivery draft
-and its original idempotency key. A delivery preview reference alone cannot
-finalize checkout because previews do not cache postal data. Do not generate a
-new idempotency key merely because a request timed out or the buyer retries.
+Pass the original preparation to `rare.cart.checkout.authorize` or `purchase`.
+The SDK retains the delivery details and idempotency key needed to finalize it.
+Do not generate a new key because a request timed out or the buyer retries.
 If the finalized total increases, the SDK rejects execution and requires a fresh
 review rather than silently raising the spending cap.
 
@@ -441,7 +414,7 @@ credentials in logs.
 
 ## Read Cart orders and display fulfillment progress
 
-Use `rare.cart.orders.list({ after, take })` for `{ data, nextCursor }` pages,
+Use `rare.cart.orders.list({ page, perPage })` for `{ data, pagination }` pages,
 and `rare.cart.orders.get(cartOrderId)` for one account-owned Cart
 Order. History includes NFT-only, swap-only, print, and mixed orders.
 Order reads do not require a blockchain RPC connection. The identifier is the Cart Order's bytes32 ID, not an internal fulfillment
@@ -536,3 +509,25 @@ submission and the private signed download end to end.
 
 At handoff, report the SDK revision, API deployment, chain, test commands and
 results, and any endpoint still missing from the SDK or backend.
+
+## Use consistent list and mutation results
+
+Paginated reads accept `page` and `perPage`, starting at page 1. Responses
+contain `data` and `pagination` with `page`, `perPage`, `totalCount`,
+and `totalPages`. This applies to Cart catalog searches, purchase eligibility
+rules and claims, order history, creator print lists, and notifications. Print
+activity also includes its creator alongside `data` and `pagination`.
+Messaging history and synchronization positions retain their messaging semantics.
+
+`rare.shippingAddresses.save(input)` returns the saved address.
+`rare.shippingAddresses.delete(id)` returns nothing. Read the address book with
+`list()` when you need the remaining entries or updated defaults.
+
+Narrow notification payloads by `notification.category` before reading category
+fields. The SDK validates the category and payload against schemas generated
+from the backend notification model.
+
+The CLI exposes catalog authoring under `rare cart catalog products` and
+`rare cart catalog variants`. Manage purchase rights through
+`rare cart purchase-eligibility rules`, `claims`, and `listing-requirements`.
+Use `--page` and `--per-page` for paginated commands.
