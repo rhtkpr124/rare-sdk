@@ -1,3 +1,4 @@
+import type { CartOrderShipment, CartOrderFulfillmentProgress } from '../../../src/sdk/types/orders.js';
 import { describe, expect, expectTypeOf, it } from 'vitest';
 import { zeroAddress, zeroHash } from 'viem';
 import type { paths } from '../../../src/data-access/commerce-schema.js';
@@ -12,6 +13,13 @@ const preparation = (snapshot: PrintListingPreparation['snapshot']): PrintListin
   id: '00000000-0000-4000-8000-000000000001', fulfillment_kind: 'PRODIGI_PRINT', user_id: '1', option_id: null,
   chain_id: '11155111', cart_address: zeroAddress, listing_digest: zeroHash, listing_id: null,
   snapshot, created_at: '2026-10-19T00:00:00.000Z',
+});
+
+it('exposes typed production progress and optional parcel tracking without a delivery claim', () => {
+  expectTypeOf<CartOrderShipment>().toHaveProperty('trackingNumber').toEqualTypeOf<string | null>();
+  expectTypeOf<CartOrderShipment>().toHaveProperty('trackingUrl').toEqualTypeOf<string | null>();
+  expectTypeOf<CartOrderShipment>().not.toHaveProperty('deliveredAt');
+  expectTypeOf<CartOrderFulfillmentProgress['stage']>().toEqualTypeOf<'SUBMITTED' | 'IN_PRODUCTION' | 'PARTIALLY_SHIPPED' | 'SHIPPED' | 'CANCELLED'>();
 });
 
 describe('frozen print Listing terms', () => {

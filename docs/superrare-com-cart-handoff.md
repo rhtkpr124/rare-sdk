@@ -449,8 +449,26 @@ UUID or provider Order ID. These methods do not include legacy NFT purchase
 history and do not return private postal snapshots.
 
 Keep payment state separate from each line's fulfillment state. Fulfillment
-`COMPLETED` means the provider accepted the Order; it does not mean shipped or
-delivered. Shipment tracking is not implemented by these methods.
+`SUBMITTED` means the provider accepted the order. Later provider reads can move
+physical items to `IN_PRODUCTION`, `PARTIALLY_SHIPPED`, `SHIPPED`, or `CANCELLED`.
+A paid physical order remains `CONFIRMED` when shipped. Prodigi's `Complete`
+means all shipments were dispatched, not delivered; do not relabel it fulfilled.
+
+Each fulfillment has an optional nullable `progress` object. It includes
+`stage`, `productionStatus`, `providerUpdatedAt`, `checkedAt`, safe issue codes,
+and a `shipments` array. Each shipment includes its carrier, tracking number,
+HTTPS tracking URL and dispatch time when available. Display each parcel
+separately and offer its tracking link so the buyer can verify delivery.
+Tracking can be absent for an untracked service. Null progress means the first
+provider refresh is pending, not that payment or submission failed.
+
+Workers schedule provider refreshes every five minutes while processing and
+thirty minutes after dispatch, with bounded batches, leases and retries. They
+stop after cancellation or a ninety-day observation window. Order reads return
+stored state; they never make the buyer wait for a provider request. Tracking
+is account-private and is not projected into public catalog or activity data.
+No additional carrier service is needed; carrier-confirmed delivery is not
+provided by this integration.
 
 Persist enough account-scoped recovery state to reconnect a confirmed payment
 to its Cart Order. Poll stored backend status with the application's query
@@ -464,7 +482,7 @@ pay again while fulfillment is pending.
 The account shipping, print authoring, delivery checkout, card session, and
 fulfillment Order methods above now exist. The Cart catalog supports the creator
 operations listed above, but does not provide saved carts or every Product edit.
-Mixed physical/non-physical delivery carts and shipment tracking remain unsupported.
+Mixed physical/non-physical carts and provider shipment tracking use these same interfaces. Carrier-confirmed delivery is not available.
 
 For each missing capability, inspect the generated Rare API contract first.
 If the endpoint exists, add a typed SDK method using the existing transport and

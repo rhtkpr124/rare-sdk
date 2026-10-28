@@ -377,7 +377,7 @@ export interface paths {
                                     sku: string;
                                     quantity: string;
                                     /** @enum {string} */
-                                    fulfillmentStatus: "PENDING" | "SUBMITTED" | "SHIPPED" | "FULFILLED" | "FAILED" | "CANCELLED";
+                                    fulfillmentStatus: "PENDING" | "SUBMITTED" | "IN_PRODUCTION" | "PARTIALLY_SHIPPED" | "SHIPPED" | "FULFILLED" | "FAILED" | "CANCELLED";
                                     title: string | null;
                                     images: string[];
                                     /** Format: uuid */
@@ -392,8 +392,30 @@ export interface paths {
                                     kind: string;
                                     orderLineIndex: number;
                                     /** @enum {string} */
-                                    status: "PENDING" | "SUBMITTED" | "SHIPPED" | "FULFILLED" | "FAILED" | "CANCELLED";
+                                    status: "PENDING" | "SUBMITTED" | "IN_PRODUCTION" | "PARTIALLY_SHIPPED" | "SHIPPED" | "FULFILLED" | "FAILED" | "CANCELLED";
                                     providerOrderId: string | null;
+                                    progress?: {
+                                        /** Format: date-time */
+                                        providerUpdatedAt: string;
+                                        /** Format: date-time */
+                                        checkedAt: string;
+                                        /** @enum {string} */
+                                        stage: "SUBMITTED" | "IN_PRODUCTION" | "PARTIALLY_SHIPPED" | "SHIPPED" | "CANCELLED";
+                                        /** @enum {string} */
+                                        productionStatus: "UNKNOWN" | "NOT_STARTED" | "IN_PROGRESS" | "COMPLETE" | "ERROR";
+                                        issueCodes: string[];
+                                        shipments: {
+                                            id: string;
+                                            /** @enum {string} */
+                                            status: "PROCESSING" | "SHIPPED" | "CANCELLED";
+                                            carrier: string | null;
+                                            trackingNumber: string | null;
+                                            /** Format: uri */
+                                            trackingUrl: string | null;
+                                            /** Format: date-time */
+                                            dispatchedAt: string | null;
+                                        }[];
+                                    } | null;
                                     /** Format: date-time */
                                     createdAt: string;
                                     /** Format: date-time */
@@ -470,7 +492,7 @@ export interface paths {
                                     sku: string;
                                     quantity: string;
                                     /** @enum {string} */
-                                    fulfillmentStatus: "PENDING" | "SUBMITTED" | "SHIPPED" | "FULFILLED" | "FAILED" | "CANCELLED";
+                                    fulfillmentStatus: "PENDING" | "SUBMITTED" | "IN_PRODUCTION" | "PARTIALLY_SHIPPED" | "SHIPPED" | "FULFILLED" | "FAILED" | "CANCELLED";
                                     title: string | null;
                                     images: string[];
                                     /** Format: uuid */
@@ -485,8 +507,30 @@ export interface paths {
                                     kind: string;
                                     orderLineIndex: number;
                                     /** @enum {string} */
-                                    status: "PENDING" | "SUBMITTED" | "SHIPPED" | "FULFILLED" | "FAILED" | "CANCELLED";
+                                    status: "PENDING" | "SUBMITTED" | "IN_PRODUCTION" | "PARTIALLY_SHIPPED" | "SHIPPED" | "FULFILLED" | "FAILED" | "CANCELLED";
                                     providerOrderId: string | null;
+                                    progress?: {
+                                        /** Format: date-time */
+                                        providerUpdatedAt: string;
+                                        /** Format: date-time */
+                                        checkedAt: string;
+                                        /** @enum {string} */
+                                        stage: "SUBMITTED" | "IN_PRODUCTION" | "PARTIALLY_SHIPPED" | "SHIPPED" | "CANCELLED";
+                                        /** @enum {string} */
+                                        productionStatus: "UNKNOWN" | "NOT_STARTED" | "IN_PROGRESS" | "COMPLETE" | "ERROR";
+                                        issueCodes: string[];
+                                        shipments: {
+                                            id: string;
+                                            /** @enum {string} */
+                                            status: "PROCESSING" | "SHIPPED" | "CANCELLED";
+                                            carrier: string | null;
+                                            trackingNumber: string | null;
+                                            /** Format: uri */
+                                            trackingUrl: string | null;
+                                            /** Format: date-time */
+                                            dispatchedAt: string | null;
+                                        }[];
+                                    } | null;
                                     /** Format: date-time */
                                     createdAt: string;
                                     /** Format: date-time */
