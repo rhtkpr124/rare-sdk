@@ -39,10 +39,10 @@ describe.sequential('SDK Cart rare-api integration', () => {
 
   it('searches Cart Products and Variants independently', async () => {
     const { rare, product, skuA } = scenario;
-    await expect(rare.cart.api.catalog.products.get(product.id)).resolves.toMatchObject({ id: product.id });
-    const products = await rare.cart.api.catalog.products.search({ id: product.id, page: 1, perPage: 100 });
+    await expect(rare.cart.catalog.products.get(product.id)).resolves.toMatchObject({ id: product.id });
+    const products = await rare.cart.catalog.products.search({ id: product.id, page: 1, perPage: 100 });
     expect(products.data.some((candidate) => candidate.id === product.id)).toBe(true);
-    const variants = await rare.cart.api.catalog.variants.search({ sku: skuA.sku, page: 1, perPage: 100 });
+    const variants = await rare.cart.catalog.variants.search({ sku: skuA.sku, page: 1, perPage: 100 });
     expect(variants.data.some((candidate) => candidate.sku === skuA.sku)).toBe(true);
   }, 30_000);
 
@@ -51,11 +51,11 @@ describe.sequential('SDK Cart rare-api integration', () => {
     expect(createdListings).toHaveLength(2);
     for (const [index, listing] of listings.entries()) {
       expect(createdListings[index]!.listingDigest).toBe(hashCartListing(listing, BigInt(chainId), cart));
-      await expect(rare.cart.api.listing.get(createdListings[index]!.listingDigest)).resolves.toMatchObject({
+      await expect(rare.cart.listing.get(createdListings[index]!.listingDigest)).resolves.toMatchObject({
         listingDigest: createdListings[index]!.listingDigest,
       });
     }
-    const filteredListings = await rare.cart.api.listing.search({
+    const filteredListings = await rare.cart.listing.search({
       sku: skuA.sku, page: 1, perPage: 1, sortBy: 'priceAsc',
     });
     expect(filteredListings.data).toHaveLength(1);
@@ -64,8 +64,8 @@ describe.sequential('SDK Cart rare-api integration', () => {
     expect(filteredListings.pagination.perPage).toBe(1);
   }, 30_000);
 
-  it('ingests seller-authorized Listing Roots and rejects invalid signatures', async () => {
-    const { rare, cart, chainId, listings, listingNonce, artifact, signedArtifact, ingested, seller } = scenario;
+  it('publishes seller-authorized Listing Roots and rejects tampered preparations', async () => {
+    const { rare, cart, chainId, artifact, signedArtifact, ingested, seller } = scenario;
     const recoveredSeller = await recoverAddress({
       hash: hashCartListingRoot({
         listingsRoot: artifact.root.listingsRoot,
@@ -78,17 +78,9 @@ describe.sequential('SDK Cart rare-api integration', () => {
     expect(ingested.listingCount).toBe(2);
     expect(ingested.root.listingsRoot).toBe(artifact.root.listingsRoot);
     expect(ingested.signature).toBe(signedArtifact.signature);
-    const invalidRoot = rare.utils.cart.buildListingRoot({
-      listings,
-      chainId,
-      cart,
-      nonce: listingNonce + 1n,
-      deadline: BigInt(Math.floor(Date.now() / 1000) + 3600),
-    });
-    await expect(rare.cart.api.listing.publish(scenario.listingIntent, {
-      ...invalidRoot,
-      signature: `0x${'00'.repeat(65)}`,
-    })).rejects.toThrow();
+    const invalidRoot: typeof artifact = { ...artifact, root: { ...artifact.root, listingsRoot: '0x0000000000000000000000000000000000000000000000000000000000000000' } };
+    await expect(rare.cart.listing.publish({ preparation: { intent: scenario.listingIntent,
+      artifact: invalidRoot, requiredApprovals: [] } })).rejects.toThrow();
   }, 30_000);
 
   it('prepares checkout without a wallet, then creates and verifies its signed Purchase', async () => {
@@ -102,11 +94,11 @@ describe.sequential('SDK Cart rare-api integration', () => {
         recipient,
       })),
     };
-    const preparation = await rare.cart.api.checkout.preview(draft);
+    const preparation = await rare.cart.checkout.prepare(draft);
     expect(preparation.intent).toEqual(draft);
     expect(preparation.paymentAmount).toBeGreaterThan(0n);
     expect(Date.parse(preparation.expiresAt)).toBeGreaterThan(Date.now());
-    const prepared = await rare.cart.api.checkout.prepare(preparation.preparationReference);
+    const prepared = await rare.cart.checkout.authorize(preparation);
     expect(prepared.chainId).toBe(11_155_111n);
     expect(isAddressEqual(prepared.cartAddress, cart)).toBe(true);
     expect(prepared.executePurchase.lines.length).toBeGreaterThanOrEqual(2);
@@ -137,7 +129,7 @@ describe.sequential('SDK Cart rare-api integration', () => {
       signature: prepared.executePurchase.platformSignature,
     });
     expect(isAddressEqual(recoveredSigner, platformSigner)).toBe(true);
-    const receipt = await rare.cart.api.checkout.receipt(prepared.executePurchase.order.orderId);
+    const receipt = await rare.cart.checkout.receipt(prepared.executePurchase.order.orderId);
     expect(receipt.status).toBe('pending');
     expect(receipt.issues).toEqual([]);
     const allocations = receipt.feeAllocations?.allocations;
@@ -153,7 +145,7 @@ describe.sequential('SDK Cart rare-api integration', () => {
       expect(allocations.filter(allocation => allocation.finalLineIndex === index)
         .reduce((sum, allocation) => sum + BigInt(allocation.amount), 0n)).toBe(line.amount);
     }
-    expect((await rare.cart.api.checkout.receipt(prepared.executePurchase.order.orderId)).feeAllocations).toEqual(receipt.feeAllocations);
+    expect((await rare.cart.checkout.receipt(prepared.executePurchase.order.orderId)).feeAllocations).toEqual(receipt.feeAllocations);
     const feeLine = prepared.executePurchase.lines.find(line => line.fulfillmentKind === 0 && line.amount > 1n);
     if (feeLine === undefined) throw new Error('Fixture requires a divisible fee line.');
     const expandedLines = prepared.executePurchase.lines.flatMap(line => line === feeLine
@@ -172,16 +164,16 @@ describe.sequential('SDK Cart rare-api integration', () => {
     })).rejects.toMatchObject({ status: 409 });
 
     const missingListingDigest = keccak256(toBytes(`missing:${runId}`));
-    await expect(rare.cart.api.listing.get(missingListingDigest)).rejects.toThrow();
+    await expect(rare.cart.listing.get(missingListingDigest)).rejects.toThrow();
   }, 30_000);
 
   it('invalidates a Listing after all purchase preparation checks', async () => {
     const { rare, createdListings } = scenario;
     const listingDigest = createdListings[0]!.listingDigest;
-    const invalidated = await rare.cart.api.listing.invalidate(listingDigest, new Date().toISOString());
+    const invalidated = await rare.cart.listing.invalidate(listingDigest, new Date().toISOString());
     expect(invalidated.listingDigest).toBe(listingDigest);
     expect(invalidated.invalidatedAt).not.toBeNull();
-    await expect(rare.cart.api.listing.get(listingDigest)).resolves.toMatchObject({
+    await expect(rare.cart.listing.get(listingDigest)).resolves.toMatchObject({
       listingDigest,
       invalidatedAt: expect.any(String),
     });

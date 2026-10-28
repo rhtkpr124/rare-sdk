@@ -3,9 +3,8 @@ import { createWalletClient, http, isHex, zeroAddress } from 'viem';
 import { sepolia } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
 import { createRareClient } from '../../src/sdk/client.js';
-import { cartAbi } from '../../src/contracts/abis/cart.js';
 import { getCartAddress } from '../../src/contracts/addresses.js';
-import { cartDomain, hashCartListing } from '../../src/sdk/cart-core.js';
+import { hashCartListing } from '../../src/sdk/cart-core.js';
 import { createTestSepoliaPublicClient, getTestRpcUrl } from './liveViem.js';
 
 export async function createCreatorCartScenario() {
@@ -41,8 +40,11 @@ export async function createCreatorCartScenario() {
       nft: { contract: collection.contract, tokenId: token.tokenId }, fulfillmentKind: 2 as const,
       settlementCurrency: zeroAddress, unitPrice: 1000000000000n, quantity: 1n, paymentRecipient: seller.address,
     })) };
-    const listings = await rare.cart.api.listing.preview(listingIntent);
-    const repeated = await rare.cart.api.listing.preview(listingIntent);
+    const preparation = await rare.cart.listing.prepare(listingIntent);
+    const listings = preparation.artifact.entries.map(({ listing }) => ({ ...listing,
+      tokenId: BigInt(listing.tokenId), minimumUnitPrice: BigInt(listing.minimumUnitPrice),
+      availableQuantity: BigInt(listing.availableQuantity) }));
+    const repeated = (await rare.cart.listing.prepare(listingIntent)).artifact.entries.map(entry => entry.listing);
     if (listings.some((listing, index) => listing.sku !== repeated[index]?.sku)) {
       throw new Error('Repeated listing preparation created duplicate NFT SKUs.');
     }
@@ -50,17 +52,13 @@ export async function createCreatorCartScenario() {
       await rare.cart.catalog.products.attachSku(createdProduct.id, { sku: listing.sku, position, metadata: {} });
     }
     await rare.cart.catalog.products.publish(createdProduct.id);
-    const product = await rare.cart.api.catalog.products.get(createdProduct.id);
+    const product = await rare.cart.catalog.products.get(createdProduct.id);
     await rare.cart.approval.approve(collection.contract);
-    const listingNonce = await publicClient.readContract({ address: cart, abi: cartAbi,
-      functionName: 'listingNonces', args: [seller.address] });
-    const artifact = rare.utils.cart.buildListingRoot({ listings, chainId, cart, nonce: listingNonce, deadline });
-    const signature = await seller.signTypedData({ domain: cartDomain(chainId, cart), primaryType: 'ListingRoot',
-      types: { ListingRoot: [ { name: 'listingsRoot', type: 'bytes32' }, { name: 'nonce', type: 'uint256' },
-        { name: 'deadline', type: 'uint256' } ] },
-      message: { listingsRoot: artifact.root.listingsRoot, nonce: BigInt(artifact.root.nonce), deadline } });
-    const signedArtifact = { ...artifact, signature };
-    const ingested = await rare.cart.api.listing.publish(listingIntent, signedArtifact);
+    const artifact = preparation.artifact;
+    const listingNonce = BigInt(artifact.root.nonce);
+    const publication = await rare.cart.listing.publish({ preparation, autoApprove: true });
+    const signedArtifact = publication.signedArtifact;
+    const ingested = publication.publishedRoot;
     const skuA = product.variants[0];
     if (!skuA) throw new Error('Creator Product did not return its variants.');
     return { rare, publicClient, cart, chainId, runId, apiBaseUrl, product, skuA, seller,
