@@ -31,7 +31,6 @@ import type { OfferNamespace } from './offer.js';
 import type { SwapNamespace } from './swap.js';
 import type { TokenNamespace } from './token.js';
 import type { CartNamespace } from './cart.js';
-import type { EligibilityNamespace } from './eligibility.js';
 import type { RareUtilsNamespace } from './utils.js';
 
 /**
@@ -179,7 +178,6 @@ export type RareChainFeatures = {
   token: TokenNamespace;
   currency: CurrencyNamespace;
   cart: CartNamespace;
-  eligibility: EligibilityNamespace;
 }
 
 export type { IntegerInput };

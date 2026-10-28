@@ -1,4 +1,5 @@
 import type { Address, Hex } from 'viem';
+import type { SearchPageResponse } from '../api.js';
 
 /**
  * An event-driven rule issues one SKU-scoped purchase right per qualifying copy.
@@ -45,14 +46,18 @@ export type EligibilityListingScope = {
   listingDigest: Hex;
 };
 
-export type EligibilityListOptions = { take?: number; skip?: number };
+export type EligibilityListOptions = { page?: number; perPage?: number };
 export type EligibilityClaimListOptions = EligibilityListOptions & { sku?: Hex; ruleId?: string };
 
-export type EligibilityNamespace = {
-  createRule: (input: CreateEligibilityRule) => Promise<EligibilityRule>;
-  listRules: (options?: EligibilityListOptions) => Promise<EligibilityRule[]>;
-  disableRule: (ruleId: string) => Promise<void>;
-  listClaims: (options?: EligibilityClaimListOptions) => Promise<EligibilityClaim[]>;
-  setListingRequirement: (input: EligibilityListingScope & { ruleId: string }) => Promise<void>;
-  clearListingRequirement: (input: EligibilityListingScope) => Promise<void>;
+export type PurchaseEligibilityNamespace = {
+  rules: {
+    create: (input: CreateEligibilityRule) => Promise<EligibilityRule>;
+    list: (options?: EligibilityListOptions) => Promise<SearchPageResponse<EligibilityRule>>;
+    disable: (ruleId: string) => Promise<void>;
+  };
+  claims: { list: (options?: EligibilityClaimListOptions) => Promise<SearchPageResponse<EligibilityClaim>> };
+  listingRequirements: {
+    set: (input: EligibilityListingScope & { ruleId: string }) => Promise<void>;
+    clear: (input: EligibilityListingScope) => Promise<void>;
+  };
 };

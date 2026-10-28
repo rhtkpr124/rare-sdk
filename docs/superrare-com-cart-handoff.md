@@ -154,7 +154,7 @@ adapters; do not assume ERC-1155 per-copy eligibility is supported.
 Create the rule before publication and include its ID in the Listing intent:
 
 ```typescript
-const rule = await rare.eligibility.createRule({
+const rule = await rare.cart.purchaseEligibility.rules.create({
 	definition: {
 		kind: 'CURRENT_HOLDER',
 		source: {
@@ -189,7 +189,7 @@ Listings without a requirement remain open. See
 
 ## Display buyer claims without enforcing them in the browser
 
-Call `rare.eligibility.listClaims({ sku, take, skip })` to retrieve the signed-in
+Call `rare.cart.purchaseEligibility.claims.list({ sku, take, skip })` to retrieve the signed-in
 account's rights. Its statuses are `AVAILABLE`, `RESERVED`, `CONSUMED`, and
 `REVOKED`. There is no separate `EXPIRED` status in the current SDK model.
 Use `expiresAt` and the backend response rather than inventing another state.

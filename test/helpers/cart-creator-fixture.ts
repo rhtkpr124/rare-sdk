@@ -27,7 +27,7 @@ export async function createCreatorCartScenario(options: { tokenCount?: number; 
   try {
     await rare.profile.get();
     const image = await rare.upload(await downloadTestImage(), 'cart-artwork.jpg', { contentType: 'image/jpeg' });
-    if (options.eligibility === true) await rare.eligibility.listRules();
+    if (options.eligibility === true) await rare.cart.purchaseEligibility.rules.list();
     const tokenCount = options.tokenCount ?? 2;
     const collection = await rare.collection.deploy.erc721({ name: `SDK Cart ${runId}`, symbol: 'SCART', maxTokens: tokenCount });
     const tokenUri = `data:application/json,${encodeURIComponent(JSON.stringify({ name: `SDK Cart ${runId}`, image: image.url }))}`;

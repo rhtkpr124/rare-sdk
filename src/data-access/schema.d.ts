@@ -3988,8 +3988,8 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
-                    take?: number;
-                    skip?: number | null;
+                    page?: number;
+                    perPage?: number;
                 };
                 header?: never;
                 path?: never;
@@ -4005,6 +4005,7 @@ export interface paths {
                     content: {
                         "application/json": {
                             data: components["schemas"]["EligibilityRule"][];
+                            pagination: components["schemas"]["Pagination"];
                         };
                     };
                 };
@@ -4252,8 +4253,8 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
-                    take?: number;
-                    skip?: number | null;
+                    page?: number;
+                    perPage?: number;
                     sku?: string;
                     ruleId?: string;
                 };
@@ -4271,6 +4272,7 @@ export interface paths {
                     content: {
                         "application/json": {
                             data: components["schemas"]["EligibilityClaim"][];
+                            pagination: components["schemas"]["Pagination"];
                         };
                     };
                 };

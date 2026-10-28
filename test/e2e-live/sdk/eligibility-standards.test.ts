@@ -103,14 +103,14 @@ describe.sequential('quantity-aware eligibility across token standards', () => {
           return { contract: collection.contract, tokenId: token.tokenId, quantity: 5n, fulfillmentKind: 3 };
         })();
         const rewardListing = await publish({ ...reward, quantity: 20n, fulfillmentKind: 3 });
-        const rule = await creator.rare.eligibility.createRule({ definition: { kind,
+        const rule = await creator.rare.cart.purchaseEligibility.rules.create({ definition: { kind,
           source: { chainId: String(sepolia.id), tokenContract: source.contract, tokenIds: [String(source.tokenId)] },
           targets: [{ sku: rewardListing.listing.sku }] } });
         try {
-          await creator.rare.eligibility.setListingRequirement({ chainId: String(sepolia.id), cartAddress: creator.cart,
+          await creator.rare.cart.purchaseEligibility.listingRequirements.set({ chainId: String(sepolia.id), cartAddress: creator.cart,
             listingDigest: rewardListing.listingDigest, ruleId: rule.id });
-          const claims = () => buyer.eligibility.listClaims({ ruleId: rule.id });
-          const creatorClaims = () => creator.rare.eligibility.listClaims({ ruleId: rule.id });
+          const claims = () => buyer.cart.purchaseEligibility.claims.list({ ruleId: rule.id, perPage: 100 }).then(page => page.data);
+          const creatorClaims = () => creator.rare.cart.purchaseEligibility.claims.list({ ruleId: rule.id, perPage: 100 }).then(page => page.data);
           const sourceListing = await publish(source);
           const purchase = await buyer.cart.checkout.purchase({ preparation: await checkout(sourceListing.listingDigest, source.quantity) });
           expect(purchase.receipt.status).toBe('success');
@@ -119,8 +119,8 @@ describe.sequential('quantity-aware eligibility across token standards', () => {
           expect(new Set(issued.map(claim => claim.id)).size).toBe(Number(source.quantity));
           const redeemQuantity = standard === 'ERC1155' ? 2n : 1n;
           const quote = await checkout(rewardListing.listingDigest, redeemQuantity);
-          const reserved = await buyer.cart.api.checkout.prepare(quote.preparationReference);
-          expect((await buyer.cart.api.checkout.prepare(quote.preparationReference)).executePurchase.order.orderId).toBe(reserved.executePurchase.order.orderId);
+          const reserved = await buyer.cart.checkout.authorize(quote);
+          expect((await buyer.cart.checkout.authorize(quote)).executePurchase.order.orderId).toBe(reserved.executePurchase.order.orderId);
           expect((await claims()).filter(claim => claim.status === 'RESERVED')).toHaveLength(Number(redeemQuantity));
           expect((await buyer.cart.checkout.execute(reserved.executePurchase)).receipt.status).toBe('success');
           await expect.poll(async () => consumed(await claims()).length, { timeout: 180_000, interval: 2_000 }).toBe(Number(redeemQuantity));
@@ -147,7 +147,7 @@ describe.sequential('quantity-aware eligibility across token standards', () => {
             expect(consumed(await claims()).map(claim => claim.id).sort()).toEqual(consumedIds);
           }
         } finally {
-          await creator.rare.eligibility.disableRule(rule.id);
+          await creator.rare.cart.purchaseEligibility.rules.disable(rule.id);
         }
       }, 900_000);
     }

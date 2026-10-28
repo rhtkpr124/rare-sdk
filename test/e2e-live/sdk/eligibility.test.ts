@@ -26,15 +26,15 @@ describe.sequential('SDK eligibility against the deployed Rare API', () => {
       source: { chainId: String(scenario.chainId), tokenContract: listing.tokenContract },
       targets: [{ sku: listing.sku }],
     } } satisfies CreateEligibilityRule;
-    const rule = await scenario.rare.eligibility.createRule(ruleInput);
+    const rule = await scenario.rare.cart.purchaseEligibility.rules.create(ruleInput);
     try {
       expect(rule.enabled).toBe(true);
-      expect((await scenario.rare.eligibility.createRule(ruleInput)).id).toBe(rule.id);
-      await expect(scenario.rare.eligibility.createRule({ ...ruleInput,
+      expect((await scenario.rare.cart.purchaseEligibility.rules.create(ruleInput)).id).toBe(rule.id);
+      await expect(scenario.rare.cart.purchaseEligibility.rules.create({ ...ruleInput,
         definition: { ...ruleInput.definition, kind: 'EVERY_SALE' },
       })).rejects.toMatchObject({ status: 409 });
       expect(rule.definition.kind).toBe('PRIMARY_SALE');
-      expect((await scenario.rare.eligibility.listRules()).some(candidate => candidate.id === rule.id)).toBe(true);
+      expect(((await scenario.rare.cart.purchaseEligibility.rules.list()).data).some(candidate => candidate.id === rule.id)).toBe(true);
       const item = scenario.listingIntent.listings[0];
       if (item === undefined) throw new Error('Eligibility fixture requires a Listing intent.');
       const preparation = await scenario.rare.cart.listing.prepare({ ...scenario.listingIntent,
@@ -42,21 +42,21 @@ describe.sequential('SDK eligibility against the deployed Rare API', () => {
       const published = await scenario.rare.cart.listing.publish({ preparation });
       const gated = published.signedArtifact.entries[0];
       if (gated === undefined) throw new Error('Gated publication returned no Listing.');
-      const preview = await scenario.rare.cart.api.checkout.preview({ paymentCurrency: zeroAddress,
+      const preview = await scenario.rare.cart.checkout.prepare({ paymentCurrency: zeroAddress,
         items: [{ kind: 'listing', listingDigest: gated.listingDigest, quantity: 1n, recipient: scenario.seller.address }] });
-      await expect(scenario.rare.cart.api.checkout.prepare(preview.preparationReference)).rejects.toThrow();
+      await expect(scenario.rare.cart.checkout.authorize(preview)).rejects.toThrow();
       const scope = { chainId: String(scenario.chainId), cartAddress: scenario.cart,
         listingDigest: created.listingDigest };
-      await scenario.rare.eligibility.setListingRequirement({ ...scope, ruleId: rule.id });
-      await scenario.rare.eligibility.clearListingRequirement(scope);
-      expect(Array.isArray(await scenario.rare.eligibility.listClaims())).toBe(true);
+      await scenario.rare.cart.purchaseEligibility.listingRequirements.set({ ...scope, ruleId: rule.id });
+      await scenario.rare.cart.purchaseEligibility.listingRequirements.clear(scope);
+      expect(Array.isArray((await scenario.rare.cart.purchaseEligibility.claims.list()).data)).toBe(true);
       const anonymous = createRareClient({ publicClient: scenario.publicClient, apiBaseUrl: scenario.apiBaseUrl });
-      await expect(anonymous.eligibility.listRules()).rejects.toThrow();
-      await expect(anonymous.eligibility.listClaims()).rejects.toThrow();
+      await expect(anonymous.cart.purchaseEligibility.rules.list()).rejects.toThrow();
+      await expect(anonymous.cart.purchaseEligibility.claims.list()).rejects.toThrow();
     } finally {
-      await scenario.rare.eligibility.disableRule(rule.id);
+      await scenario.rare.cart.purchaseEligibility.rules.disable(rule.id);
     }
-    expect((await scenario.rare.eligibility.listRules()).find(candidate => candidate.id === rule.id)?.enabled).toBe(false);
+    expect(((await scenario.rare.cart.purchaseEligibility.rules.list()).data).find(candidate => candidate.id === rule.id)?.enabled).toBe(false);
   }, 90_000);
 
   it('issues a purchase claim, reserves it for gated checkout, and consumes it exactly once', async () => {
@@ -80,17 +80,17 @@ describe.sequential('SDK eligibility against the deployed Rare API', () => {
       signMessage: message => buyer.signMessage({ message }) });
     try {
       await rare.profile.get();
-      const rule = await scenario.rare.eligibility.createRule({ definition: {
+      const rule = await scenario.rare.cart.purchaseEligibility.rules.create({ definition: {
         kind: 'EVERY_SALE',
         source: { chainId: String(scenario.chainId), tokenContract: source.tokenContract, tokenIds: [source.tokenId.toString()] },
         targets: [{ sku: reward.sku }, { sku: alternative.sku }],
       } });
       try {
         for (const listing of [rewardListing, alternativeListing]) {
-          await scenario.rare.eligibility.setListingRequirement({ chainId: String(scenario.chainId),
+          await scenario.rare.cart.purchaseEligibility.listingRequirements.set({ chainId: String(scenario.chainId),
             cartAddress: scenario.cart, listingDigest: listing.listingDigest, ruleId: rule.id });
         }
-        const claims = () => rare.eligibility.listClaims({ ruleId: rule.id });
+        const claims = () => rare.cart.purchaseEligibility.claims.list({ ruleId: rule.id, perPage: 100 }).then(page => page.data);
         const preview = (listingDigest: typeof rewardListing.listingDigest) => rare.cart.checkout.prepare({
           paymentCurrency: zeroAddress, items: [{ kind: 'listing', listingDigest, quantity: 1n, recipient: buyer.address }],
         });
@@ -98,7 +98,7 @@ describe.sequential('SDK eligibility against the deployed Rare API', () => {
         expect((await rare.cart.listing.search({ eligibility: 'eligible', sku: reward.sku })).data
           .some(listing => listing.listingDigest === rewardListing.listingDigest)).toBe(false);
         const denied = await preview(rewardListing.listingDigest);
-        await expect(rare.cart.api.checkout.prepare(denied.preparationReference)).rejects.toMatchObject({
+        await expect(rare.cart.checkout.authorize(denied)).rejects.toMatchObject({
           status: 409, message: expect.stringContaining('Insufficient unreserved claims'),
         });
 
@@ -116,10 +116,10 @@ describe.sequential('SDK eligibility against the deployed Rare API', () => {
         await expect.poll(async () => (await rare.cart.listing.search({ eligibility: 'eligible', sku: reward.sku })).data
           .some(listing => listing.listingDigest === rewardListing.listingDigest), { timeout: 30_000, interval: 2_000 }).toBe(true);
 
-        const prepared = await rare.cart.api.checkout.prepare((await preview(rewardListing.listingDigest)).preparationReference);
+        const prepared = await rare.cart.checkout.authorize((await preview(rewardListing.listingDigest)));
         expect(prepared.executePurchase.order.paymentAmount).toBeLessThanOrEqual(1_000_000_000_000_000n);
         expect(await claims()).toMatchObject([{ id: issued.id, status: 'RESERVED' }]);
-        const retried = await rare.cart.api.checkout.prepare((await preview(rewardListing.listingDigest)).preparationReference);
+        const retried = await rare.cart.checkout.authorize((await preview(rewardListing.listingDigest)));
         expect(retried.executePurchase.order.orderId).toBe(prepared.executePurchase.order.orderId);
         const redemption = await rare.cart.checkout.execute(prepared.executePurchase);
         expect(redemption.receipt.status).toBe('success');
@@ -133,12 +133,12 @@ describe.sequential('SDK eligibility against the deployed Rare API', () => {
         await expect(scenario.publicClient.readContract({ address: alternative.tokenContract, abi: erc721Abi,
           functionName: 'ownerOf', args: [alternative.tokenId] })).resolves.toBe(scenario.seller.address);
         const exhausted = await preview(alternativeListing.listingDigest);
-        await expect(rare.cart.api.checkout.prepare(exhausted.preparationReference)).rejects.toMatchObject({
+        await expect(rare.cart.checkout.authorize(exhausted)).rejects.toMatchObject({
           status: 409, message: expect.stringContaining('Insufficient unreserved claims'),
         });
         expect(await claims()).toMatchObject([{ id: issued.id, status: 'CONSUMED' }]);
       } finally {
-        await scenario.rare.eligibility.disableRule(rule.id);
+        await scenario.rare.cart.purchaseEligibility.rules.disable(rule.id);
       }
     } finally {
       await rare.auth.logout();

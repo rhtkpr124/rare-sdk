@@ -1,27 +1,27 @@
-# Eligibility client
+# Purchase eligibility
 
-`rare.eligibility` uses the `accountClient` session supplied to `createRareClient`. Rules belong to the authenticated creator. Claims belong to the authenticated buyer. Neither operation accepts an account ID override.
+`rare.cart.purchaseEligibility` uses the unified client's authenticated session. Rules belong to the authenticated creator. Claims belong to the authenticated buyer. Neither operation accepts an account ID override.
 
 The namespace exposes these methods:
 
-- `createRule({ definition, effectiveFrom? })`
-- `listRules({ take?, skip? })`
-- `disableRule(ruleId)`
-- `listClaims({ take?, skip?, sku?, ruleId? })`
-- `setListingRequirement({ chainId, cartAddress, listingDigest, ruleId })`
-- `clearListingRequirement({ chainId, cartAddress, listingDigest })`
+- `rules.create({ definition, effectiveFrom? })`
+- `rules.list({ page?, perPage? })`
+- `rules.disable(ruleId)`
+- `claims.list({ page?, perPage?, sku?, ruleId? })`
+- `listingRequirements.set({ chainId, cartAddress, listingDigest, ruleId })`
+- `listingRequirements.clear({ chainId, cartAddress, listingDigest })`
 
 Rule definitions contain a `kind`, a source collection, and SKU targets:
 
 ```typescript
-const rule = await rare.eligibility.createRule({
+const rule = await rare.cart.purchaseEligibility.rules.create({
 	definition: {
 		kind: 'PRIMARY_SALE',
 		source: { chainId: '11155111', tokenContract: collectionAddress },
 		targets: [{ sku: printSku }],
 	},
 });
-await rare.eligibility.setListingRequirement({
+await rare.cart.purchaseEligibility.listingRequirements.set({
 	chainId: String(rare.chainId),
 	cartAddress,
 	listingDigest,

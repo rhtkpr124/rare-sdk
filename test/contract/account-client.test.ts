@@ -263,6 +263,23 @@ describe('account authentication over HTTP', () => {
     expect(received.every(path => path.startsWith('/api/'))).toBe(true);
   });
 
+  it('lists purchase eligibility under Cart with released pagination and shared authentication', async () => {
+    const storage = createMemoryAccountSessionStore();
+    await storage.set(session());
+    const pagination = { page: 2, perPage: 10, totalCount: 11, totalPages: 2 };
+    handler = async (request, response) => {
+      expect(request.url).toBe('/v1/eligibility/claims?page=2&perPage=10');
+      expect(request.headers.authorization).toBe('Bearer access-1');
+      reply(response, { data: [], pagination });
+    };
+    const rare = createRareClient({ publicClient: createPublicClient({ chain: sepolia, transport: http() }),
+      apiBaseUrl: origin, sessionStore: storage });
+    expect(rare).not.toHaveProperty('eligibility');
+    expect(rare.cart).not.toHaveProperty('api');
+    expect(await rare.cart.purchaseEligibility.claims.list({ page: 2, perPage: 10 })).toEqual({ data: [], pagination });
+    await expect(rare.cart.purchaseEligibility.rules.list({ page: 0 })).rejects.toThrow();
+  });
+
   it('defaults to the production API and rejects the removed separate auth URL', async () => {
     const storage = createMemoryAccountSessionStore();
     await createRareClient({ sessionStore: storage }).auth.clearSession();
