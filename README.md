@@ -564,10 +564,10 @@ public history.
 After signing in, use `account.notifications` to read delivered app notifications:
 
 ```ts
-const page = await account.notifications.list({ limit: 20 });
-const next = page.nextCursor === null
-  ? null
-  : await account.notifications.list({ cursor: page.nextCursor, limit: 20 });
+const page = await account.notifications.list({ page: 1, perPage: 20 });
+const next = page.pagination.page < page.pagination.totalPages
+  ? await account.notifications.list({ page: page.pagination.page + 1, perPage: 20 })
+  : null;
 const unreadCount = await account.notifications.unreadCount();
 const notification = page.data[0];
 if (notification) await account.notifications.markRead(notification.id);

@@ -157,7 +157,7 @@ subscription visibility in the authenticated inbox, persisted reaction totals,
 per-viewer reactions, report-and-hide isolation, and canonical system-message
 retries. Changed array order must conflict even when object key order does not.
 
-Use `account.messaging.public.history(roomId, options)` for a signed-in public
-view. `api.messaging.history(roomId, options)` stays anonymous. CLI users can
+Use `rare.messaging.public.history(roomId, filters, { authenticated: true })` for a signed-in public
+view. `rare.messaging.public.history(roomId, filters)` stays anonymous. CLI users can
 select the signed-in view with `rare messaging public history <room-id>
 --authenticated` or the equivalent flag on `watch`.
