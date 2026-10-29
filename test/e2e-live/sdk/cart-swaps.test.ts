@@ -16,12 +16,24 @@ describe.sequential('SDK standalone Cart swap purchases', () => {
   let buyer: ReturnType<typeof privateKeyToAccount>;
 
   beforeAll(async () => {
-    const key = process.env.E2E_BUYER_PRIVATE_KEYS?.split(/[,\s]+/u).find(Boolean);
-    if (!key || !isHex(key) || key.length !== 66 || !process.env.RARE_API_BASE_URL) {
+    const keys = process.env.E2E_BUYER_PRIVATE_KEYS?.split(/[,\s]+/u).filter(Boolean) ?? [];
+    if (keys.length === 0 || !process.env.RARE_API_BASE_URL) {
       throw new Error('Cart swap tests require a deployed RARE_API_BASE_URL and funded E2E_BUYER_PRIVATE_KEYS.');
     }
     if (await publicClient.getChainId() !== 11155111) throw new Error('Cart swap tests only support Sepolia.');
-    buyer = privateKeyToAccount(key);
+    const candidates = await Promise.all(keys.map(async key => {
+      if (!isHex(key) || key.length !== 66) throw new Error('Invalid configured test buyer key.');
+      const account = privateKeyToAccount(key);
+      const [ether, usdc] = await Promise.all([
+        publicClient.getBalance({ address: account.address }),
+        publicClient.readContract({ address: resolveCurrency('usdc', 'sepolia'), abi: erc20Abi,
+          functionName: 'balanceOf', args: [account.address] }),
+      ]);
+      return { account, ether, usdc };
+    }));
+    const funded = candidates.find(candidate => candidate.ether >= 1_000_000_000_000_000n && candidate.usdc >= 1_000_000n);
+    if (!funded) throw new Error('Cart swaps need a test buyer with 0.001 Sepolia ETH and 1 USDC for both payment cases.');
+    buyer = funded.account;
     rare = createRareClient({ publicClient, apiBaseUrl: process.env.RARE_API_BASE_URL,
       walletClient: createWalletClient({ account: buyer, chain: sepolia, transport: http(getTestRpcUrl()) }) });
     await rare.auth.loginWithWallet({ address: buyer.address, chainId: 11155111,
