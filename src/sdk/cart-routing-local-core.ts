@@ -150,17 +150,17 @@ export function buildKnownPoolCartRoutingResult(
   const maximum = plan.directPaymentInput + routedMaximum;
   return {
     schemaVersion: 1, chain: plan.chain, chainId: plan.chainId, paymentCurrency: plan.paymentCurrency, mode: plan.mode,
-    expectedPaymentInput: expected.toString(), maximumPaymentInput: maximum.toString(), directPaymentInput: plan.directPaymentInput.toString(),
+    expectedPaymentInput: expected, maximumPaymentInput: maximum, directPaymentInput: plan.directPaymentInput,
     settlements: plan.settlements,
     route: {
       commands: (`0x${compiled.map((item) => item.commands.slice(2)).join('')}`) as Hex,
       inputs,
-      routerValue: compiled.reduce((sum, item) => sum + item.routerValue, 0n).toString(),
+      routerValue: compiled.reduce((sum, item) => sum + item.routerValue, 0n),
     },
     quotedAt, expiresAt,
     evidence: {
       source: 'known-pool-rpc', mode: plan.mode, quoteIds: [], compilerRequestIds: [],
-      quotedInput: expected.toString(), protectedMaximumInput: maximum.toString(), exactOutputs, quotedAt, expiresAt,
+      quotedInput: expected, protectedMaximumInput: maximum, exactOutputs, quotedAt, expiresAt,
       routeDescription: compiled.map((item) => item.description).join(' | '),
     },
   };

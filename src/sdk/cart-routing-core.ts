@@ -116,7 +116,7 @@ export function planCartRoutingQuote(
   const directPaymentInput = totals.get(paymentCurrency) ?? 0n;
   for (const [settlementCurrency, amount] of totals) {
     const routed = !isAddressEqual(settlementCurrency, paymentCurrency);
-    settlements.push({ settlementCurrency, amount: amount.toString(), routed });
+    settlements.push({ settlementCurrency, amount, routed });
     if (routed) foreignObligations.push({ settlementCurrency, amount });
   }
   return {
@@ -216,11 +216,11 @@ export function buildCartRoutingQuoteResult(
     chainId: plan.chainId,
     paymentCurrency: plan.paymentCurrency,
     mode: plan.mode,
-    expectedPaymentInput: expectedPaymentInput.toString(),
-    maximumPaymentInput: maximumPaymentInput.toString(),
-    directPaymentInput: plan.directPaymentInput.toString(),
+    expectedPaymentInput,
+    maximumPaymentInput,
+    directPaymentInput: plan.directPaymentInput,
     settlements: plan.settlements,
-    route: { commands, inputs, routerValue: routerValue.toString() },
+    route: { commands, inputs, routerValue },
     quotedAt,
     expiresAt,
     evidence: {
@@ -228,8 +228,8 @@ export function buildCartRoutingQuoteResult(
       mode: plan.mode,
       quoteIds,
       compilerRequestIds,
-      quotedInput: expectedPaymentInput.toString(),
-      protectedMaximumInput: maximumPaymentInput.toString(),
+      quotedInput: expectedPaymentInput,
+      protectedMaximumInput: maximumPaymentInput,
       exactOutputs,
       quotedAt,
       expiresAt,

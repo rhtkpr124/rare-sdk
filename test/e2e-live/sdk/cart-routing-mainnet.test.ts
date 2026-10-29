@@ -112,7 +112,7 @@ describeLive('SDK Cart mainnet route discovery integration', () => {
       paymentCurrency,
       mode: 'exact-output',
       directPaymentInput: 0n,
-      settlements: [{ settlementCurrency: liquidEdition, amount: amount.toString(), routed: true }],
+      settlements: [{ settlementCurrency: liquidEdition, amount, routed: true }],
       foreignObligations: [obligation],
     };
     const result = buildCartRoutingQuoteResult(plan, swapResponse.swap.to, [{

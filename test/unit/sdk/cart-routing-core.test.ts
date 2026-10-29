@@ -66,12 +66,12 @@ describe('Cart routing functional core', () => {
         expect(result.route).toEqual({
           commands: '0x1004',
           inputs: ['0x1234', '0xabcd'],
-          routerValue: paymentCurrency === eth ? '1100' : '0',
+          routerValue: paymentCurrency === eth ? 1100n : 0n,
         });
-        expect(result.expectedPaymentInput).toBe('1000');
-        expect(result.maximumPaymentInput).toBe('1100');
+        expect(result.expectedPaymentInput).toBe(1000n);
+        expect(result.maximumPaymentInput).toBe(1100n);
         expect(result.evidence.compilerRequestIds).toHaveLength(1);
-        expect(() => JSON.stringify({ ...result, route: { ...result.route, routerValue: result.route.routerValue.toString() } })).not.toThrow();
+        expect(() => JSON.stringify(result, (_key, value: unknown) => typeof value === 'bigint' ? value.toString() : value)).not.toThrow();
       }
     }
   });
@@ -91,10 +91,10 @@ describe('Cart routing functional core', () => {
     );
     expect(result.route.commands).toBe('0x10041004');
     expect(result.route.inputs).toHaveLength(4);
-    expect(result.route.routerValue).toBe('0');
-    expect(result.directPaymentInput).toBe('300');
-    expect(result.expectedPaymentInput).toBe('2300');
-    expect(result.maximumPaymentInput).toBe('2500');
+    expect(result.route.routerValue).toBe(0n);
+    expect(result.directPaymentInput).toBe(300n);
+    expect(result.expectedPaymentInput).toBe(2300n);
+    expect(result.maximumPaymentInput).toBe(2500n);
   });
 
   it('returns an empty program when every obligation is direct', () => {
@@ -103,13 +103,29 @@ describe('Cart routing functional core', () => {
       obligations: [{ settlementCurrency: rare, amount: 7n }],
     });
     const result = buildCartRoutingQuoteResult(plan, zeroAddress, [], 1_800_000_000_000);
-    expect(result.route).toEqual({ commands: '0x', inputs: [], routerValue: '0' });
-    expect(result.expectedPaymentInput).toBe('7');
-    expect(result.maximumPaymentInput).toBe('7');
+    expect(result.route).toEqual({ commands: '0x', inputs: [], routerValue: 0n });
+    expect(result.expectedPaymentInput).toBe(7n);
+    expect(result.maximumPaymentInput).toBe(7n);
     expect(result.evidence.source).toBe('direct');
     expect(result.evidence.compilerRequestIds).toEqual([]);
     expect(assertCartRoutingQuoteFresh(result, 1_800_000_030_000)).toBe(result);
     expect(() => assertCartRoutingQuoteFresh(result, 1_800_000_060_000)).toThrow('expired');
+  });
+
+  it('preserves amounts above safe integer precision throughout quote evidence', () => {
+    const amount = 9_007_199_254_740_993n;
+    const plan = planCartRoutingQuote(chain, cart, {
+      paymentCurrency: rare,
+      obligations: [{ settlementCurrency: rare, amount }],
+    });
+    const result = buildCartRoutingQuoteResult(plan, zeroAddress, [], 1_800_000_000_000);
+    expect(result.expectedPaymentInput).toBe(amount);
+    expect(result.maximumPaymentInput).toBe(amount);
+    expect(result.directPaymentInput).toBe(amount);
+    expect(result.settlements[0]?.amount).toBe(amount);
+    expect(result.evidence.quotedInput).toBe(amount);
+    expect(result.evidence.protectedMaximumInput).toBe(amount);
+    expect(result.evidence.exactOutputs[0]?.amount).toBe(amount);
   });
 
   it('ignores zero obligations and supports a fully free checkout', () => {
@@ -123,8 +139,8 @@ describe('Cart routing functional core', () => {
     const result = buildCartRoutingQuoteResult(plan, zeroAddress, [], 1_800_000_000_000);
 
     expect(plan.settlements).toEqual([]);
-    expect(result.maximumPaymentInput).toBe('0');
-    expect(result.route).toEqual({ commands: '0x', inputs: [], routerValue: '0' });
+    expect(result.maximumPaymentInput).toBe(0n);
+    expect(result.route).toEqual({ commands: '0x', inputs: [], routerValue: 0n });
   });
 
   it('supports exact-input only when its protected input guarantees the fixed output', () => {
@@ -143,8 +159,8 @@ describe('Cart routing functional core', () => {
       swapResponse: swap(plan, '0x08'),
     }], 1_800_000_000_000);
     expect(result.mode).toBe('exact-input');
-    expect(result.expectedPaymentInput).toBe('1100');
-    expect(result.maximumPaymentInput).toBe('1100');
+    expect(result.expectedPaymentInput).toBe(1100n);
+    expect(result.maximumPaymentInput).toBe(1100n);
 
     execution.quote.output.minimumAmount = '499';
     expect(() => buildCartRoutingQuoteResult(plan, router, [{

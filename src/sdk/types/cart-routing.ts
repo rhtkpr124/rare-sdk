@@ -29,14 +29,14 @@ export type CartRoutingInputQuoteResult = {
 
 export type CartRoutingSettlement = {
   settlementCurrency: Address;
-  amount: string;
+  amount: bigint;
   routed: boolean;
 };
 
 export type CartRoutingRoute = {
   commands: Hex;
   inputs: Hex[];
-  routerValue: string;
+  routerValue: bigint;
 };
 
 export type CartRoutingQuoteEvidence = {
@@ -44,9 +44,9 @@ export type CartRoutingQuoteEvidence = {
   mode: CartRoutingMode;
   quoteIds: string[];
   compilerRequestIds: string[];
-  quotedInput: string;
-  protectedMaximumInput: string;
-  exactOutputs: Array<{ settlementCurrency: Address; amount: string }>;
+  quotedInput: bigint;
+  protectedMaximumInput: bigint;
+  exactOutputs: Array<{ settlementCurrency: Address; amount: bigint }>;
   quotedAt: string;
   expiresAt: string;
   routeDescription: string;
@@ -58,9 +58,9 @@ export type CartRoutingQuoteResult = {
   chainId: number;
   paymentCurrency: Address;
   mode: CartRoutingMode;
-  expectedPaymentInput: string;
-  maximumPaymentInput: string;
-  directPaymentInput: string;
+  expectedPaymentInput: bigint;
+  maximumPaymentInput: bigint;
+  directPaymentInput: bigint;
   settlements: CartRoutingSettlement[];
   route: CartRoutingRoute;
   quotedAt: string;
