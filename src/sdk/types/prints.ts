@@ -32,7 +32,7 @@ export type PrintCreateOperation = {
   (items: readonly PrintBatchItem<CreatePrintDrop>[], options?: PrintBatchOptions<PrintDropCreation>): Promise<PrintBatchResult<PrintDropCreation>[]>;
 };
 export type PrintConfigureOperation = {
-  (dropId: string, input: ConfigurePrintOption): Promise<PrintOption>;
+  (input: PrintOptionConfiguration): Promise<PrintOption>;
   (items: readonly PrintBatchItem<PrintOptionConfiguration>[], options?: PrintBatchOptions<PrintOption>): Promise<PrintBatchResult<PrintOption>[]>;
 };
 export type PrintPrepareOperation = {
@@ -40,11 +40,11 @@ export type PrintPrepareOperation = {
   (items: readonly PrintBatchItem<PreparePrintListing>[], options?: PrintBatchOptions<PrintListingPreparation>): Promise<PrintBatchResult<PrintListingPreparation>[]>;
 };
 export type PrintSubmitSignedOperation = {
-  (preparationId: string, artifact: SignedPrintListingArtifact): Promise<PrintListingPreparation>;
+  (input: PrintListingPublication): Promise<PrintListingPreparation>;
   (items: readonly PrintBatchItem<PrintListingPublication>[], options?: PrintBatchOptions<PrintListingPreparation>): Promise<PrintBatchResult<PrintListingPreparation>[]>;
 };
 export type PrintPublishOperation = {
-  (preparation: PrintListingPreparation): Promise<PrintPublication>;
+  (input: PrintListingSigning): Promise<PrintPublication>;
   (items: readonly PrintBatchItem<PrintListingSigning>[], options?: PrintBatchOptions<PrintPublication>): Promise<PrintBatchResult<PrintPublication>[]>;
 };
 

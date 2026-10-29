@@ -7,6 +7,8 @@ access, or direct Typesense access.
 
 ## Author and publish one or many prints
 
+Scalar operations take the same object as a batch item's `input`: `options.configure({ dropId, input })`, `listings.publish({ preparation, signedArtifact })`, and `listings.submitSigned({ preparationId, artifact })`. Omit `signedArtifact` for a fresh signature; retain it after a failed publication to retry without another wallet request.
+
 Print authoring supports the same methods for one item or a batch. Pass an array
 of `{ key, input }` items to `rare.prints.drops.create`, `options.configure`,
 `listings.prepare`, `listings.publish`, or `listings.submitSigned`. Configuration
@@ -24,7 +26,7 @@ Listing's `listingSalt` before making requests. The SDK never replaces them.
 If publication fails after signing, retain the rejected result's `signedArtifact`
 and supply it with that item's `preparation` on retry. This retries publication
 without another signature. Single-item callers can catch `PrintPublicationError`
-and retry `listings.submitSigned(error.preparationId, error.signedArtifact)`.
+and retry `listings.publish({ preparation, signedArtifact: error.signedArtifact })`.
 
 Use `rare.cart.listing.search({ eligibility: 'eligible' })` for an authenticated
 catalog of open Listings and gated Listings the account can purchase. The server

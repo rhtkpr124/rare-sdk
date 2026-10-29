@@ -4,7 +4,7 @@ import { favoritePageQuery } from './favorites-core.js';
 import { toCartListingRootArtifactWire } from './cart-api.js';
 import type { RareClientConfig } from './types/client.js';
 import type { PrintsNamespace, CreatePrintDrop, PrintDropCreation, PrintBatchItem, PrintBatchOptions, PrintBatchResult,
-  PrintOptionConfiguration, PrintOption, ConfigurePrintOption, PreparePrintListing, PrintListingPreparation,
+  PrintOptionConfiguration, PrintOption, PreparePrintListing, PrintListingPreparation,
   PrintListingPublication, SignedPrintListingArtifact, PrintListingSigning, PrintPublication } from './types/prints.js';
 import { isPrintBatch } from './prints-batch-core.js';
 import { runPrintBatch } from './prints-batch-shell.js';
@@ -41,18 +41,11 @@ export function createPrintsNamespace(config: RareClientConfig, authenticatedFet
     if (input.some(item => !item.input.idempotencyKey?.trim())) throw new Error('Batch print creation requires a stable idempotencyKey for every item.');
     return runPrintBatch(input, options, operation);
   }
-  function configure(dropId: string, input: ConfigurePrintOption): Promise<PrintOption>;
+  function configure(input: PrintOptionConfiguration): Promise<PrintOption>;
   function configure(items: readonly PrintBatchItem<PrintOptionConfiguration>[], options?: PrintBatchOptions<PrintOption>): Promise<PrintBatchResult<PrintOption>[]>;
-  function configure(input: string | readonly PrintBatchItem<PrintOptionConfiguration>[], options?: ConfigurePrintOption | PrintBatchOptions<PrintOption>) {
-    const operation = (value: PrintOptionConfiguration) => {
-      return data(client.PUT('/v1/prints/drops/{id}/options/standard', { params: { path: { id: value.dropId } }, body: value.input }));
-    };
-    if (typeof input === 'string') {
-      if (options === undefined || !('displayPriceUsdCents' in options)) throw new Error('Print configuration is required.');
-      return operation({ dropId: input, input: options });
-    }
-    if (options !== undefined && 'displayPriceUsdCents' in options) throw new Error('Batch configuration expects batch options.');
-    return runPrintBatch(input, options ?? {}, operation);
+  function configure(input: PrintOptionConfiguration | readonly PrintBatchItem<PrintOptionConfiguration>[], options: PrintBatchOptions<PrintOption> = {}) {
+    const operation = (value: PrintOptionConfiguration) => data(client.PUT('/v1/prints/drops/{id}/options/standard', { params: { path: { id: value.dropId } }, body: value.input }));
+    return isPrintBatch<PrintOptionConfiguration>(input) ? runPrintBatch(input, options, operation) : operation(input);
   }
   function prepare(input: PreparePrintListing): Promise<PrintListingPreparation>;
   function prepare(input: readonly PrintBatchItem<PreparePrintListing>[], options?: PrintBatchOptions<PrintListingPreparation>): Promise<PrintBatchResult<PrintListingPreparation>[]>;
@@ -64,21 +57,16 @@ export function createPrintsNamespace(config: RareClientConfig, authenticatedFet
     };
     return isPrintBatch<PreparePrintListing>(input) ? runPrintBatch(input, options, operation) : operation(input);
   }
-  function submitSigned(id: string, artifact: SignedPrintListingArtifact): Promise<PrintListingPreparation>;
+  function submitSigned(input: PrintListingPublication): Promise<PrintListingPreparation>;
   function submitSigned(input: readonly PrintBatchItem<PrintListingPublication>[], options?: PrintBatchOptions<PrintListingPreparation>): Promise<PrintBatchResult<PrintListingPreparation>[]>;
-  function submitSigned(input: string | readonly PrintBatchItem<PrintListingPublication>[], options?: SignedPrintListingArtifact | PrintBatchOptions<PrintListingPreparation>) {
-    if (typeof input === 'string') {
-      if (options === undefined || !('signature' in options)) throw new Error('A signed artifact is required for publication.');
-      return publishOne(input, options);
-    }
-    if (options !== undefined && 'signature' in options) throw new Error('Batch publication expects batch options.');
-    return runPrintBatch(input, options ?? {}, item => publishOne(item.preparationId, item.artifact));
+  function submitSigned(input: PrintListingPublication | readonly PrintBatchItem<PrintListingPublication>[], options: PrintBatchOptions<PrintListingPreparation> = {}) {
+    const operation = (value: PrintListingPublication) => publishOne(value.preparationId, value.artifact);
+    return isPrintBatch<PrintListingPublication>(input) ? runPrintBatch(input, options, operation) : operation(input);
   }
-  function publish(preparation: PrintListingPreparation): Promise<PrintPublication>;
+  function publish(input: PrintListingSigning): Promise<PrintPublication>;
   function publish(items: readonly PrintBatchItem<PrintListingSigning>[], options?: PrintBatchOptions<PrintPublication>): Promise<PrintBatchResult<PrintPublication>[]>;
-  function publish(input: PrintListingPreparation | readonly PrintBatchItem<PrintListingSigning>[], options: PrintBatchOptions<PrintPublication> = {}) {
-    if (!isPrintBatch<PrintListingSigning>(input)) return signOne(input);
-    return runPrintBatch(input, options, async item => {
+  function publish(input: PrintListingSigning | readonly PrintBatchItem<PrintListingSigning>[], options: PrintBatchOptions<PrintPublication> = {}) {
+    const operation = async (item: PrintListingSigning): Promise<PrintPublication> => {
       if (item.signedArtifact === undefined) return signOne(item.preparation);
       validatePrintPublicationArtifact(item.preparation, item.signedArtifact);
       try {
@@ -86,7 +74,8 @@ export function createPrintsNamespace(config: RareClientConfig, authenticatedFet
       } catch (cause) {
         throw new PrintPublicationError(item.preparation.id, item.signedArtifact, cause);
       }
-    }, item => item.preparation);
+    };
+    return isPrintBatch<PrintListingSigning>(input) ? runPrintBatch(input, options, operation, item => item.preparation) : operation(input);
   }
   const signOne = async (preparation: PrintListingPreparation): Promise<PrintPublication> => {
     const { listing, deadline, dropId } = parsePrintListingTerms(preparation);

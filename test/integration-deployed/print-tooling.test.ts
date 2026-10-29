@@ -128,10 +128,10 @@ describe('print tooling through deployed Rare API', () => {
         try {
           expect(mapped.metadata.sourceUniversalTokenId).toBe(sourceUniversalTokenId);
           expect(mapped).not.toHaveProperty('universal_token_id');
-          const mappedOption = await rare.prints.options.configure(mapped.id, { displayPriceUsdCents: '10000' });
+          const mappedOption = await rare.prints.options.configure({ dropId: mapped.id, input: { displayPriceUsdCents: '10000' } });
           const mappedPreparation = await rare.prints.listings.prepare({ optionId: mappedOption.id, seller: wallet.address,
             listingSalt: keccak256(toHex(randomUUID())), deadline: String(Math.floor(Date.now() / 1000) + 86_400), availableQuantity: '10' });
-          const mappedPublication = await rare.prints.listings.publish(mappedPreparation);
+          const mappedPublication = await rare.prints.listings.publish({ preparation: mappedPreparation });
           const mappedEntry = mappedPublication.signedArtifact.entries[0];
           if (!mappedEntry) throw new Error('Mapped print returned no Listing.');
           expect(mappedEntry.listing.fulfillmentKind).toBe(1);
@@ -208,7 +208,7 @@ describe('print tooling through deployed Rare API', () => {
           const gated = await rare.prints.listings.prepare({ optionId: option.id, seller: wallet.address,
             listingSalt: keccak256(toHex(randomUUID())), deadline: String(Math.floor(Date.now() / 1000) + 86_400),
             availableQuantity: '10', maxQuantityPerCheckout: '2', eligibilityRuleId: rule.id });
-          const gatedPublication = await rare.prints.listings.publish(gated);
+          const gatedPublication = await rare.prints.listings.publish({ preparation: gated });
           const gatedEntry = gatedPublication.signedArtifact.entries[0];
           if (!gatedEntry) throw new Error('Gated print publication returned no Listing.');
           expect((await rare.prints.drops.get(created.id)).options.find(candidate => candidate.listingDigest === gatedEntry.listingDigest))

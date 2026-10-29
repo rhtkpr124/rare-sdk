@@ -12,7 +12,7 @@ import { hashCartListing } from '../../src/sdk/cart-core.js';
 import type { CartListing } from '../../src/sdk/types/cart.js';
 
 describe('print batch authoring over HTTP', () => {
-  it('retains a signed authorization on publish failure and retries without another wallet signature or RPC read', async () => {
+  it.each(['scalar', 'batch'])('retains a signed authorization and recovers through %s without another wallet signature or RPC read', async (mode) => {
     const account = privateKeyToAccount('0x0123456789012345678901234567890123456789012345678901234567890123');
     const cart = getContractAddresses('sepolia').cart;
     if (cart === undefined) throw new Error('No Cart address configured');
@@ -64,8 +64,13 @@ describe('print batch authoring over HTTP', () => {
       const mismatched = await rare.prints.listings.publish([{ key: 'print', input: { preparation: changedPreparation, signedArtifact: failed.signedArtifact } }]);
       expect(mismatched[0]).toMatchObject({ status: 'rejected', error: expect.objectContaining({ message: expect.stringContaining('does not match') }) });
       expect(requests).toHaveLength(previousRequestCount);
-      const retried = await rare.prints.listings.publish([{ key: 'print', input: { preparation, signedArtifact: failed.signedArtifact } }], { previousResults: results });
-      expect(retried[0]).toMatchObject({ key: 'print', status: 'fulfilled', value: { signedArtifact: failed.signedArtifact } });
+      if (mode === 'scalar') {
+        const retried = await rare.prints.listings.publish({ preparation, signedArtifact: failed.signedArtifact });
+        expect(retried.signedArtifact).toEqual(failed.signedArtifact);
+      } else {
+        const retried = await rare.prints.listings.publish([{ key: 'print', input: { preparation, signedArtifact: failed.signedArtifact } }], { previousResults: results });
+        expect(retried[0]).toMatchObject({ key: 'print', status: 'fulfilled', value: { signedArtifact: failed.signedArtifact } });
+      }
       expect(requests.slice(previousRequestCount)).toEqual([`/v1/prints/listings/${preparation.id}/publish`]);
     } finally {
       server.closeAllConnections();
