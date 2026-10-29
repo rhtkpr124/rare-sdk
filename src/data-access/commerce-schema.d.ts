@@ -358,6 +358,17 @@ export interface paths {
                                     images: string[];
                                     /** Format: uuid */
                                     printDropId: string | null;
+                                    printProduct?: {
+                                        id: string;
+                                        paper: string;
+                                        size: string;
+                                        widthInches: number;
+                                        heightInches: number;
+                                        /** @enum {string} */
+                                        sizeCategory: "small" | "medium" | "large" | "extraLarge";
+                                        /** @enum {string} */
+                                        format: "rectangular" | "square";
+                                    };
                                 }[];
                                 /** Format: date-time */
                                 createdAt: string;
@@ -473,6 +484,17 @@ export interface paths {
                                     images: string[];
                                     /** Format: uuid */
                                     printDropId: string | null;
+                                    printProduct?: {
+                                        id: string;
+                                        paper: string;
+                                        size: string;
+                                        widthInches: number;
+                                        heightInches: number;
+                                        /** @enum {string} */
+                                        sizeCategory: "small" | "medium" | "large" | "extraLarge";
+                                        /** @enum {string} */
+                                        format: "rectangular" | "square";
+                                    };
                                 }[];
                                 /** Format: date-time */
                                 createdAt: string;
@@ -2562,7 +2584,6 @@ export interface paths {
                         "application/json": {
                             data: {
                                 id: string;
-                                description: string;
                                 paper: string;
                                 size: string;
                                 widthInches: number;
@@ -2571,6 +2592,7 @@ export interface paths {
                                 sizeCategory: "small" | "medium" | "large" | "extraLarge";
                                 /** @enum {string} */
                                 format: "rectangular" | "square";
+                                description: string;
                                 /** @enum {boolean} */
                                 automaticOrientation: true;
                                 fileRequirements: {
@@ -2634,7 +2656,6 @@ export interface paths {
                         "application/json": {
                             data: {
                                 id: string;
-                                description: string;
                                 paper: string;
                                 size: string;
                                 widthInches: number;
@@ -2643,6 +2664,7 @@ export interface paths {
                                 sizeCategory: "small" | "medium" | "large" | "extraLarge";
                                 /** @enum {string} */
                                 format: "rectangular" | "square";
+                                description: string;
                                 /** @enum {boolean} */
                                 automaticOrientation: true;
                                 fileRequirements: {

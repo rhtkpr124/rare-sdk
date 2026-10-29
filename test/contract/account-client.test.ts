@@ -10,6 +10,7 @@ import type { RareApiClient, RareClient, RareClientConfig } from '../../src/sdk/
 import { createAccountOperations } from '../../src/sdk/account-operations.js';
 import { createMemoryAccountSessionStore } from '../../src/sdk/account-session-store.js';
 import type { RareAccountSession, RareDeviceAuthorization } from '../../src/sdk/types/account.js';
+import type { CartOrder } from '../../src/sdk/types/orders.js';
 
 // Controlled HTTP responses cover client edge cases; deployed-service coverage is separate.
 const account = privateKeyToAccount('0x0123456789012345678901234567890123456789012345678901234567890123');
@@ -212,7 +213,11 @@ describe('account authentication over HTTP', () => {
     const order = { id: 'fixture-order', status: 'CONFIRMED', paymentCurrency: null, paymentAmount: '0',
       createdAt: '2026-10-23T00:00:00Z', updatedAt: '2026-10-23T00:00:00Z', fulfillments: [],
       items: [{ lineIndex: 0, listingDigest: `0x${'11'.repeat(32)}`, sku: `0x${'22'.repeat(32)}`,
-        quantity: '2', fulfillmentStatus: 'SUBMITTED', title: 'Print edition', images: ['https://images.example.test/preview.png'], printDropId: 'fixture-print' }] };
+        quantity: '2', fulfillmentStatus: 'SUBMITTED', title: 'Print edition', images: ['https://images.example.test/preview.png'], printDropId: 'fixture-print',
+        printProduct: { id: 'GLOBAL-FAP-8X12', paper: 'Enhanced matte art paper · 200gsm', size: '8 × 12 in',
+          widthInches: 8, heightInches: 12, sizeCategory: 'small', format: 'rectangular' } },
+      { lineIndex: 1, listingDigest: `0x${'33'.repeat(32)}`, sku: `0x${'44'.repeat(32)}`,
+        quantity: '1', fulfillmentStatus: 'SHIPPED', title: 'Historical print', images: [], printDropId: 'historical-print' }] } satisfies CartOrder;
     handler = async (request, response, body) => {
       expect(request.headers.authorization).toBe(mode === 'bearer' ? 'Bearer access-1' : undefined);
       expect(request.headers.cookie).toBe(mode === 'application' ? 'sr-session=application-owned' : undefined);
@@ -239,7 +244,10 @@ describe('account authentication over HTTP', () => {
     expect(await sdk.shippingAddresses.save(input)).toEqual({ id: input.id, label: input.label, details, isDefault: true });
     expect(await sdk.shippingAddresses.delete('fixture')).toBeUndefined();
     expect((await sdk.cart.orders.list({ perPage: 2 })).data[0]?.items).toEqual(order.items);
-    expect((await sdk.cart.orders.get(order.id)).items).toEqual(order.items);
+    const fetchedOrder = await sdk.cart.orders.get(order.id);
+    expect(fetchedOrder.items).toEqual(order.items);
+    expect(fetchedOrder.items?.[0]?.printProduct).toEqual(order.items[0]?.printProduct);
+    expect(fetchedOrder.items?.[1]).not.toHaveProperty('printProduct');
     expect('orders' in sdk).toBe(false);
   });
 
