@@ -16,6 +16,9 @@ import { cartAbi } from '../contracts/abis/cart.js';
 import { getAddress, isAddressEqual } from 'viem';
 import { getContractAddresses } from '../contracts/addresses.js';
 import { resolveChainFromPublicClient } from './wallet-shell.js';
+import { validatePrintEstimateInput } from './print-estimates-core.js';
+import { createPrintReleaseManifestsNamespace } from './print-release-manifests.js';
+import { featureError } from './feature-error.js';
 
 export function createPrintsNamespace(config: RareClientConfig, authenticatedFetch?: typeof globalThis.fetch): PrintsNamespace {
   const publicClient = createApiClient(config.apiBaseUrl, config.apiFetch);
@@ -110,6 +113,14 @@ export function createPrintsNamespace(config: RareClientConfig, authenticatedFet
     }
   };
   return {
+    estimates: {
+      async create(input, options = {}) {
+        const validation = validatePrintEstimateInput(input);
+        if (!validation.success) throw featureError('invalid_print_estimate');
+        return data(client.POST('/v1/prints/estimates', { body: input, signal: options.signal }));
+      },
+    },
+    releaseManifests: createPrintReleaseManifestsNamespace(client),
     products: {
       list: (options = {}) => data(publicClient.GET('/v1/prints/products', { signal: options.signal })),
       get: (id, options = {}) => data(publicClient.GET('/v1/prints/products/{id}', { params: { path: { id } }, signal: options.signal })),

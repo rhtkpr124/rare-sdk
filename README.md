@@ -972,6 +972,33 @@ is automatic. `fileRequirements` reports accepted content types and maximum byte
 Use the selected product `id` in the existing draft `specificationId`
 field. Product responses omit prices, shipping and destination country lists.
 
+Use `rare.prints.estimates.create({ specificationId: product.id,
+destinationCountryCode: 'US' })` to estimate production and Standard shipping
+before preparing a sale. `copies` defaults to one and supports 1–1000. The returned
+`PrintEstimate` contains separate USD cent totals for all requested copies,
+`quotedAt`, `expiresAt`, and the country/copy/shipping assumptions. It excludes
+artwork price, taxes, and checkout fees; final collector checkout costs may differ.
+The request uses account authentication and does not create a drop, order,
+payment, or wallet signature. It accepts `{ signal }` as a second argument.
+
+Private files can be prepared before a Release reveals through
+`rare.prints.releaseManifests`. `save(id, input)` upserts at most 100 explicit entry
+associations per request; omitted entries remain unchanged and `removeEntryIds`
+deletes only the named associations. Keep the manifest ID, stable entry IDs,
+`idempotencyKey`, and request unchanged on a retry. Start with `expectedVersion: 0`
+and use the returned version for the next edit. Each entry has a nullable final
+`metadataUri` and nullable private `productionUploadKey`, so incomplete preparation
+can be saved. A save returns its committed header, changed entries, and removed
+entry IDs; it does not return the entire collection.
+
+Resume with `lookup({ chainId: '11155111', releaseContractAddress })`, then
+`get(id, { page, perPage, expectedVersion })`. Reads return `{ data, pagination }`;
+pin `expectedVersion` while loading multiple pages and reload after a conflict.
+These methods use the account session and accept `{ signal }` separately. Release
+addresses are preparation context, not verified token ownership. Saving never
+infers token IDs from row order, publishes a print, or signs an offer. Revealed
+token association and artist review/publication remain separate operations.
+
 Run `npm run test:integration:print-products` against a deployment containing the
 product endpoints for a read-only catalog check. This check requires only
 `RARE_API_BASE_URL`.

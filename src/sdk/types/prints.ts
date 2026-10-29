@@ -2,6 +2,25 @@ import type { paths } from '../../data-access/commerce-schema.js';
 import type { CartListingRootArtifact } from './cart.js';
 import type { Hex } from 'viem';
 import type { SearchPageResponse } from '../api.js';
+import type { RareAuthRequestOptions } from './account.js';
+
+export type CreatePrintEstimate = paths['/v1/prints/estimates']['post']['requestBody']['content']['application/json'];
+/** Provider totals for every requested copy. Artwork price, taxes and checkout fees are excluded. */
+export type PrintEstimate = paths['/v1/prints/estimates']['post']['responses'][200]['content']['application/json']['data'];
+export type SavePrintReleaseManifest = paths['/v1/prints/release-manifests/{id}']['put']['requestBody']['content']['application/json'];
+export type PrintReleaseManifestMutation = paths['/v1/prints/release-manifests/{id}']['put']['responses'][200]['content']['application/json']['data'];
+export type PrintReleaseManifestEntry = PrintReleaseManifestMutation['entries'][number];
+export type PrintReleaseManifestQuery = NonNullable<paths['/v1/prints/release-manifests/{id}']['get']['parameters']['query']>;
+export type PrintReleaseManifestPage = paths['/v1/prints/release-manifests/{id}']['get']['responses'][200]['content']['application/json'];
+export type LookupPrintReleaseManifest = NonNullable<paths['/v1/prints/release-manifests/lookup']['get']['parameters']['query']>;
+export type PrintReleaseManifestHeader = NonNullable<paths['/v1/prints/release-manifests/lookup']['get']['responses'][200]['content']['application/json']['data']>;
+
+/** Private preparation only. Saving a manifest never signs, publishes, or associates a token by row order. */
+export type PrintReleaseManifestsNamespace = {
+  save: (id: string, input: SavePrintReleaseManifest, options?: RareAuthRequestOptions) => Promise<PrintReleaseManifestMutation>;
+  get: (id: string, query?: PrintReleaseManifestQuery, options?: RareAuthRequestOptions) => Promise<PrintReleaseManifestPage>;
+  lookup: (query: LookupPrintReleaseManifest, options?: RareAuthRequestOptions) => Promise<PrintReleaseManifestHeader | null>;
+};
 
 /** Every draft requires a chain and private production file. NFT source attribution is optional. */
 export type CreatePrintDrop = paths['/v1/prints/drops']['post']['requestBody']['content']['application/json'];
@@ -53,6 +72,10 @@ export type PrintPublishOperation = {
 
 /** Print authoring uses the account session; purchasing uses rare.cart.checkout. */
 export type PrintsNamespace = {
+  estimates: {
+    create: (input: CreatePrintEstimate, options?: RareAuthRequestOptions) => Promise<PrintEstimate>;
+  };
+  releaseManifests: PrintReleaseManifestsNamespace;
   products: {
     list: (options?: PrintProductRequestOptions) => Promise<PrintProduct[]>;
     get: (id: string, options?: PrintProductRequestOptions) => Promise<PrintProduct>;
