@@ -33,7 +33,7 @@ const localForkStartupTimeoutMs = 30_000;
 const forkSellerPrivateKey = generatePrivateKey();
 const forkBuyerPrivateKey = generatePrivateKey();
 const forkAccountBalance = '0x3635c9adc5dea00000';
-const tokenUri = 'ipfs://bafybeidznwopf6bnfakqbertnhohgh65usqlo7bhnehycurg4xmc5ebnm4/fork-sdk.json';
+const tokenUri = 'ipfs://bafybeifveb3j4ajfqefjrcsyn5q3zdznbf45szryidgwqlqvipidw5foh4/fork-sdk.json';
 const releaseFixtureRuntimePrefix = '60003560e01c80638da5cb5b14601f578063755edd1714603d5760006000fd5b73';
 const releaseFixtureRuntimeSuffix = '60005260206000f35b600160005260206000f3';
 
