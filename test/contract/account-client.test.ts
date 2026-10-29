@@ -5,8 +5,6 @@ import { privateKeyToAccount } from 'viem/accounts';
 import { createPublicClient, http } from 'viem';
 import { sepolia } from 'viem/chains';
 import { createSiweMessage } from 'viem/siwe';
-import { createPublicClient, http } from 'viem';
-import { sepolia } from 'viem/chains';
 import { createRareClient } from '../../src/sdk/client.js';
 import type { RareApiClient, RareClient, RareClientConfig } from '../../src/sdk/types/client.js';
 import { createAccountOperations } from '../../src/sdk/account-operations.js';
