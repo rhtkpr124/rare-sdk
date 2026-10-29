@@ -43,11 +43,11 @@ export type PrintPrepareOperation = {
   (items: readonly PrintBatchItem<PreparePrintListing>[], options?: PrintBatchOptions<PrintListingPreparation>): Promise<PrintBatchResult<PrintListingPreparation>[]>;
 };
 export type PrintSubmitSignedOperation = {
-  (input: PrintListingPublication): Promise<PrintListingPreparation>;
+  (preparationId: string, artifact: SignedPrintListingArtifact): Promise<PrintListingPreparation>;
   (items: readonly PrintBatchItem<PrintListingPublication>[], options?: PrintBatchOptions<PrintListingPreparation>): Promise<PrintBatchResult<PrintListingPreparation>[]>;
 };
 export type PrintPublishOperation = {
-  (input: PrintListingSigning): Promise<PrintPublication>;
+  (preparation: PrintListingPreparation): Promise<PrintPublication>;
   (items: readonly PrintBatchItem<PrintListingSigning>[], options?: PrintBatchOptions<PrintPublication>): Promise<PrintBatchResult<PrintPublication>[]>;
 };
 

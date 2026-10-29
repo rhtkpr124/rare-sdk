@@ -64,13 +64,8 @@ describe('print batch authoring over HTTP', () => {
       const mismatched = await rare.prints.listings.publish([{ key: 'print', input: { preparation: changedPreparation, signedArtifact: failed.signedArtifact } }]);
       expect(mismatched[0]).toMatchObject({ status: 'rejected', error: expect.objectContaining({ message: expect.stringContaining('does not match') }) });
       expect(requests).toHaveLength(previousRequestCount);
-      if (mode === 'scalar') {
-        const retried = await rare.prints.listings.publish({ preparation, signedArtifact: failed.signedArtifact });
-        expect(retried.signedArtifact).toEqual(failed.signedArtifact);
-      } else {
-        const retried = await rare.prints.listings.publish([{ key: 'print', input: { preparation, signedArtifact: failed.signedArtifact } }], { previousResults: results });
-        expect(retried[0]).toMatchObject({ key: 'print', status: 'fulfilled', value: { signedArtifact: failed.signedArtifact } });
-      }
+      const retried = await rare.prints.listings.publish([{ key: 'print', input: { preparation, signedArtifact: failed.signedArtifact } }], { previousResults: results });
+      expect(retried[0]).toMatchObject({ key: 'print', status: 'fulfilled', value: { signedArtifact: failed.signedArtifact } });
       expect(requests.slice(previousRequestCount)).toEqual([`/v1/prints/listings/${preparation.id}/publish`]);
     } finally {
       server.closeAllConnections();
