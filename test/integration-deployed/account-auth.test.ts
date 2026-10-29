@@ -270,10 +270,11 @@ describe('account integration with deployed services', () => {
         expect(await client.profile.get()).toEqual(patched);
 
         const publicApi = createRareClient({ apiBaseUrl: apiBaseUrl });
-        const expectedPublicFields = { ...fields, bio: patched.profile.bio };
+        const expectedPublicFields = { ...fields, bio: patched.profile.bio, twitterlink: fields.twitterLink, discordlink: fields.discordLink, instagramlink: fields.instagramLink, youtubelink: fields.youtubeLink, masthead_universal_token_id: fields.mastheadUniversalTokenId };
+        const publicFields = Object.entries(expectedPublicFields).filter(([key]) => !['twitterLink', 'discordLink', 'instagramLink', 'youtubeLink', 'mastheadUniversalTokenId'].includes(key));
         const indexed = await waitForIndexedProfile(
           () => publicApi.user.get(initial.address),
-          profile => profile.username === username && Object.entries(expectedPublicFields).every(
+          profile => profile.username === username && publicFields.every(
             ([key, value]) => Object.entries(profile).some(([publicKey, publicValue]) => publicKey === key && publicValue === value),
           ),
         );

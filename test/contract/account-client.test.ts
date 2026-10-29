@@ -56,6 +56,38 @@ afterEach(async () => {
 });
 
 describe('account authentication over HTTP', () => {
+
+  it('keeps public messaging anonymous unless authenticated visibility is explicitly requested', async () => {
+    const storage = createMemoryAccountSessionStore();
+    await storage.set(session());
+    const sdk = client(storage);
+    const roomId = '11111111-1111-4111-8111-111111111111';
+    const headers: Array<string | undefined> = [];
+    handler = async (request, response) => {
+      // eslint-disable-next-line functional/immutable-data
+      headers.push(request.headers.authorization);
+      expect(request.url).toBe(`/v1/messaging/public/rooms/${roomId}/messages?limit=5`);
+      reply(response, { room: { id: roomId, context: { type: 'auction', id: 'fixture' }, title: 'Room', latestSequence: '0' }, messages: [], nextCursor: null });
+    };
+    await sdk.messaging.public.history(roomId, { limit: 5 });
+    await sdk.messaging.public.history(roomId, { limit: 5, authenticated: true });
+    expect(headers).toEqual([undefined, 'Bearer access-1']);
+    expect(sdk.user).not.toHaveProperty('resolve');
+    expect(sdk.messaging).not.toHaveProperty('historyPublic');
+    expect(sdk.messaging).not.toHaveProperty('sendPublic');
+  });
+
+  it('maps camelCase profile fields in both request and response over HTTP', async () => {
+    const storage = createMemoryAccountSessionStore();
+    await storage.set(session());
+    handler = async (_request, response, body) => {
+      expect(JSON.parse(body)).toEqual({ profile: { twitterlink: '', masthead_universal_token_id: '1-0xabc-2' } });
+      reply(response, { data: { ...profile, profile: { ...profile.profile, twitterlink: '', masthead_universal_token_id: '1-0xabc-2' } } });
+    };
+    expect((await client(storage).profile.update({ profile: { twitterLink: '', mastheadUniversalTokenId: '1-0xabc-2' } })).profile).toMatchObject({ twitterLink: '', mastheadUniversalTokenId: '1-0xabc-2' });
+  });
+
+
   it.each(['bearer', 'application'])('preserves JSON headers for account writes through %s authentication', async (mode) => {
     const storage = createMemoryAccountSessionStore();
     await storage.set(session());
