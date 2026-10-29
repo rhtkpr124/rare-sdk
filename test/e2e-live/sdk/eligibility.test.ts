@@ -87,8 +87,7 @@ describe.sequential('SDK eligibility against the deployed Rare API', () => {
       } });
       try {
         for (const listing of [rewardListing, alternativeListing]) {
-          await scenario.rare.cart.purchaseEligibility.listingRequirements.set({ chainId: String(scenario.chainId),
-            cartAddress: scenario.cart, listingDigest: listing.listingDigest, ruleId: rule.id });
+          await scenario.rare.cart.purchaseEligibility.listingRequirements.set({ listingDigest: listing.listingDigest, ruleId: rule.id });
         }
         const claims = () => rare.cart.purchaseEligibility.claims.list({ ruleId: rule.id, perPage: 100 }).then(page => page.data);
         const preview = (listingDigest: typeof rewardListing.listingDigest) => rare.cart.checkout.prepare({

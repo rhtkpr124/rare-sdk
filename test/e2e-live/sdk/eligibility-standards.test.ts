@@ -107,7 +107,7 @@ describe.sequential('quantity-aware eligibility across token standards', () => {
           source: { chainId: String(sepolia.id), tokenContract: source.contract, tokenIds: [String(source.tokenId)] },
           targets: [{ sku: rewardListing.listing.sku }] } });
         try {
-          await creator.rare.cart.purchaseEligibility.listingRequirements.set({ chainId: String(sepolia.id), cartAddress: creator.cart,
+          await creator.rare.cart.purchaseEligibility.listingRequirements.set({
             listingDigest: rewardListing.listingDigest, ruleId: rule.id });
           const claims = () => buyer.cart.purchaseEligibility.claims.list({ ruleId: rule.id, perPage: 100 }).then(page => page.data);
           const creatorClaims = () => creator.rare.cart.purchaseEligibility.claims.list({ ruleId: rule.id, perPage: 100 }).then(page => page.data);

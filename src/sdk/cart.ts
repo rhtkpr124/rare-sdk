@@ -87,7 +87,7 @@ export function createCartNamespace(
   };
 
   return {
-    purchaseEligibility: createEligibilityNamespace(config, authenticatedFetch),
+    purchaseEligibility: createEligibilityNamespace(config, { chainId: chainId.toString(), cartAddress: requireCart }, authenticatedFetch),
     catalog: { products: api.catalog.products, variants: api.catalog.variants },
     approval: {
       status({ contract: tokenContract, owner }) {

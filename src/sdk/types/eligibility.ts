@@ -1,4 +1,4 @@
-import type { Address, Hex } from 'viem';
+import type { Hex } from 'viem';
 import type { SearchPageResponse } from '../api.js';
 
 /**
@@ -41,8 +41,6 @@ export type EligibilityClaim = {
 };
 
 export type EligibilityListingScope = {
-  chainId: string;
-  cartAddress: Address;
   listingDigest: Hex;
 };
 
