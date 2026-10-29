@@ -75,7 +75,7 @@ export type CartVariantSearchResult = CartApiPage<CartCatalogVariant>;
 
 export type CartApiPage<T> = {
   data: T[];
-  hasNextPage: boolean;
+  pagination: { page: number; perPage: number; hasNextPage: boolean };
 };
 
 export type CartApiListing = {
@@ -114,7 +114,7 @@ export type CartApiListingRoot = {
 };
 
 export type CartApiListingSearchParams = {
-  q?: string;
+  query?: string;
   sku?: Hex;
   seller?: Address;
   fulfillmentKind?: CartFulfillmentKind;

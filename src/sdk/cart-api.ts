@@ -1,3 +1,4 @@
+import { cartCatalogPage } from './cart-pagination-core.js';
 import { getAddress, isAddress, isHex, type Address, type Hex } from 'viem';
 import { createCartApiClient } from '../data-access/client.js';
 import type { RareApiOptions } from './api.js';
@@ -85,10 +86,10 @@ export function createCartApiNamespace(
         protectedClient.POST(`/v1/cart/products/${encodeURIComponent(id)}/publish`, {}), 'Rare API did not return the published Product.',
       )),
       search: async (params: CartProductSearchParams = {}): Promise<CartApiPage<CartApiProduct>> => {
-        const page = await getData<CartApiPage<CartApiProduct>>(
+        const page = await getData<{ data: CartApiProduct[]; hasNextPage: boolean }>(
           client.GET('/v1/cart/products', { params: { query: params } }), 'Rare API did not return Cart Products.',
         );
-        return { ...page, data: page.data.map(normalizeProduct) };
+        return cartCatalogPage({ ...page, data: page.data.map(normalizeProduct) }, params);
       },
       get: async (id: string): Promise<CartApiProduct> => normalizeProduct(await getWrappedData(
         client.GET(`/v1/cart/products/${encodeURIComponent(id)}`, {}), 'Rare API did not return the Cart Product.',
@@ -98,10 +99,10 @@ export function createCartApiNamespace(
       add: async (productId: string, input: AddCartVariants): Promise<CartApiProduct> => normalizeProduct(await getWrappedData(
         protectedClient.POST(`/v1/cart/products/${encodeURIComponent(productId)}/variants`, { body: input }), 'Rare API did not return the configured Variants.',
       )),
-      search: async (params: CartVariantSearchParams = {}): Promise<CartApiPage<CartCatalogVariant>> => getData(
+      search: async (params: CartVariantSearchParams = {}): Promise<CartApiPage<CartCatalogVariant>> => cartCatalogPage(await getData<{ data: CartCatalogVariant[]; hasNextPage: boolean }>(
         client.GET('/v1/cart/variants', { params: { query: buildCartVariantSearchQuery(params, scope.chainId) } }),
         'Rare API did not return Cart Variants.',
-      ),
+      ), params),
     },
   };
 
@@ -131,10 +132,13 @@ export function createCartApiNamespace(
       );
       return wire.listings.map(normalizeListing);
     },
-    search: async (params: CartApiListingSearchParams = {}): Promise<CartApiListingSearchResult> => getData(
-      client.GET('/v1/cart/listings/search', { params: { query: { ...params, chainId, cartAddress: cartAddress() } } }),
+    search: async (params: CartApiListingSearchParams = {}): Promise<CartApiListingSearchResult> => {
+      const { query, ...filters } = params;
+      return getData(
+      client.GET('/v1/cart/listings/search', { params: { query: { ...filters, q: query, chainId, cartAddress: cartAddress() } } }),
       'Rare API did not return Cart Listing search results.',
-    ),
+    );
+    },
     get: async (listingDigest: Hex): Promise<CartApiListing> => getWrappedData(
       client.GET(`/v1/cart/listings/${encodeURIComponent(listingDigest)}`, { params: { query: { chainId, cartAddress: cartAddress() } } }),
       'Rare API did not return the Cart Listing.',

@@ -116,9 +116,9 @@ export type CartNamespace = {
     variants: CartApiNamespace['catalog']['variants'];
   };
   approval: {
-    status: (tokenContract: Address, owner: Address) => Promise<boolean>;
-    approve: (tokenContract: Address) => Promise<{ txHash?: Hash; receipt?: TransactionReceipt }>;
-    revoke: (tokenContract: Address) => Promise<{ txHash?: Hash; receipt?: TransactionReceipt }>;
+    status: (params: { contract: Address; owner: Address }) => Promise<boolean>;
+    approve: (params: { contract: Address }) => Promise<{ txHash?: Hash; receipt?: TransactionReceipt }>;
+    revoke: (params: { contract: Address }) => Promise<{ txHash?: Hash; receipt?: TransactionReceipt }>;
   };
   listing: {
     prepare: (intent: CartListingIntent) => Promise<CartListingPreparation>;

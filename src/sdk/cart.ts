@@ -86,7 +86,7 @@ export function createCartNamespace(
   return {
     catalog: { products: api.catalog.products, variants: api.catalog.variants },
     approval: {
-      status(tokenContract, owner) {
+      status({ contract: tokenContract, owner }) {
         return publicClient.readContract({
           address: tokenContract,
           abi: approvalAbi,
@@ -94,8 +94,8 @@ export function createCartNamespace(
           args: [owner, requireCart()],
         });
       },
-      approve(tokenContract) { return setApproval(tokenContract, true); },
-      revoke(tokenContract) { return setApproval(tokenContract, false); },
+      approve({ contract: tokenContract }) { return setApproval(tokenContract, true); },
+      revoke({ contract: tokenContract }) { return setApproval(tokenContract, false); },
     },
     listing: {
       async prepare(intent) {
