@@ -39,11 +39,11 @@ export type PrintPrepareOperation = {
   (input: PreparePrintListing): Promise<PrintListingPreparation>;
   (items: readonly PrintBatchItem<PreparePrintListing>[], options?: PrintBatchOptions<PrintListingPreparation>): Promise<PrintBatchResult<PrintListingPreparation>[]>;
 };
-export type PrintPublishOperation = {
+export type PrintSubmitSignedOperation = {
   (preparationId: string, artifact: SignedPrintListingArtifact): Promise<PrintListingPreparation>;
   (items: readonly PrintBatchItem<PrintListingPublication>[], options?: PrintBatchOptions<PrintListingPreparation>): Promise<PrintBatchResult<PrintListingPreparation>[]>;
 };
-export type PrintSignAndPublishOperation = {
+export type PrintPublishOperation = {
   (preparation: PrintListingPreparation): Promise<PrintPublication>;
   (items: readonly PrintBatchItem<PrintListingSigning>[], options?: PrintBatchOptions<PrintPublication>): Promise<PrintBatchResult<PrintPublication>[]>;
 };
@@ -64,7 +64,7 @@ export type PrintsNamespace = {
   options: { configure: PrintConfigureOperation };
   listings: {
     prepare: PrintPrepareOperation;
+    submitSigned: PrintSubmitSignedOperation;
     publish: PrintPublishOperation;
-    signAndPublish: PrintSignAndPublishOperation;
   };
 };

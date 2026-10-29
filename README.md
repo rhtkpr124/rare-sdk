@@ -958,7 +958,7 @@ their URLs in `print.images`. Every draft requires an explicit `chainId` and
 `drop.metadata.sourceUniversalTokenId`. The SDK does not publish master download URLs.
 
 Prepare seller terms with `rare.prints.listings.prepare`, then call
-`rare.prints.listings.signAndPublish(preparation)` to sign and publish the frozen
+`rare.prints.listings.publish(preparation)` to sign and publish the frozen
 terms. This helper checks the chain, configured Cart contract, seller, and Listing
 digest before requesting the wallet signature.
 

@@ -9,9 +9,9 @@ access, or direct Typesense access.
 
 Print authoring supports the same methods for one item or a batch. Pass an array
 of `{ key, input }` items to `rare.prints.drops.create`, `options.configure`,
-`listings.prepare`, `listings.publish`, or `listings.signAndPublish`. Configuration
-inputs contain `{ dropId, input }`; publication inputs contain
-`{ preparationId, artifact }`; signing inputs contain `{ preparation, signedArtifact? }`.
+`listings.prepare`, `listings.publish`, or `listings.submitSigned`. Configuration
+inputs contain `{ dropId, input }`; signed-submission inputs contain
+`{ preparationId, artifact }`; publication inputs contain `{ preparation, signedArtifact? }`.
 
 Batch results retain input order and include an `inputDigest` binding the saved
 result to its inputs. Results use `{ key, inputDigest, status: 'fulfilled', value }` or
@@ -24,7 +24,7 @@ Listing's `listingSalt` before making requests. The SDK never replaces them.
 If publication fails after signing, retain the rejected result's `signedArtifact`
 and supply it with that item's `preparation` on retry. This retries publication
 without another signature. Single-item callers can catch `PrintPublicationError`
-and retry `listings.publish(error.preparationId, error.signedArtifact)`.
+and retry `listings.submitSigned(error.preparationId, error.signedArtifact)`.
 
 Use `rare.cart.listing.search({ eligibility: 'eligible' })` for an authenticated
 catalog of open Listings and gated Listings the account can purchase. The server
@@ -290,7 +290,7 @@ configuration out of creator controls.
    the artwork price. This does not call Prodigi. Current print Listings settle in USDC;
    This does not restrict the buyer's supported payment currencies.
 6. Prepare the frozen terms with `rare.prints.listings.prepare`, then call
-   `rare.prints.listings.signAndPublish(preparation)`.
+   `rare.prints.listings.publish(preparation)`.
    Set `eligibilityRuleId` here to publish a claim-gated Listing atomically.
    The rule must belong to the creator and target this print option's SKU.
    Set `maxQuantityPerCheckout` to the maximum copies in one purchase.

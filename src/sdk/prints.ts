@@ -64,9 +64,9 @@ export function createPrintsNamespace(config: RareClientConfig, authenticatedFet
     };
     return isPrintBatch<PreparePrintListing>(input) ? runPrintBatch(input, options, operation) : operation(input);
   }
-  function publish(id: string, artifact: SignedPrintListingArtifact): Promise<PrintListingPreparation>;
-  function publish(input: readonly PrintBatchItem<PrintListingPublication>[], options?: PrintBatchOptions<PrintListingPreparation>): Promise<PrintBatchResult<PrintListingPreparation>[]>;
-  function publish(input: string | readonly PrintBatchItem<PrintListingPublication>[], options?: SignedPrintListingArtifact | PrintBatchOptions<PrintListingPreparation>) {
+  function submitSigned(id: string, artifact: SignedPrintListingArtifact): Promise<PrintListingPreparation>;
+  function submitSigned(input: readonly PrintBatchItem<PrintListingPublication>[], options?: PrintBatchOptions<PrintListingPreparation>): Promise<PrintBatchResult<PrintListingPreparation>[]>;
+  function submitSigned(input: string | readonly PrintBatchItem<PrintListingPublication>[], options?: SignedPrintListingArtifact | PrintBatchOptions<PrintListingPreparation>) {
     if (typeof input === 'string') {
       if (options === undefined || !('signature' in options)) throw new Error('A signed artifact is required for publication.');
       return publishOne(input, options);
@@ -74,9 +74,9 @@ export function createPrintsNamespace(config: RareClientConfig, authenticatedFet
     if (options !== undefined && 'signature' in options) throw new Error('Batch publication expects batch options.');
     return runPrintBatch(input, options ?? {}, item => publishOne(item.preparationId, item.artifact));
   }
-  function signAndPublish(preparation: PrintListingPreparation): Promise<PrintPublication>;
-  function signAndPublish(items: readonly PrintBatchItem<PrintListingSigning>[], options?: PrintBatchOptions<PrintPublication>): Promise<PrintBatchResult<PrintPublication>[]>;
-  function signAndPublish(input: PrintListingPreparation | readonly PrintBatchItem<PrintListingSigning>[], options: PrintBatchOptions<PrintPublication> = {}) {
+  function publish(preparation: PrintListingPreparation): Promise<PrintPublication>;
+  function publish(items: readonly PrintBatchItem<PrintListingSigning>[], options?: PrintBatchOptions<PrintPublication>): Promise<PrintBatchResult<PrintPublication>[]>;
+  function publish(input: PrintListingPreparation | readonly PrintBatchItem<PrintListingSigning>[], options: PrintBatchOptions<PrintPublication> = {}) {
     if (!isPrintBatch<PrintListingSigning>(input)) return signOne(input);
     return runPrintBatch(input, options, async item => {
       if (item.signedArtifact === undefined) return signOne(item.preparation);
@@ -128,6 +128,6 @@ export function createPrintsNamespace(config: RareClientConfig, authenticatedFet
     },
     releases: { list: input => data(publicClient.GET('/v1/prints/releases', { params: { query: input } })) },
     options: { configure },
-    listings: { prepare, publish, signAndPublish },
+    listings: { prepare, submitSigned, publish },
   };
 }
