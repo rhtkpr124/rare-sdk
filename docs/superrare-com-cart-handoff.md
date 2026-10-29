@@ -312,6 +312,10 @@ requests. Keep platform fee rules, provider credentials, and administrative
 configuration out of creator controls.
 
 1. Load paper and size choices with `rare.prints.products.list()`. Read one product with `rare.prints.products.get(id, { signal })`. Both reads are public. Products include provider recommended print-area dimensions, automatic orientation, and `fileRequirements` for accepted content types and maximum bytes. Send the selected product ID in the existing `specificationId` draft field.
+
+   Creator estimates use authenticated `rare.prints.estimates.create({ specificationId: product.id, destinationCountryCode, copies: 1, shippingMethod: 'Standard' }, { signal })`. Show the separate production and shipping USD totals with their reference country, copy count, and expiry. They exclude artwork price, taxes, and checkout fees and are not guaranteed checkout prices or deductions from the artist's artwork proceeds.
+
+   Pre-reveal private file preparation uses `rare.prints.releaseManifests.save(id, input)`, `.get(id, query, { signal })`, and `.lookup({ chainId, releaseContractAddress }, { signal })`. Save at most 100 upserts/removals per request, carry the returned version forward, retain the original mutation identity for retries, and preserve stable entry IDs. Omitted entries are retained. Paginated reads return the manifest header and page entries in `data`, plus `pagination`; use `expectedVersion` across pages. This is preparation only: no row-to-token inference, signatures, print publication, or sales before reveal. The SDK returns owner-scoped upload keys, never production storage references.
 2. Upload the master with
    `rare.upload(file, filename, { access: 'private' })`.
 3. Upload display photos through the same uploader with `access: 'public'`.
