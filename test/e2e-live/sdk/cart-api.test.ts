@@ -44,7 +44,7 @@ describe.sequential('SDK Cart rare-api integration', () => {
     const { rare, seller, cart } = scenario;
     const collection = await rare.collection.deploy.erc1155({ name: 'Cart capacity', symbol: 'CAP', baseUri: '' });
     const edition = await rare.collection.erc1155.createToken({ contract: collection.contract, maxSupply: 64n,
-      tokenUri: 'data:application/json,%7B%22name%22%3A%22Cart%20capacity%22%7D' });
+      tokenUri: `data:application/json,${encodeURIComponent(JSON.stringify({ name: 'Cart capacity', image: scenario.imageUrl }))}` });
     await rare.collection.erc1155.setMinterApproval({ contract: collection.contract, minter: cart, approved: true });
     const product = await rare.cart.catalog.products.create({ metadata: { title: '64-item capacity fixture' } });
     try {
@@ -82,7 +82,7 @@ describe.sequential('SDK Cart rare-api integration', () => {
   it('refuses to release a signed checkout whose mint execution exceeds 12 million gas', async () => {
     const { rare, seller, cart, publicClient } = scenario;
     const collection = await rare.collection.deploy.lazyErc721({ name: 'Cart gas policy', symbol: 'GAS', maxTokens: 512n });
-    await rare.collection.prepareLazyMint({ contract: collection.contract, baseUri: 'data:application/json,%7B%22name%22%3A%22Gas%20policy%22%7D', amount: 512n, minter: cart });
+    await rare.collection.prepareLazyMint({ contract: collection.contract, baseUri: `data:application/json,${encodeURIComponent(JSON.stringify({ name: 'Gas policy', image: scenario.imageUrl }))}`, amount: 512n, minter: cart });
     const product = await rare.cart.catalog.products.create({ metadata: { title: 'Cart gas policy fixture' } });
     try {
       const configured = await rare.cart.catalog.variants.add(product.id, { variants: [{ metadata: {
