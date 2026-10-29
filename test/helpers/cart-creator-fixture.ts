@@ -1,3 +1,4 @@
+import { downloadTestImage } from './test-image.js';
 import { randomUUID } from 'node:crypto';
 import { createWalletClient, http, isHex, zeroAddress } from 'viem';
 import { sepolia } from 'viem/chains';
@@ -25,8 +26,9 @@ export async function createCreatorCartScenario() {
     signMessage: message => seller.signMessage({ message }) });
   try {
     await rare.profile.get();
+    const image = await rare.upload(await downloadTestImage(), 'cart-artwork.jpg', { contentType: 'image/jpeg' });
     const collection = await rare.collection.deploy.erc721({ name: `SDK Cart ${runId}`, symbol: 'SCART', maxTokens: 2 });
-    const tokenUri = `data:application/json,${encodeURIComponent(JSON.stringify({ name: `SDK Cart ${runId}` }))}`;
+    const tokenUri = `data:application/json,${encodeURIComponent(JSON.stringify({ name: `SDK Cart ${runId}`, image: image.url }))}`;
     const tokens = [
       await rare.collection.mint({ contract: collection.contract, tokenUri }),
       await rare.collection.mint({ contract: collection.contract, tokenUri }),
@@ -62,7 +64,7 @@ export async function createCreatorCartScenario() {
     const skuA = product.variants[0];
     if (!skuA) throw new Error('Creator Product did not return its variants.');
     return { rare, publicClient, cart, chainId, runId, apiBaseUrl, product, skuA, seller,
-      createdListings: listings.map(listing => ({ listingDigest: hashCartListing(listing, BigInt(chainId), cart) })),
+      imageUrl: image.url, createdListings: listings.map(listing => ({ listingDigest: hashCartListing(listing, BigInt(chainId), cart) })),
       listings, listingNonce, artifact, signedArtifact, ingested, listingIntent };
   } catch (error) {
     await rare.auth.logout();
