@@ -82,7 +82,7 @@ describe('public durable messaging against deployed services', () => {
         expect((await api.messaging.public.history(room.id)).messages.find(message => message.id === sent.id)?.body).toBe('Updated public SDK message');
         await account.messaging.messageCommand(room.id, sent.id, { action: 'reaction', emoji: '❤️', active: true });
         expect((await api.messaging.public.history(room.id)).messages.find(message => message.id === sent.id)?.reactions).toContainEqual({ emoji: '❤️', count: 1, reacted: false });
-        expect((await account.messaging.public.history(room.id, { authenticated: true })).messages.find(message => message.id === sent.id)?.reactions).toContainEqual({ emoji: '❤️', count: 1, reacted: true });
+        expect((await account.messaging.public.history(room.id, {  }, { authenticated: true })).messages.find(message => message.id === sent.id)?.reactions).toContainEqual({ emoji: '❤️', count: 1, reacted: true });
         await account.messaging.messageCommand(room.id, sent.id, { action: 'reaction', emoji: '❤️', active: false });
         expect((await api.messaging.public.history(room.id)).messages.find(message => message.id === sent.id)?.reactions.some(reaction => reaction.emoji === '❤️')).toBe(false);
         const inbox = await account.messaging.inbox();
@@ -99,8 +99,8 @@ describe('public durable messaging against deployed services', () => {
           const joined = await other.messaging.public.send(room.id, { clientMessageId: randomUUID(), body: 'SDK report-and-hide fixture', mentionUserIds: [] });
           try {
             await other.messaging.messageCommand(room.id, sent.id, { action: 'report', reason: 'Dedicated SDK integration fixture', hide: true });
-            expect((await other.messaging.public.history(room.id, { authenticated: true })).messages.find(message => message.id === sent.id)).toMatchObject({ reported: true, collapsed: true });
-            expect((await account.messaging.public.history(room.id, { authenticated: true })).messages.find(message => message.id === sent.id)).toMatchObject({ reported: false, collapsed: false });
+            expect((await other.messaging.public.history(room.id, {  }, { authenticated: true })).messages.find(message => message.id === sent.id)).toMatchObject({ reported: true, collapsed: true });
+            expect((await account.messaging.public.history(room.id, {  }, { authenticated: true })).messages.find(message => message.id === sent.id)).toMatchObject({ reported: false, collapsed: false });
             expect((await api.messaging.public.history(room.id)).messages.find(message => message.id === sent.id)).toMatchObject({ reported: false, collapsed: false });
           } finally {
             await other.messaging.messageCommand(room.id, joined.id, { action: 'delete' });

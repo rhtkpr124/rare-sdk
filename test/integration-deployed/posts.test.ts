@@ -39,7 +39,7 @@ describe('creator posts against deployed services', () => {
         const page = await api.posts.list(selector, { perPage: 100 });
         expect(page.data.find(row => row.id === post.id)).toMatchObject({ ...postInput, creatorUserId: profile.accountId }); noEmail(page);
       }
-      const comment = await other.posts.comment(post.id, 'A public comment');
+      const comment = await other.posts.comment(post.id, { body: 'A public comment' });
       const comments = await api.posts.comments(post.id);
       expect(comments.data.find(row => row.id === comment.id)).toMatchObject({ postId: post.id, body: 'A public comment', authorUserId: (await other.profile.get()).accountId }); noEmail(comments);
       await Promise.all([other.postFavorites.add(post.id), other.postFavorites.add(post.id)]);
@@ -71,7 +71,7 @@ describe('creator posts against deployed services', () => {
     const otherSession = await other.auth.loginWithWallet({ address: otherWallet.address, chainId: 1, signMessage: message => otherWallet.signMessage({ message }) });
     const post = await owner.posts.create({ title: 'Authorization integration', body: 'Body' });
     try {
-      const comment = await owner.posts.comment(post.id, 'Owned comment');
+      const comment = await owner.posts.comment(post.id, { body: 'Owned comment' });
       await expect(other.posts.delete(post.id)).rejects.toMatchObject({ status: 403 });
       await expect(other.posts.deleteComment(post.id, comment.id)).rejects.toMatchObject({ status: 403 });
       const request = (path: string, method: string, token?: string, body?: unknown) => fetch(`${apiBaseUrl}${path}`, { method, signal: AbortSignal.timeout(30_000), headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(body === undefined ? {} : { 'Content-Type': 'application/json' }) }, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
@@ -120,7 +120,7 @@ describe('creator post images and pagination against deployed services', () => {
       const firstPostId = postIds[0];
       if (!firstPostId) throw new Error('Missing created post');
       for (const index of [0, 1, 2]) {
-        const row = await account.posts.comment(firstPostId, `Pagination comment ${index}`);
+        const row = await account.posts.comment(firstPostId, { body: `Pagination comment ${index}` });
         // eslint-disable-next-line functional/immutable-data
         commentIds.push(row.id);
       }
@@ -171,11 +171,11 @@ describe('threaded post replies against deployed services', () => {
       }
       const post = await owner.posts.create({ title: 'Reply integration', body: 'Threads' });
       try {
-        const root = await other.posts.comment(post.id, 'Root');
-        const secondRoot = await owner.posts.comment(post.id, 'Other root');
-        const first = await owner.posts.comment(post.id, 'First reply', { parentCommentId: root.id });
-        const second = await owner.posts.comment(post.id, 'Second reply', { parentCommentId: root.id });
-        const third = await owner.posts.comment(post.id, 'Third reply', { parentCommentId: root.id });
+        const root = await other.posts.comment(post.id, { body: 'Root' });
+        const secondRoot = await owner.posts.comment(post.id, { body: 'Other root' });
+        const first = await owner.posts.comment(post.id, { body: 'First reply', parentCommentId: root.id });
+        const second = await owner.posts.comment(post.id, { body: 'Second reply', parentCommentId: root.id });
+        const third = await owner.posts.comment(post.id, { body: 'Third reply', parentCommentId: root.id });
         expect(first).toMatchObject({ parentCommentId: root.id, replyCount: 0 });
         expect((await api.posts.get(post.id)).commentCount).toBe(5);
         const roots = await api.posts.comments(post.id);
@@ -188,7 +188,7 @@ describe('threaded post replies against deployed services', () => {
         const last = await api.posts.comments(post.id, { parentCommentId: root.id, afterCommentId: second.id, perPage: 2 });
         expect(last.data.map(row => row.id)).toEqual([third.id]);
         expect(last.nextCursor).toBeNull();
-        await expect(owner.posts.comment(post.id, 'Nested', { parentCommentId: first.id })).rejects.toMatchObject({ status: 404 });
+        await expect(owner.posts.comment(post.id, { body: 'Nested', parentCommentId: first.id })).rejects.toMatchObject({ status: 404 });
         await expect(owner.posts.deleteComment(post.id, root.id)).rejects.toMatchObject({ status: 403 });
         await owner.posts.deleteComment(post.id, second.id);
         expect((await api.posts.comments(post.id)).data[0]?.replyCount).toBe(2);

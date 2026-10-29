@@ -349,10 +349,10 @@ User reads accept exactly one explicit selector. The existing address argument r
 await rare.user.get('0x...');
 await rare.user.get({ username: 'artist' });
 await rare.user.get({ userId: 123 });
-await rare.user.followers({ username: 'artist' }, { page: 1, perPage: 20 });
-await rare.user.following({ address: '0x...' });
-await account.following.follow({ userId: 123 });
-await account.following.unfollow({ username: 'artist' });
+await rare.user.followers.list({ username: 'artist' }, { page: 1, perPage: 20 });
+await rare.user.following.list({ address: '0x...' });
+await account.user.following.add({ userId: 123 });
+await account.user.following.delete({ username: 'artist' });
 ```
 
 Profile and follower/following reads are public and omit email. Following or
@@ -408,7 +408,7 @@ After authenticating with `createRareClient`, use the account's identity for wri
 
 ```ts
 const post = await account.posts.create({ title: 'Studio update', body: '**New work**', imageUrls: [] });
-const comment = await account.posts.comment(post.id, 'Looking forward to this.');
+const comment = await account.posts.comment(post.id, { body: 'Looking forward to this.' });
 await account.postFavorites.add(post.id);
 const favorites = await account.postFavorites.list({ page: 1, perPage: 20 });
 const favorited = await account.postFavorites.has(post.id);
@@ -684,3 +684,7 @@ The suite bundles the complete SDK into Chromium and verifies reloads, cross-tab
 refresh/logout/account switching, and stale-login protection. Disposable local
 Auth mode verifies authentication and storage; successful profile reads require
 a deployed Rare API with the arbitrary-origin Auth update.
+
+### Request controls
+
+New API-backed methods keep operation data separate from request controls. For example, `rare.notifications.list({ page: 1, perPage: 20 }, { signal })` and `rare.posts.comment(postId, { body, parentCommentId }, { signal })`. Methods with no operation input accept request controls directly, such as `rare.profile.get({ signal })`. Public messaging reads remain anonymous by default; use `rare.messaging.public.history(roomId, { limit: 20 }, { authenticated: true, signal })` for viewer-specific visibility. Upload metadata stays in the third argument; cancellation controls go in the fourth: `rare.upload(file, filename, { access: 'private' }, { signal })`.

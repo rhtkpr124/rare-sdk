@@ -238,7 +238,7 @@ export function createAccountClient(options: RareAccountClientOptions | RareAcco
           authorization = result.authorization;
         }
       },
-      async loginWithWallet(input) {
+      async loginWithWallet(input, requestOptions = {}) {
         if (!isAddress(input.address, { strict: false }) || !Number.isSafeInteger(input.chainId) || input.chainId <= 0) throw new RareAuthError('invalid_wallet');
         const signingOrigin = resolveSigningOrigin(apiBaseUrl, input.signingOrigin, typeof window === 'undefined' ? undefined : window.location.origin);
         generation += 1;
@@ -247,7 +247,7 @@ export function createAccountClient(options: RareAccountClientOptions | RareAcco
         const value = await json(await request(joinAuthPath(authBaseUrl, 'wallet/challenge'), {
           method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
           body: JSON.stringify({ client_id: clientId, address: input.address, chain_id: input.chainId, origin: signingOrigin }),
-        }, input));
+        }, requestOptions));
         if (!isRecord(value)) throw new RareAuthError('invalid_challenge');
         const message = requireString(value.message, 'message');
         const challengeId = requireString(value.challenge_id, 'challenge_id');
@@ -263,7 +263,7 @@ export function createAccountClient(options: RareAccountClientOptions | RareAcco
         }
         const signature = await input.signMessage(message).catch(() => { throw new RareAuthError('signing_failed'); });
         if (expectedGeneration !== generation) throw new RareAuthError('session_superseded');
-        const response = await postForm('token', { grant_type: walletGrant, client_id: clientId, challenge_id: challengeId, message, signature }, input);
+        const response = await postForm('token', { grant_type: walletGrant, client_id: clientId, challenge_id: challengeId, message, signature }, requestOptions);
         return install(tokenSession(await json(response)), expectedGeneration, sessionRevision);
       },
       getSession: () => storage.withLock(readSession),

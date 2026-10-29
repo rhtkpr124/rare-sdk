@@ -8,8 +8,8 @@ export function createPublicMessagingClient(client: ApiClient): PublicMessagingC
       const { data } = await client.POST('/v1/messaging/public/rooms/resolve', { body: { context }, credentials: 'omit', signal: options?.signal });
       return parseMessagingPublicRoom(data);
     },
-    async history(roomId, options = {}) {
-      const { data } = await client.GET('/v1/messaging/public/rooms/{conversationId}/messages', { params: { path: { conversationId: messagingId(roomId) }, query: messagingPublicHistoryQuery(options) }, credentials: 'omit', signal: options.signal });
+    async history(roomId, input = {}, options) {
+      const { data } = await client.GET('/v1/messaging/public/rooms/{conversationId}/messages', { params: { path: { conversationId: messagingId(roomId) }, query: messagingPublicHistoryQuery(input) }, credentials: 'omit', signal: options?.signal });
       return parseMessagingPublicPage(data);
     },
   };

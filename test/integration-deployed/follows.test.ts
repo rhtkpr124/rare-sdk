@@ -37,12 +37,12 @@ describe('user follows against deployed services', () => {
       }
       const own = await client.profile.get();
       const other = await target.profile.get();
-      const targetFollowing = await api.user.following({ address: targetWallet.address });
+      const targetFollowing = await api.user.following.list({ address: targetWallet.address });
       const absentAddress = privateKeyToAccount(generatePrivateKey()).address;
-      await expect(api.user.followers({ address: absentAddress })).rejects.toMatchObject({ status: 404 });
-      await expect(client.following.follow({ address: absentAddress })).rejects.toMatchObject({ status: 404 });
+      await expect(api.user.followers.list({ address: absentAddress })).rejects.toMatchObject({ status: 404 });
+      await expect(client.user.following.add({ address: absentAddress })).rejects.toMatchObject({ status: 404 });
       const selectors = [{ address: targetWallet.address }, { username: other.username }, { userId: Number(other.accountId) }];
-      const before = await api.user.followers(selectors[0]!, { perPage: 100 });
+      const before = await api.user.followers.list(selectors[0]!, { perPage: 100 });
       // Disposable fixtures must not have a pre-existing relationship to destroy.
       expect(before.data.some(user => user.userId === Number(own.accountId))).toBe(false);
       try {
@@ -51,18 +51,18 @@ describe('user follows against deployed services', () => {
           expect(profile.userId).toBe(Number(other.accountId));
           noEmail(profile);
         }
-        const concurrent = await Promise.allSettled(selectors.map(selector => client.following.follow(selector)));
+        const concurrent = await Promise.allSettled(selectors.map(selector => client.user.following.add(selector)));
         for (const result of concurrent) if (result.status === 'rejected') throw result.reason;
-        await client.following.follow({ username: other.username });
-        const followers = await api.user.followers({ userId: Number(other.accountId) }, { perPage: 100 });
+        await client.user.following.add({ username: other.username });
+        const followers = await api.user.followers.list({ userId: Number(other.accountId) }, { perPage: 100 });
         expect(followers.pagination.totalCount).toBe(before.pagination.totalCount + 1);
         expect(followers.data.some(user => user.userId === Number(own.accountId))).toBe(true);
         noEmail(followers);
-        for (const selector of selectors) expect(await api.user.followers(selector, { perPage: 100 })).toEqual(followers);
-        const following = await api.user.following({ userId: Number(own.accountId) });
+        for (const selector of selectors) expect(await api.user.followers.list(selector, { perPage: 100 })).toEqual(followers);
+        const following = await api.user.following.list({ userId: Number(own.accountId) });
         expect(following.data.some(user => user.userId === Number(other.accountId))).toBe(true);
         noEmail(following);
-        const page = await api.user.followers({ username: other.username }, { page: 1, perPage: 1 });
+        const page = await api.user.followers.list({ username: other.username }, { page: 1, perPage: 1 });
         expect(page.data.length).toBeLessThanOrEqual(1);
         expect(page.pagination).toMatchObject({ page: 1, perPage: 1, totalCount: followers.pagination.totalCount });
         for (const authorization of [undefined, 'Bearer forged']) {
@@ -79,12 +79,12 @@ describe('user follows against deployed services', () => {
         const ambiguous = await fetch(`${apiBaseUrl}/v1/users/followers?userId=${other.accountId}&username=${other.username}`, { signal: AbortSignal.timeout(30_000) });
         expect(ambiguous.status).toBe(400);
         expect(await target.profile.get()).toEqual(other);
-        expect(await api.user.following({ address: targetWallet.address })).toEqual(targetFollowing);
-        await client.following.unfollow({ address: targetWallet.address });
-        expect(await api.user.followers({ username: other.username }, { perPage: 100 })).toEqual(before);
-        expect((await api.user.following({ address: owner.address })).data.some(user => user.userId === Number(other.accountId))).toBe(false);
+        expect(await api.user.following.list({ address: targetWallet.address })).toEqual(targetFollowing);
+        await client.user.following.delete({ address: targetWallet.address });
+        expect(await api.user.followers.list({ username: other.username }, { perPage: 100 })).toEqual(before);
+        expect((await api.user.following.list({ address: owner.address })).data.some(user => user.userId === Number(other.accountId))).toBe(false);
       } finally {
-        await client.following.unfollow({ userId: Number(other.accountId) });
+        await client.user.following.delete({ userId: Number(other.accountId) });
       }
     } finally {
       await Promise.all([client.auth.logout(), target.auth.logout()]);

@@ -38,7 +38,7 @@ describe('application-owned account transport', () => {
       expect(init.signal?.aborted).toBe(true);
       throw new DOMException('Aborted', 'AbortError');
     });
-    await expect(createRareClient({ transport }).following.follow({ username: 'artist' }, { signal: controller.signal })).rejects.toMatchObject({ code: 'cancelled' });
+    await expect(createRareClient({ transport }).user.following.add({ username: 'artist' }, { signal: controller.signal })).rejects.toMatchObject({ code: 'cancelled' });
     expect(transport).toHaveBeenCalledTimes(1);
   });
 

@@ -240,8 +240,8 @@ export function createChainClient(config: RareClientConfig, api = createRareApi(
     drops: { list: api.getDrops, get: api.getDrop },
     posts: { list: api.getPosts, get: api.getPost, comments: api.getPostComments },
     user: {
-      followers: (input, options) => api.getUserFollowers(input, options),
-      following: (input, options) => api.getUserFollowing(input, options),
+      followers: { list: (input, options) => api.getUserFollowers(input, options) },
+      following: { list: (input, options) => api.getUserFollowing(input, options) },
       async get(address): ReturnType<RareClient['user']['get']> {
         return api.getUser(address);
       },

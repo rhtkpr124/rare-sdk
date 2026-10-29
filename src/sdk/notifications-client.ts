@@ -6,7 +6,7 @@ type NotificationTransport = (method: 'GET' | 'POST', path: string, body: undefi
 export function createNotificationsClient(request: NotificationTransport): RareNotificationsClient {
   const path = 'v1/me/notifications';
   return {
-    async list(options = {}) { const query = notificationQuery(options); return parseNotificationPage(await request('GET', `${path}${query ? `?${query}` : ''}`, undefined, options)); },
+    async list(input = {}, options) { const query = notificationQuery(input); return parseNotificationPage(await request('GET', `${path}${query ? `?${query}` : ''}`, undefined, options)); },
     async unreadCount(options) { return parseNotificationCount(await request('GET', `${path}/unread-count`, undefined, options), 'unreadCount'); },
     async markRead(id, options) { const normalized = notificationId(id); return parseNotification(notificationData(await request('POST', `${path}/${normalized}/read`, undefined, options))); },
     async markAllRead(options) { return { markedReadCount: parseNotificationCount(await request('POST', `${path}/read`, undefined, options), 'markedReadCount') }; },

@@ -6,7 +6,7 @@ import type { SearchPageResponse } from '../api.js';
 export type RareNotification = NotificationWire;
 export type RareNotificationPage = SearchPageResponse<RareNotification>;
 export type RareNotificationsClient = {
-  list: (options?: RareAuthRequestOptions & { page?: number; perPage?: number }) => Promise<RareNotificationPage>;
+  list: (input?: { page?: number; perPage?: number }, options?: RareAuthRequestOptions) => Promise<RareNotificationPage>;
   unreadCount: (options?: RareAuthRequestOptions) => Promise<number>;
   markRead: (notificationId: string, options?: RareAuthRequestOptions) => Promise<RareNotification>;
   markAllRead: (options?: RareAuthRequestOptions) => Promise<{ markedReadCount: number }>;

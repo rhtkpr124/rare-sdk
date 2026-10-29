@@ -2,6 +2,8 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import { once } from 'node:events';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { privateKeyToAccount } from 'viem/accounts';
+import { createPublicClient, http } from 'viem';
+import { sepolia } from 'viem/chains';
 import { createSiweMessage } from 'viem/siwe';
 import { createRareClient } from '../../src/sdk/client.js';
 import { createMemoryAccountSessionStore } from '../../src/sdk/account-session-store.js';
@@ -56,6 +58,49 @@ afterEach(async () => {
 });
 
 describe('account authentication over HTTP', () => {
+  it.each(['managed-api', 'managed-chain', 'application-api', 'application-chain'])('composes following reads and mutations for %s clients', async (mode) => {
+    const storage = createMemoryAccountSessionStore();
+    await storage.set(session());
+    const publicClient = createPublicClient({ chain: sepolia, transport: http() });
+    const transport = (path: string, init: RequestInit) => fetch(`${origin}${path}`, init);
+    const sdk = mode === 'managed-api' ? client(storage)
+      : mode === 'managed-chain' ? createRareClient({ apiBaseUrl: origin, sessionStore: storage, publicClient })
+      : mode === 'application-api' ? createRareClient({ transport })
+      : createRareClient({ transport, publicClient });
+    handler = async (request, response) => {
+      const url = new URL(request.url ?? '', origin);
+      expect(url.searchParams.get('userId')).toBe('7');
+      if (request.method === 'GET') {
+        expect(request.headers.authorization).toBeUndefined();
+        return reply(response, { data: [], pagination: { page: 1, perPage: 20, totalCount: 0, totalPages: 0 } });
+      }
+      expect(url.pathname).toBe('/v1/me/following');
+      expect(request.headers.authorization).toBe(mode.startsWith('managed') ? 'Bearer access-1' : undefined);
+      return reply(response, { data: { following: request.method === 'POST' } });
+    };
+    expect(await sdk.user.followers.list({ userId: 7 })).toMatchObject({ data: [] });
+    expect(await sdk.user.following.list({ userId: 7 })).toMatchObject({ data: [] });
+    await sdk.user.following.add({ userId: 7 });
+    await sdk.user.following.delete({ userId: 7 });
+    expect(sdk.user.followers).not.toHaveProperty('add');
+    expect(sdk).not.toHaveProperty('following');
+  });
+
+  it('separates post comment data and notification pagination from request controls', async () => {
+    const storage = createMemoryAccountSessionStore();
+    await storage.set(session());
+    const sdk = client(storage);
+    const postId = '7';
+    handler = async (request, response, body) => {
+      if (request.url === '/v1/me/notifications?page=2&perPage=3') return reply(response, { data: [], pagination: { page: 2, perPage: 3, totalCount: 0, totalPages: 0 } });
+      expect(request.url).toBe(`/v1/posts/${postId}/comments`);
+      expect(JSON.parse(body)).toEqual({ body: 'A comment', parentCommentId: '8' });
+      return reply(response, { code: 'fixture_rejection' }, 400);
+    };
+    expect(await sdk.notifications.list({ page: 2, perPage: 3 }, { signal: AbortSignal.timeout(5000) })).toMatchObject({ data: [] });
+    await expect(sdk.posts.comment(postId, { body: 'A comment', parentCommentId: '8' }, { signal: AbortSignal.timeout(5000) })).rejects.toMatchObject({ code: 'fixture_rejection' });
+  });
+
 
   it('keeps public messaging anonymous unless authenticated visibility is explicitly requested', async () => {
     const storage = createMemoryAccountSessionStore();
@@ -70,7 +115,7 @@ describe('account authentication over HTTP', () => {
       reply(response, { room: { id: roomId, context: { type: 'auction', id: 'fixture' }, title: 'Room', latestSequence: '0' }, messages: [], nextCursor: null });
     };
     await sdk.messaging.public.history(roomId, { limit: 5 });
-    await sdk.messaging.public.history(roomId, { limit: 5, authenticated: true });
+    await sdk.messaging.public.history(roomId, { limit: 5 }, { authenticated: true });
     expect(headers).toEqual([undefined, 'Bearer access-1']);
     expect(sdk.user).not.toHaveProperty('resolve');
     expect(sdk.messaging).not.toHaveProperty('historyPublic');

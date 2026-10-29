@@ -23,13 +23,13 @@ export function createAccountFeatures(apiRequest: Request, request: Request): Ra
     }, requestOptions));
   };
 
-  function upload(file: Uint8Array | Blob, filename: string, requestOptions?: RareUploadOptions & { access?: 'public' }): Promise<RarePublicUpload>;
-  function upload(file: Uint8Array | Blob, filename: string, requestOptions: RareUploadOptions & { access: 'private' }): Promise<RarePrivateUpload>;
-  function upload(file: Uint8Array | Blob, filename: string, requestOptions: RareUploadOptions): Promise<RareUpload>;
-  async function upload(file: Uint8Array | Blob, filename: string, requestOptions: RareUploadOptions = {}): Promise<RareUpload> {
-    const access = requestOptions.access ?? 'public';
+  function upload(file: Uint8Array | Blob, filename: string, input?: RareUploadOptions & { access?: 'public' }, requestOptions?: RareAuthRequestOptions): Promise<RarePublicUpload>;
+  function upload(file: Uint8Array | Blob, filename: string, input: RareUploadOptions & { access: 'private' }, requestOptions?: RareAuthRequestOptions): Promise<RarePrivateUpload>;
+  function upload(file: Uint8Array | Blob, filename: string, input: RareUploadOptions, requestOptions?: RareAuthRequestOptions): Promise<RareUpload>;
+  async function upload(file: Uint8Array | Blob, filename: string, input: RareUploadOptions = {}, requestOptions: RareAuthRequestOptions = {}): Promise<RareUpload> {
+    const access = input.access ?? 'public';
     if (access !== 'public' && access !== 'private') throw featureError('invalid_upload');
-    const plan = planUpload(file, filename, requestOptions.contentType);
+    const plan = planUpload(file, filename, input.contentType);
     const session = parseUploadSession(await jsonRequest('v1/uploads', {
       method: 'POST', headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
       body: JSON.stringify({ access, size: plan.file.size, contentType: plan.file.type }),
@@ -103,19 +103,19 @@ export function createAccountFeatures(apiRequest: Request, request: Request): Ra
     },
     posts: {
       async create(input, options) { const plan = planCreatePost(input); return parsePostData(await postRequest('POST', 'v1/posts', plan, options), parsePost); },
-      async comment(postId, body, options) { const id = normalizePostId(postId); const input = planPostComment(body, options?.parentCommentId); return parsePostData(await postRequest('POST', `v1/posts/${id}/comments`, input, options), parsePostComment); },
+      async comment(postId, input, options) { const id = normalizePostId(postId); const plan = planPostComment(input.body, input.parentCommentId); return parsePostData(await postRequest('POST', `v1/posts/${id}/comments`, plan, options), parsePostComment); },
       async delete(postId, options) { const id = normalizePostId(postId); parsePostDeleted(await postRequest('DELETE', `v1/posts/${id}`, undefined, options)); },
       async deleteComment(postId, commentId, options) { const id = normalizePostId(postId); const comment = normalizePostId(commentId); parsePostDeleted(await postRequest('DELETE', `v1/posts/${id}/comments/${comment}`, undefined, options)); },
     },
     postFavorites: {
-      async list(options = {}) { const query = favoritePageQuery(options); return parsePostPage(await postRequest('GET', `v1/me/post-favorites?page=${query.page}&perPage=${query.perPage}`, undefined, options), parsePost); },
+      async list(input = {}, options) { const query = favoritePageQuery(input); return parsePostPage(await postRequest('GET', `v1/me/post-favorites?page=${query.page}&perPage=${query.perPage}`, undefined, options), parsePost); },
       has: (id, options) => postFavorite('GET', id, options),
       async add(id, options) { await postFavorite('PUT', id, options); },
       async remove(id, options) { await postFavorite('DELETE', id, options); },
     },
     artworkFavorites: {
-      async list(options = {}) {
-        const query = favoritePageQuery(options);
+      async list(input = {}, options) {
+        const query = favoritePageQuery(input);
         return parseFavoritesPage(await jsonRequest(`v1/me/favorites?page=${query.page}&perPage=${query.perPage}`, { method: 'GET', headers: { Accept: 'application/json' } }, options));
       },
       has: (input, options) => favoriteRequest('GET', input, options),
@@ -123,11 +123,11 @@ export function createAccountFeatures(apiRequest: Request, request: Request): Ra
       async remove(input, options) { await favoriteRequest('DELETE', input, options); },
     },
     upload,
-    following: { follow: (input, options) => changeFollow('POST', input, options), unfollow: (input, options) => changeFollow('DELETE', input, options) },
+    user: { following: { add: (input, options) => changeFollow('POST', input, options), delete: (input, options) => changeFollow('DELETE', input, options) } },
     profile: {
       async uploadAvatar(buffer, filename, requestOptions = {}) {
         const plan = planAvatarUpload(buffer, filename);
-        const { url: avatar } = await upload(buffer, plan.filename, { ...requestOptions, contentType: plan.contentType, access: 'public' });
+        const { url: avatar } = await upload(buffer, plan.filename, { contentType: plan.contentType, access: 'public' }, requestOptions);
         try {
           return await profileRequest('PATCH', JSON.stringify({ profile: { avatar } }), requestOptions);
         } catch (cause) {

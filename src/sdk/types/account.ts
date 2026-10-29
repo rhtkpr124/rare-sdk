@@ -107,11 +107,11 @@ export type RareAuthRequestOptions = { signal?: AbortSignal };
 export type RarePublicUpload = { access: 'public'; key: string; url: string; contentType: string; size: number };
 export type RarePrivateUpload = { access: 'private'; uploadId: string; key: string; contentType: string; size: number };
 export type RareUpload = RarePublicUpload | RarePrivateUpload;
-export type RareUploadOptions = RareAuthRequestOptions & { contentType?: string; access?: 'public' | 'private' };
+export type RareUploadOptions = { contentType?: string; access?: 'public' | 'private' };
 export type RareUploadMethod = {
-  (file: Uint8Array | Blob, filename: string, options?: RareUploadOptions & { access?: 'public' }): Promise<RarePublicUpload>;
-  (file: Uint8Array | Blob, filename: string, options: RareUploadOptions & { access: 'private' }): Promise<RarePrivateUpload>;
-  (file: Uint8Array | Blob, filename: string, options: RareUploadOptions): Promise<RareUpload>;
+  (file: Uint8Array | Blob, filename: string, input?: RareUploadOptions & { access?: 'public' }, options?: RareAuthRequestOptions): Promise<RarePublicUpload>;
+  (file: Uint8Array | Blob, filename: string, input: RareUploadOptions & { access: 'private' }, options?: RareAuthRequestOptions): Promise<RarePrivateUpload>;
+  (file: Uint8Array | Blob, filename: string, input: RareUploadOptions, options?: RareAuthRequestOptions): Promise<RareUpload>;
 };
 
 export type RareAccountClient = {
@@ -124,32 +124,32 @@ export type RareAccountClient = {
   };
   posts: {
     create: (input: CreatePostInput, options?: RareAuthRequestOptions) => Promise<CreatorPost>;
-    comment: (postId: string, body: string, options?: RareAuthRequestOptions & { parentCommentId?: string }) => Promise<CreatorPostComment>;
+    comment: (postId: string, input: { body: string; parentCommentId?: string }, options?: RareAuthRequestOptions) => Promise<CreatorPostComment>;
     delete: (postId: string, options?: RareAuthRequestOptions) => Promise<void>;
     deleteComment: (postId: string, commentId: string, options?: RareAuthRequestOptions) => Promise<void>;
   };
   postFavorites: {
-    list: (options?: FavoritesListOptions & RareAuthRequestOptions) => Promise<SearchPageResponse<CreatorPost>>;
+    list: (input?: FavoritesListOptions, options?: RareAuthRequestOptions) => Promise<SearchPageResponse<CreatorPost>>;
     has: (postId: string, options?: RareAuthRequestOptions) => Promise<boolean>;
     add: (postId: string, options?: RareAuthRequestOptions) => Promise<void>;
     remove: (postId: string, options?: RareAuthRequestOptions) => Promise<void>;
   };
   artworkFavorites: {
-    list: (options?: FavoritesListOptions & RareAuthRequestOptions) => Promise<SearchPageResponse<ArtworkFavorite>>;
+    list: (input?: FavoritesListOptions, options?: RareAuthRequestOptions) => Promise<SearchPageResponse<ArtworkFavorite>>;
     has: (input: FavoriteArtworkInput, options?: RareAuthRequestOptions) => Promise<boolean>;
     add: (input: FavoriteArtworkInput, options?: RareAuthRequestOptions) => Promise<void>;
     remove: (input: FavoriteArtworkInput, options?: RareAuthRequestOptions) => Promise<void>;
   };
-  following: {
-    follow: (input: UserSelector | string, options?: RareAuthRequestOptions) => Promise<void>;
-    unfollow: (input: UserSelector | string, options?: RareAuthRequestOptions) => Promise<void>;
-  };
+  user: { following: {
+    add: (input: UserSelector | string, options?: RareAuthRequestOptions) => Promise<void>;
+    delete: (input: UserSelector | string, options?: RareAuthRequestOptions) => Promise<void>;
+  } };
   upload: RareUploadMethod;
   auth: {
     startDeviceAuthorization: (options?: RareAuthRequestOptions) => Promise<RareDeviceAuthorization>;
     pollDeviceAuthorization: (authorization: RareDeviceAuthorization, options?: RareAuthRequestOptions) => Promise<RareDevicePollResult>;
     waitForDeviceAuthorization: (authorization: RareDeviceAuthorization, options?: RareAuthRequestOptions) => Promise<RareAccountSession>;
-    loginWithWallet: (options: RareWalletLoginOptions & RareAuthRequestOptions) => Promise<RareAccountSession>;
+    loginWithWallet: (input: RareWalletLoginOptions, options?: RareAuthRequestOptions) => Promise<RareAccountSession>;
     getSession: () => Promise<RareAccountSession | null>;
     refresh: (options?: RareAuthRequestOptions) => Promise<RareAccountSession>;
     logout: (options?: RareAuthRequestOptions) => Promise<void>;

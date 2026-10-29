@@ -38,19 +38,20 @@ export function createRareClient(config: RareManagedClientConfig | RareExternalC
   const features = {
     ...publicFeatures,
     ...account,
+    user: { ...publicFeatures.user, following: { ...publicFeatures.user.following, ...account.user.following } },
     drops: { ...publicFeatures.drops, ...account.drops },
     posts: { ...publicFeatures.posts, ...account.posts },
     messaging: { ...account.messaging, public: {
       ...api.messaging,
       send: account.messaging.public.send,
-      history: (roomId: string, options?: Parameters<typeof account.messaging.public.history>[1]) => options?.authenticated === true
-        ? account.messaging.public.history(roomId, options)
-        : api.messaging.history(roomId, options),
+      history: (roomId: string, input?: Parameters<typeof account.messaging.public.history>[1], options?: Parameters<typeof account.messaging.public.history>[2]) => options?.authenticated === true
+        ? account.messaging.public.history(roomId, input, options)
+        : api.messaging.history(roomId, input, options),
     } },
   };
   if (config.publicClient === undefined) return features;
   const chain = createChainClient({ ...config, apiBaseUrl, apiFetch: publicApiFetch }, api);
-  return { ...features, ...chain, token: { ...chain.token, getPrice: api.getTokenPrice }, collection: { ...chain.collection, events: api.getCollectionEvents }, drops: features.drops, posts: features.posts, messaging: features.messaging };
+  return { ...features, ...chain, token: { ...chain.token, getPrice: api.getTokenPrice }, collection: { ...chain.collection, events: api.getCollectionEvents }, user: features.user, drops: features.drops, posts: features.posts, messaging: features.messaging };
 }
 
 function createPublicFeatures(api: RareApi): RarePublicFeatures {
@@ -65,7 +66,7 @@ function createPublicFeatures(api: RareApi): RarePublicFeatures {
     },
     collection: { get: api.getCollection, events: api.getCollectionEvents },
     liquidEdition: { get: params => api.getLiquidEdition(`${resolveIdentityChainId(params)}-${getAddress(params.contract)}`) },
-    user: { get: api.getUser, followers: api.getUserFollowers, following: api.getUserFollowing },
+    user: { get: api.getUser, followers: { list: api.getUserFollowers }, following: { list: api.getUserFollowing } },
     drops: { list: api.getDrops, get: api.getDrop },
     posts: { list: api.getPosts, get: api.getPost, comments: api.getPostComments },
     messaging: { public: api.messaging },
