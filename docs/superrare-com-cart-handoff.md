@@ -321,11 +321,14 @@ six-day download URL for Prodigi. Retries retain the provider idempotency key
 and obtain a fresh URL. Neither the frontend nor the SDK creates these URLs.
 
 Use `rare.prints.drops.listMine/getMine` for creator management and
-`rare.prints.drops.update` for names, descriptions, tags, and display photos.
-Production file and specification edits are allowed only before pricing is
-configured. Later physical changes require a replacement drop and SKU. Price
-changes require freshly prepared and signed Listing terms. Existing paid Orders
-keep their original fulfillment snapshots.
+`rare.prints.drops.update` for names, descriptions, tags, display photos, and
+production-file replacement. Upload the new master privately, then call
+`rare.prints.drops.update(dropId, { productionUploadKey: replacement.key })`.
+This works after pricing and publication without replacing the drop, SKU, or
+listing. Newly authorized orders use the updated master; existing authorized or
+paid Orders retain their original fulfillment snapshots. Specification changes
+still require an unconfigured draft, or a replacement drop and SKU. Price changes
+require freshly prepared and signed Listing terms.
 
 ### Compose NFTs and physical prints
 

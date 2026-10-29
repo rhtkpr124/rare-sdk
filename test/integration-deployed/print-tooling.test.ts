@@ -118,6 +118,27 @@ describe('print tooling through deployed Rare API', () => {
       expect(orderDetails.items).toContainEqual(expect.objectContaining({ listingDigest: entry.listingDigest.toLowerCase(),
         quantity: '2', fulfillmentStatus: 'PENDING', printDropId: created.id, title: expect.any(String), images: expect.arrayContaining([photo.url]) }));
       expect((await findCartOrderInHistory(rare.cart.orders, orderId))?.id).toBe(orderId);
+      // A creator may replace the private master on the same published edition.
+      // Existing authorizations retain their saved fulfillment snapshot; the backend
+      // integration suite verifies private old/new asset references directly.
+      const replacementBytes = Uint8Array.from(Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a9uQAAAAASUVORK5CYII=', 'base64'));
+      const replacement = await rare.upload(replacementBytes, 'replacement-production.png', { access: 'private', contentType: 'image/png' });
+      expect(replacement.key).not.toBe(production.key);
+      const updatedMaster = await rare.prints.drops.update(created.id, { productionUploadKey: replacement.key });
+      expect(updatedMaster.status).toBe('PUBLISHED');
+      expect(updatedMaster.metadata.productionUploadKey).toBe(replacement.key);
+      expect((await rare.prints.drops.getMine(created.id)).metadata.productionUploadKey).toBe(replacement.key);
+      const publicAfterReplacement = await rare.prints.drops.get(created.id);
+      expect(publicAfterReplacement.metadata).not.toHaveProperty('productionUploadKey');
+      expect(publicAfterReplacement.options.some(candidate => candidate.listingDigest === entry.listingDigest)).toBe(true);
+      expect((await rare.cart.checkout.authorize(checkout)).executePurchase.order.orderId).toBe(orderId);
+      const futureCheckout = await rare.cart.checkout.prepare({ ...checkout.intent,
+        items: [{ kind: 'listing', listingDigest: entry.listingDigest, quantity: 1n, recipient: wallet.address }] });
+      const futureSigned = await rare.cart.checkout.authorize(futureCheckout);
+      expect(futureSigned.executePurchase.order.orderId).not.toBe(orderId);
+      expect(futureSigned.executePurchase.lines.find(line => line.listingDigest === entry.listingDigest)?.quantity).toBe(1n);
+      expect(await rare.cart.orders.get(orderId)).toMatchObject({ status: orderDetails.status, items: orderDetails.items });
+
       const source = await createCreatorCartScenario({ tokenCount: 1, eligibility: true });
       try {
         const nft = source.listings[0];

@@ -958,13 +958,16 @@ their URLs in `print.images`. Every draft requires an explicit `chainId` and
 `drop.metadata.sourceUniversalTokenId`. The SDK does not publish master download URLs.
 
 Prepare seller terms with `rare.prints.listings.prepare`, then call
-`rare.prints.listings.publish(preparation)` to sign and publish the frozen
+`rare.prints.listings.publish({ preparation })` to sign and publish the frozen
 terms. This helper checks the chain, configured Cart contract, seller, and Listing
 digest before requesting the wallet signature.
 
-Use `rare.prints.drops.update` for presentation edits. Production file and
-specification changes are allowed only before pricing is configured. Later
-physical changes require a new drop and SKU so existing signed terms stay intact.
+Use `rare.prints.drops.update` for presentation edits and production-file
+replacement, including after pricing or publication. Upload a replacement
+privately and call `rare.prints.drops.update(dropId, { productionUploadKey: upload.key })`.
+Future orders use the new master; existing authorized and paid orders keep their
+original production snapshots. Specification changes still require an
+unconfigured draft or a replacement drop and SKU.
 
 Purchases use `rare.cart.checkout`. Add `delivery: { savedAddressId }` or
 `delivery: { recipientDetails }` to the usual checkout intent. The returned
