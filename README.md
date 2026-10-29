@@ -999,6 +999,32 @@ addresses are preparation context, not verified token ownership. Saving never
 infers token IDs from row order, publishes a print, or signs an offer. Revealed
 token association and artist review/publication remain separate operations.
 
+After reveal, call `rare.prints.releaseManifests.associations.verify(id,
+{ expectedVersion, tokenIds }, { signal })` with up to 100 distinct decimal token
+IDs. Results distinguish `VERIFIED`, `UNVERIFIED`, and `CONFLICT` and include the
+finalized block evidence and exact metadata URI used for the check. Manifest page
+entries include an optional association summary for resuming preparation. A
+verified association is ready for artist review; this method never signs or
+publishes a sale. Drop creation still uses `sourceUniversalTokenId` and
+`productionUploadKey`; the server derives and rechecks the manifest relationship.
+
+New drops can opt into collector-selected formats with
+`print.formatSelectionMode: 'COLLECTOR_FORMATS_V1'`. Configure the full server
+catalog snapshot with `rare.prints.options.configureAll({ dropId, input:
+{ displayPriceUsdCents } })`. The result has `listingOptionId` and `options`;
+prepare and publish **one** listing using `listingOptionId`. All formats share
+that artwork SKU, signed listing, and finite quantity. Existing standard-mode
+drafts continue to use `options.configure` and their original recovery artifacts.
+
+For a new-format sale, choose the public option's `id` and pass
+`optionSelections: [{ preparationId: option.preparationId, optionId: option.id }]`
+with the generic Cart checkout intent and delivery details. Each public option
+includes its product snapshot; format changes require a fresh checkout review.
+The SDK retains the reviewed mapping through preview, authorization, and Coinflow.
+Keep it with the original idempotency key when retrying or recovering. A checkout
+supports one selected format per artwork and up to five physical artwork
+selections. Legacy standard checkouts may omit the mapping.
+
 Run `npm run test:integration:print-products` against a deployment containing the
 product endpoints for a read-only catalog check. This check requires only
 `RARE_API_BASE_URL`.

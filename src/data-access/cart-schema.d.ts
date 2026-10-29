@@ -4325,6 +4325,12 @@ export interface components {
                 /** Format: uuid */
                 savedAddressId: string;
             };
+            optionSelections?: {
+                /** Format: uuid */
+                preparationId: string;
+                /** Format: uuid */
+                optionId: string;
+            }[];
         };
         CartPrepareCheckoutResponse: {
             data: {
@@ -4440,6 +4446,12 @@ export interface components {
                 /** Format: uuid */
                 savedAddressId: string;
             };
+            optionSelections?: {
+                /** Format: uuid */
+                preparationId: string;
+                /** Format: uuid */
+                optionId: string;
+            }[];
         };
         CartCheckoutPreviewResponse: {
             data: {

@@ -11,6 +11,7 @@ import type {
   CartListingSelection, CartListingAuthorizationBundle,
 } from './types/cart.js';
 import type { CartCheckoutIntent, CartCheckoutPreparation, CartListingIntent, CartVariantSearchParams } from './types/cart-api.js';
+import { validatePrintOptionSelections } from './print-formats-core.js';
 
 export const cartEip712Name = 'SuperRare Cart';
 export const cartEip712Version = '1';
@@ -78,7 +79,15 @@ export function validateCartCheckoutIntent(intent: CartCheckoutIntent): CartVali
     } else issues.push(issue('invalid_kind', `items[${index}].kind`, 'Checkout item kind must be listing or swap.'));
     if (item.recipient !== undefined && !isAddress(item.recipient)) issues.push(issue('invalid_address', `items[${index}].recipient`, 'Checkout recipient must be an address.'));
   });
-  return issues.length === 0 ? { isValid: true, value: intent } : { isValid: false, issues };
+  const selectionValidation = validatePrintOptionSelections(intent.optionSelections);
+  const selectionIssues = selectionValidation.success ? [] : selectionValidation.error.issues.map(failure =>
+    issue('invalid_print_option_selection', ['optionSelections', ...failure.path.map(String)].join('.'), failure.message));
+  const deliveryIssues = intent.optionSelections !== undefined && intent.delivery === undefined
+    ? [issue('missing_delivery', 'delivery', 'Print format selection requires delivery details.')] : [];
+  const allIssues = [...issues, ...selectionIssues, ...deliveryIssues];
+  const value = selectionValidation.success && selectionValidation.data !== undefined
+    ? { ...intent, optionSelections: selectionValidation.data } : intent;
+  return allIssues.length === 0 ? { isValid: true, value } : { isValid: false, issues: allIssues };
 }
 
 export function validateCartListingIntent(intent: CartListingIntent): CartValidationResult<CartListingIntent> {

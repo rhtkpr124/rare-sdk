@@ -194,6 +194,7 @@ export function createCartApiNamespace(
     preview: async (intent: CartCheckoutIntent): Promise<CartCheckoutPreparation> => {
       const validation = validateCartCheckoutIntent(intent);
       if (!validation.isValid) throw new Error(`Invalid Cart checkout intent: ${validation.issues.map((issue) => issue.message).join(' ')}`);
+      const reviewedIntent = validation.value;
       const wire = await getWrappedData<CartCheckoutPreviewWire>(
         (intent.delivery === undefined ? client : protectedClient).POST('/v1/cart/checkout/preview', {
           params: { query: { chainId, cartAddress: cartAddress() } },
@@ -201,13 +202,14 @@ export function createCartApiNamespace(
             paymentCurrency: intent.paymentCurrency,
             items: intent.items.map(toWireDraftItem),
             ...(intent.delivery === undefined ? {} : { delivery: intent.delivery }),
+            ...(reviewedIntent.optionSelections === undefined ? {} : { optionSelections: [...reviewedIntent.optionSelections] }),
           },
         }),
         'Rare API did not return the Cart checkout preparation.',
       );
       const preparation = checkoutPreparationFromPreparedPurchase(
         normalizePreparedPurchase(wire.preparation),
-        intent,
+        reviewedIntent,
         wire.preparationReference,
       );
       return { ...preparation,
@@ -219,12 +221,17 @@ export function createCartApiNamespace(
       };
     },
     prepare: async (input: string | CartDeliveryCheckout): Promise<CartApiPreparedPurchase> => {
+      if (typeof input !== 'string') {
+        const validation = validateCartCheckoutIntent(input);
+        if (!validation.isValid) throw new Error(`Invalid Cart checkout intent: ${validation.issues.map(issue => issue.message).join(' ')}`);
+      }
       const wire = await getWrappedData<CartApiPreparedPurchaseWire>(
         protectedClient.POST('/v1/cart/checkout/prepare', {
           params: { query: { chainId, cartAddress: cartAddress() } },
           ...(typeof input === 'string' ? {} : { headers: { 'idempotency-key': input.idempotencyKey } }),
           body: typeof input === 'string' ? { preparationReference: input } : {
             paymentCurrency: input.paymentCurrency, items: input.items.map(toWireDraftItem), delivery: input.delivery,
+            ...(input.optionSelections === undefined ? {} : { optionSelections: [...input.optionSelections] }),
           },
         }),
         'Rare API did not return the signed Cart Purchase.',
@@ -244,11 +251,15 @@ export function createCartApiNamespace(
       return recovery;
     },
     coinflow: async (input: CartDeliveryCheckout): Promise<CartCardCheckout> => {
+      const validation = validateCartCheckoutIntent(input);
+      if (!validation.isValid) throw new Error(`Invalid Cart checkout intent: ${validation.issues.map(issue => issue.message).join(' ')}`);
       const wire = await getWrappedData<Omit<CartCardCheckout, 'preparedPurchase'> & { preparedPurchase: CartApiPreparedPurchaseWire }>(
         protectedClient.POST('/v1/cart/checkout/coinflow', {
           params: { query: { chainId, cartAddress: cartAddress() } },
           headers: { 'idempotency-key': input.idempotencyKey },
-          body: { paymentCurrency: input.paymentCurrency, items: input.items.map(toWireDraftItem), delivery: input.delivery },
+          body: { paymentCurrency: input.paymentCurrency, items: input.items.map(toWireDraftItem), delivery: input.delivery,
+            ...(input.optionSelections === undefined ? {} : { optionSelections: [...input.optionSelections] }),
+          },
         }), 'Rare API did not return the card checkout session.',
       );
       return { ...wire, preparedPurchase: normalizePreparedPurchase(wire.preparedPurchase) };

@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createPublicClient, http } from 'viem';
 import { sepolia } from 'viem/chains';
 import { createMemoryAccountSessionStore, createRareClient } from '../../dist/sdk/index.js';
-import type { CreatePrintEstimate, PrintEstimate, PrintReleaseManifestMutation, SavePrintReleaseManifest } from '../../dist/sdk/index.js';
+import type { CreatePrintEstimate, PrintEstimate, PrintReleaseManifestMutation, SavePrintReleaseManifest, PrintOptionSet, PrintReleaseAssociationVerification } from '../../dist/sdk/index.js';
 
 const id = '11111111-1111-4111-8111-111111111111';
 const releaseContractAddress = `0x${'a'.repeat(40)}`;
@@ -53,6 +53,48 @@ async function createClient(mode: string) {
 }
 
 describe('print preparation through the built SDK', () => {
+  it.each(['bearer', 'application'])('configures a shared listing format set through %s transport and retains standard configuration', async mode => {
+    const rare = await createClient(mode);
+    const option = { id, drop_id: id, option_key: 'GLOBAL-FAP-16X24', sku: `0x${'1'.repeat(64)}`, metadata: {}, created_at: header.createdAt, updated_at: header.updatedAt };
+    const formats: PrintOptionSet = { listingOptionId: id, options: [option, { ...option, id: entry.id, option_key: 'GLOBAL-FAP-8X12' }] };
+    replies = [{ body: { data: formats } }, { body: { data: option } }, { body: { data: formats } }];
+    const configuration = { dropId: id, input: { displayPriceUsdCents: '1500' } };
+    expect(await rare.prints.options.configureAll(configuration)).toEqual(formats);
+    expect(await rare.prints.options.configure(configuration)).toEqual(option);
+    const results = await rare.prints.options.configureAll([{ key: 'artwork', input: configuration }]);
+    expect(results).toMatchObject([{ key: 'artwork', status: 'fulfilled', value: formats }]);
+    expect(await rare.prints.options.configureAll([{ key: 'artwork', input: configuration }], { previousResults: results })).toEqual(results);
+    expect(requests.map(request => request.path)).toEqual([
+      `/v1/prints/drops/${id}/options`, `/v1/prints/drops/${id}/options/standard`, `/v1/prints/drops/${id}/options`,
+    ]);
+    expect(requests.every(request => request.method === 'PUT')).toBe(true);
+    expect(requests.every(request => JSON.stringify(request.body) === JSON.stringify(configuration.input))).toBe(true);
+    await expect(rare.prints.options.configureAll({ ...configuration, input: { displayPriceUsdCents: '-1' } })).rejects.toMatchObject({ code: 'invalid_print_format_configuration' });
+    expect(requests).toHaveLength(3);
+  });
+
+  it.each(['bearer', 'application'])('returns finalized association evidence through %s transport without publishing', async mode => {
+    const rare = await createClient(mode);
+    const verified: PrintReleaseAssociationVerification = { manifestId: id, manifestVersion: 1, results: [{
+      tokenId: '0', universalTokenId: `11155111-${releaseContractAddress}-0`, entryId: entry.id,
+      status: 'VERIFIED', reasonCode: null, metadataUri: entry.metadataUri, blockNumber: '12345', blockHash: `0x${'a'.repeat(64)}`, checkedAt: header.createdAt,
+    }] };
+    replies = [{ body: { data: verified } }, { status: 409, body: { error: { code: 'manifest_version_conflict', message: 'Reload the manifest', retryable: false } } }];
+    expect(await rare.prints.releaseManifests.associations.verify(id, { expectedVersion: 1, tokenIds: ['0'] })).toEqual(verified);
+    await expect(rare.prints.releaseManifests.associations.verify(id, { expectedVersion: 1, tokenIds: ['0'] })).rejects.toMatchObject({ status: 409, code: 'manifest_version_conflict' });
+    expect(requests.map(request => request.path)).toEqual(Array.from({ length: 2 }, () => `/v1/prints/release-manifests/${id}/associations/verify`));
+    expect(requests[0]?.body).toEqual({ expectedVersion: 1, tokenIds: ['0'] });
+    await expect(rare.prints.releaseManifests.associations.verify(id, { expectedVersion: 1, tokenIds: ['0', '0'] })).rejects.toMatchObject({ code: 'invalid_print_release_association_verification' });
+    const controller = new AbortController();
+    controller.abort();
+    await expect(rare.prints.releaseManifests.associations.verify(id, { expectedVersion: 1, tokenIds: ['0'] }, { signal: controller.signal })).rejects.toThrow();
+    expect(requests).toHaveLength(2);
+    for (const request of requests) {
+      expect(request.authorization).toBe(mode === 'bearer' ? 'Bearer test-access' : undefined);
+      expect(request.cookie).toBe(mode === 'application' ? 'sr-session=application-owned' : undefined);
+    }
+  });
+
   it.each(['bearer', 'application'])('shares %s authentication and preserves estimate assumptions and errors', async mode => {
     const rare = await createClient(mode);
     replies = [{ body: { data: estimate } }, { status: 503, body: { error: { code: 'print_dependency_unavailable', message: 'Try again', retryable: true } } }];

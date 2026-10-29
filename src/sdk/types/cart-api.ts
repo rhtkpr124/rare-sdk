@@ -245,10 +245,14 @@ export type CartCheckoutIntentItem = {
   recipient?: Address;
 };
 
+export type CartPrintOptionSelection = NonNullable<import('../../data-access/cart-schema.js').components['schemas']['CartDeliveryCheckoutRequest']['optionSelections']>[number];
+
 export type CartCheckoutIntent = {
   paymentCurrency: Address;
   items: readonly CartCheckoutIntentItem[];
   delivery?: { recipientDetails: ShippingDetails } | { savedAddressId: string };
+  /** One snapshotted physical format per print preparation; retain it with the original checkout identity. */
+  optionSelections?: readonly CartPrintOptionSelection[];
 };
 export type CartDeliveryCheckout = CartCheckoutIntent & { delivery: NonNullable<CartCheckoutIntent['delivery']>; idempotencyKey: string };
 export type CartCheckoutBreakdown = { displayPrice: bigint; production: bigint; shipping: bigint; networkFee: bigint; total: bigint };
