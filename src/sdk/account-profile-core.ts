@@ -30,11 +30,11 @@ export function parseAccountProfile(value: unknown): RareAccountProfile {
       bio: nullableText(profile.bio, 'bio'),
       avatar: nullableText(profile.avatar, 'avatar'),
       ...(profile.website === undefined ? {} : { website: nullableText(profile.website, 'website') }),
-      ...(profile.twitterlink === undefined ? {} : { twitterlink: nullableText(profile.twitterlink, 'twitterlink') }),
-      ...(profile.discordlink === undefined ? {} : { discordlink: nullableText(profile.discordlink, 'discordlink') }),
-      ...(profile.instagramlink === undefined ? {} : { instagramlink: nullableText(profile.instagramlink, 'instagramlink') }),
-      ...(profile.youtubelink === undefined ? {} : { youtubelink: nullableText(profile.youtubelink, 'youtubelink') }),
-      ...(profile.masthead_universal_token_id === undefined ? {} : { masthead_universal_token_id: nullableText(profile.masthead_universal_token_id, 'masthead_universal_token_id') }),
+      ...(profile.twitterlink === undefined ? {} : { twitterLink: nullableText(profile.twitterlink, 'twitterlink') }),
+      ...(profile.discordlink === undefined ? {} : { discordLink: nullableText(profile.discordlink, 'discordlink') }),
+      ...(profile.instagramlink === undefined ? {} : { instagramLink: nullableText(profile.instagramlink, 'instagramlink') }),
+      ...(profile.youtubelink === undefined ? {} : { youtubeLink: nullableText(profile.youtubelink, 'youtubelink') }),
+      ...(profile.masthead_universal_token_id === undefined ? {} : { mastheadUniversalTokenId: nullableText(profile.masthead_universal_token_id, 'masthead_universal_token_id') }),
     },
   };
 }
@@ -54,7 +54,7 @@ export function validateAccountProfilePatch(value: unknown): asserts value is Ra
   if ('profile' in value) {
     if (!isRecord(value.profile) || Object.keys(value.profile).length === 0 ||
         Object.entries(value.profile).some(([key, field]) =>
-          !['fullName', 'bio', 'avatar', 'website', 'twitterlink', 'discordlink', 'instagramlink', 'youtubelink', 'masthead_universal_token_id'].includes(key) || typeof field !== 'string')) {
+          !['fullName', 'bio', 'avatar', 'website', 'twitterLink', 'discordLink', 'instagramLink', 'youtubeLink', 'mastheadUniversalTokenId'].includes(key) || typeof field !== 'string')) {
       throw featureError('invalid_profile_patch');
     }
     if (typeof value.profile.bio === 'string' && value.profile.bio.length > 180) throw featureError('invalid_bio');
@@ -92,4 +92,18 @@ export class AvatarProfileUpdateError extends Error {
     this.name = 'AvatarProfileUpdateError';
     this.avatar = avatar;
   }
+}
+
+/** Translate SDK profile names at the HTTP boundary. */
+export function profilePatchBody(patch: RareAccountProfilePatch): unknown {
+  const { profile, ...account } = patch;
+  if (profile === undefined) return account;
+  const { twitterLink, discordLink, instagramLink, youtubeLink, mastheadUniversalTokenId, ...fields } = profile;
+  return { ...account, profile: { ...fields,
+    ...(twitterLink === undefined ? {} : { twitterlink: twitterLink }),
+    ...(discordLink === undefined ? {} : { discordlink: discordLink }),
+    ...(instagramLink === undefined ? {} : { instagramlink: instagramLink }),
+    ...(youtubeLink === undefined ? {} : { youtubelink: youtubeLink }),
+    ...(mastheadUniversalTokenId === undefined ? {} : { masthead_universal_token_id: mastheadUniversalTokenId }),
+  } };
 }

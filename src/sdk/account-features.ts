@@ -8,7 +8,7 @@ import { planUpload, parseUpload, parseUploadSession, uploadedOffset } from './u
 import { isRecord } from './account-auth-core.js';
 import { RareApiError } from '../data-access/errors.js';
 import { featureError, featureResponse } from './feature-error.js';
-import { AvatarProfileUpdateError, parseAccountProfile, planAvatarUpload, validateAccountProfilePatch } from './account-profile-core.js';
+import { AvatarProfileUpdateError, parseAccountProfile, planAvatarUpload, profilePatchBody, validateAccountProfilePatch } from './account-profile-core.js';
 import type { RareAccountFeatures, RareAuthRequestOptions, RareUpload, RarePublicUpload, RarePrivateUpload, RareUploadOptions } from './types/account.js';
 
 type Request = (path: string, init: RequestInit, options?: RareAuthRequestOptions, timeoutMilliseconds?: number) => Promise<Response>;
@@ -137,7 +137,7 @@ export function createAccountFeatures(apiRequest: Request, request: Request): Ra
       get: (requestOptions = {}) => profileRequest('GET', undefined, requestOptions),
       update: (patch, requestOptions = {}) => {
         validateAccountProfilePatch(patch);
-        return profileRequest('PATCH', JSON.stringify(patch), requestOptions);
+        return profileRequest('PATCH', JSON.stringify(profilePatchBody(patch)), requestOptions);
       },
     },
   };

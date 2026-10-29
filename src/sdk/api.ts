@@ -63,7 +63,6 @@ export type RareApi = {
   getCollection: (id: string) => Promise<Collection>;
   getCollectionEvents: (id: string, opts?: CollectionEventOptions) => Promise<SearchPageResponse<NftEvent>>;
   getUser: (address: string | UserSelector) => Promise<UserProfile>;
-  resolveUser: (input: UserSelector) => Promise<UserProfile>;
   getUserFollowers: (input: UserSelector | string, options?: UserListOptions) => Promise<SearchPageResponse<UserProfile>>;
   getUserFollowing: (input: UserSelector | string, options?: UserListOptions) => Promise<SearchPageResponse<UserProfile>>;
   getTokenPrice: (symbol: string) => Promise<{ symbol: string; priceUsd: number; decimals: number; chainId: number; address: string }>;
@@ -169,7 +168,6 @@ export function createRareApi(options: RareApiOptions = {}): RareApi {
     getCollection: async (id) => getCollectionWithClient(client, id),
     getCollectionEvents: async (id, opts) => getCollectionEventsWithClient(client, id, opts),
     getUser: async (input) => typeof input === 'string' ? getUserWithClient(client, userQuery(input).address ?? input) : resolveUser(input),
-    resolveUser,
     getUserFollowers: async (input, options) => {
       const { data } = await client.GET('/v1/users/followers', { params: { query: userQuery(input, options) } });
       if (!data) throw new Error('Invalid followers response.');

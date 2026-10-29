@@ -52,23 +52,23 @@ describe('public durable messaging against deployed services', () => {
     try {
       const session = await account.auth.loginWithWallet({ address: signer.address, chainId: 1, signMessage: message => signer.signMessage({ message }) });
       const input = { clientMessageId: randomUUID(), body: `SDK public integration ${randomUUID()}`, mentionUserIds: [] };
-      const sent = await retryPublicSend(() => account.messaging.sendPublic(room.id, input));
+      const sent = await retryPublicSend(() => account.messaging.public.send(room.id, input));
       try {
         expect(sent.type).toBe('user');
         const nextInput = { clientMessageId: randomUUID(), body: `SDK cooldown retry ${randomUUID()}`, mentionUserIds: [] };
-        const next = await account.messaging.sendPublic(room.id, nextInput).catch(async (error: unknown) => {
+        const next = await account.messaging.public.send(room.id, nextInput).catch(async (error: unknown) => {
           expect(error).toMatchObject({ status: 429, code: 'rate_limited' });
-          return retryPublicSend(() => account.messaging.sendPublic(room.id, nextInput));
+          return retryPublicSend(() => account.messaging.public.send(room.id, nextInput));
         });
         try {
           // A slow request may naturally arrive after the cooldown expires.
           expect(Date.parse(next.createdAt) - Date.parse(sent.createdAt)).toBeGreaterThanOrEqual(1000);
-          expect((await retryPublicSend(() => account.messaging.sendPublic(room.id, nextInput))).id).toBe(next.id);
+          expect((await retryPublicSend(() => account.messaging.public.send(room.id, nextInput))).id).toBe(next.id);
           const thread = await api.messaging.public.history(room.id);
           for (const id of [sent.id, next.id]) expect(thread.messages.filter(row => row.id === id)).toHaveLength(1);
         } finally { await account.messaging.messageCommand(room.id, next.id, { action: 'delete' }); }
 
-        expect((await retryPublicSend(() => account.messaging.sendPublic(room.id, input))).id).toBe(sent.id);
+        expect((await retryPublicSend(() => account.messaging.public.send(room.id, input))).id).toBe(sent.id);
         const forward = async (after: string): Promise<boolean> => {
           const page = await api.messaging.public.history(room.id, { after, limit: 1 });
           if (page.messages.some(row => row.id === sent.id && row.body === input.body)) return true;
@@ -82,7 +82,7 @@ describe('public durable messaging against deployed services', () => {
         expect((await api.messaging.public.history(room.id)).messages.find(message => message.id === sent.id)?.body).toBe('Updated public SDK message');
         await account.messaging.messageCommand(room.id, sent.id, { action: 'reaction', emoji: '❤️', active: true });
         expect((await api.messaging.public.history(room.id)).messages.find(message => message.id === sent.id)?.reactions).toContainEqual({ emoji: '❤️', count: 1, reacted: false });
-        expect((await account.messaging.historyPublic(room.id)).messages.find(message => message.id === sent.id)?.reactions).toContainEqual({ emoji: '❤️', count: 1, reacted: true });
+        expect((await account.messaging.public.history(room.id, { authenticated: true })).messages.find(message => message.id === sent.id)?.reactions).toContainEqual({ emoji: '❤️', count: 1, reacted: true });
         await account.messaging.messageCommand(room.id, sent.id, { action: 'reaction', emoji: '❤️', active: false });
         expect((await api.messaging.public.history(room.id)).messages.find(message => message.id === sent.id)?.reactions.some(reaction => reaction.emoji === '❤️')).toBe(false);
         const inbox = await account.messaging.inbox();
@@ -96,11 +96,11 @@ describe('public durable messaging against deployed services', () => {
         const other = createRareClient({ apiBaseUrl });
         try {
           await other.auth.loginWithWallet({ address: otherSigner.address, chainId: 1, signMessage: message => otherSigner.signMessage({ message }) });
-          const joined = await other.messaging.sendPublic(room.id, { clientMessageId: randomUUID(), body: 'SDK report-and-hide fixture', mentionUserIds: [] });
+          const joined = await other.messaging.public.send(room.id, { clientMessageId: randomUUID(), body: 'SDK report-and-hide fixture', mentionUserIds: [] });
           try {
             await other.messaging.messageCommand(room.id, sent.id, { action: 'report', reason: 'Dedicated SDK integration fixture', hide: true });
-            expect((await other.messaging.historyPublic(room.id)).messages.find(message => message.id === sent.id)).toMatchObject({ reported: true, collapsed: true });
-            expect((await account.messaging.historyPublic(room.id)).messages.find(message => message.id === sent.id)).toMatchObject({ reported: false, collapsed: false });
+            expect((await other.messaging.public.history(room.id, { authenticated: true })).messages.find(message => message.id === sent.id)).toMatchObject({ reported: true, collapsed: true });
+            expect((await account.messaging.public.history(room.id, { authenticated: true })).messages.find(message => message.id === sent.id)).toMatchObject({ reported: false, collapsed: false });
             expect((await api.messaging.public.history(room.id)).messages.find(message => message.id === sent.id)).toMatchObject({ reported: false, collapsed: false });
           } finally {
             await other.messaging.messageCommand(room.id, joined.id, { action: 'delete' });

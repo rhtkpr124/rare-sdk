@@ -1,13 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { planAvatarUpload, validateAccountProfilePatch } from '../src/sdk/account-profile-core.js';
+import { planAvatarUpload, profilePatchBody, validateAccountProfilePatch } from '../src/sdk/account-profile-core.js';
 
 describe('profile patch and avatar planning', () => {
-  it('accepts private email, existing social metadata names and explicit clearing', () => {
+  it('accepts private email, camelCase social metadata names and explicit clearing', () => {
     expect(() => validateAccountProfilePatch({ email: 'owner@example.com', profile: {
-      website: 'https://example.com', twitterlink: 'https://x.com/owner',
-      avatar: '', masthead_universal_token_id: '',
+      website: 'https://example.com', twitterLink: 'https://x.com/owner',
+      avatar: '', mastheadUniversalTokenId: '',
     } })).not.toThrow();
     expect(() => validateAccountProfilePatch({ email: '' })).toThrow();
+  });
+  it('maps camelCase fields to the existing API wire contract and retains clearing', () => {
+    expect(profilePatchBody({ profile: { fullName: 'Artist', twitterLink: '', mastheadUniversalTokenId: '1-0xabc-1' } })).toEqual({ profile: { fullName: 'Artist', twitterlink: '', masthead_universal_token_id: '1-0xabc-1' } });
+    expect(() => validateAccountProfilePatch({ profile: { twitterlink: 'old' } })).toThrow();
   });
   it('rejects empty patches, privileged keys and bios longer than website limits', () => {
     expect(() => validateAccountProfilePatch({})).toThrow();

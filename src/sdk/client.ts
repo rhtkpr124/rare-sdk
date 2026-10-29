@@ -40,7 +40,13 @@ export function createRareClient(config: RareManagedClientConfig | RareExternalC
     ...account,
     drops: { ...publicFeatures.drops, ...account.drops },
     posts: { ...publicFeatures.posts, ...account.posts },
-    messaging: { ...account.messaging, public: api.messaging },
+    messaging: { ...account.messaging, public: {
+      ...api.messaging,
+      send: account.messaging.public.send,
+      history: (roomId: string, options?: Parameters<typeof account.messaging.public.history>[1]) => options?.authenticated === true
+        ? account.messaging.public.history(roomId, options)
+        : api.messaging.history(roomId, options),
+    } },
   };
   if (config.publicClient === undefined) return features;
   const chain = createChainClient({ ...config, apiBaseUrl, apiFetch: publicApiFetch }, api);
@@ -59,7 +65,7 @@ function createPublicFeatures(api: RareApi): RarePublicFeatures {
     },
     collection: { get: api.getCollection, events: api.getCollectionEvents },
     liquidEdition: { get: params => api.getLiquidEdition(`${resolveIdentityChainId(params)}-${getAddress(params.contract)}`) },
-    user: { get: api.getUser, resolve: api.resolveUser, followers: api.getUserFollowers, following: api.getUserFollowing },
+    user: { get: api.getUser, followers: api.getUserFollowers, following: api.getUserFollowing },
     drops: { list: api.getDrops, get: api.getDrop },
     posts: { list: api.getPosts, get: api.getPost, comments: api.getPostComments },
     messaging: { public: api.messaging },

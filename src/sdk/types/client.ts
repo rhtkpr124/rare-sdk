@@ -115,7 +115,6 @@ export type NftNamespace = {
 
 export type UserNamespace = {
   get: (address: string | UserSelector) => Promise<UserProfile>;
-  resolve: (input: UserSelector) => Promise<UserProfile>;
   followers: (input: UserSelector | string, options?: UserListOptions) => Promise<SearchPageResponse<UserProfile>>;
   following: (input: UserSelector | string, options?: UserListOptions) => Promise<SearchPageResponse<UserProfile>>;
 }

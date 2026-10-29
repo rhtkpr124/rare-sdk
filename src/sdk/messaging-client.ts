@@ -13,8 +13,10 @@ export function createMessagingClient(request: MessagingTransport): RareMessagin
   const conversation = (id: string) => `conversations/${messagingId(id)}`;
   const changeBlock = async (id: string, blocked: boolean, options?: RareAuthRequestOptions) => parseMessagingSuccess(await call('POST', `blocks/${messagingAccountId(id)}`, { blocked }, options));
   return {
-    async historyPublic(roomId, options = {}) { return parseMessagingPublicPage(await call('GET', `public/rooms/${messagingId(roomId)}/messages?${messagingQuery(messagingPublicHistoryQuery(options))}`, undefined, options)); },
-    async sendPublic(roomId, input, options) { return parseMessagingPublicMessage(await call('POST', `public/rooms/${messagingId(roomId)}/messages`, input, options)); },
+    public: {
+    async history(roomId, options = {}) { return parseMessagingPublicPage(await call('GET', `public/rooms/${messagingId(roomId)}/messages?${messagingQuery(messagingPublicHistoryQuery(options))}`, undefined, options)); },
+    async send(roomId, input, options) { return parseMessagingPublicMessage(await call('POST', `public/rooms/${messagingId(roomId)}/messages`, input, options)); },
+    },
     async session(options) { return parseMessagingSession(await call('GET', 'session', undefined, options)); },
     async inbox(options = {}) { return parseMessagingInbox(await call('GET', `conversations?${messagingQuery({ includePublic: true, search: options.search, cursor: options.cursor })}`, undefined, options)); },
     async people(search, options) { return parseMessagingPeople(await call('GET', `people?${messagingQuery({ search })}`, undefined, options)); },

@@ -47,7 +47,7 @@ describe('user follows against deployed services', () => {
       expect(before.data.some(user => user.userId === Number(own.accountId))).toBe(false);
       try {
         for (const selector of selectors) {
-          const profile = await api.user.resolve(selector);
+          const profile = await api.user.get(selector);
           expect(profile.userId).toBe(Number(other.accountId));
           noEmail(profile);
         }

@@ -266,8 +266,8 @@ Profile writes are never automatically replayed. Omitted patch fields preserve d
 profile patch values must be strings. You can update your private email and the
 profile's website, Twitter/X, Discord, Instagram, YouTube and pinned artwork fields.
 The existing website metadata names are preserved. Email is never returned by
-public `user.get` or `user.resolve` methods. Empty email is rejected. Empty avatar
-or `masthead_universal_token_id` strings remove those fields. Bios allow 180 characters.
+public `user.get` methods. Empty email is rejected. Empty avatar
+or `mastheadUniversalTokenId` strings remove those fields. Bios allow 180 characters.
 Account and wallet ownership are not editable through profile updates.
 
 ```ts
@@ -276,8 +276,8 @@ await account.profile.update({
   profile: { bio: 'Artist and collector', website: 'https://example.com' },
 });
 await account.profile.uploadAvatar(imageBytes, 'avatar.png');
-await account.profile.update({ profile: { avatar: '', masthead_universal_token_id: '' } });
-await rare.user.resolve({ username: 'artist' });
+await account.profile.update({ profile: { avatar: '', mastheadUniversalTokenId: '' } });
+await rare.user.get({ username: 'artist' });
 ```
 
 Shared application uploads accept any file type up to 250 MiB. `access` selects the public or private bucket and defaults to `public` for compatibility. Public results contain `{ access, key, url, contentType, size }`. Private results contain `{ access, key, contentType, size }`, without a URL:
@@ -348,7 +348,7 @@ User reads accept exactly one explicit selector. The existing address argument r
 ```ts
 await rare.user.get('0x...');
 await rare.user.get({ username: 'artist' });
-await rare.user.resolve({ userId: 123 });
+await rare.user.get({ userId: 123 });
 await rare.user.followers({ username: 'artist' }, { page: 1, perPage: 20 });
 await rare.user.following({ address: '0x...' });
 await account.following.follow({ userId: 123 });
@@ -525,7 +525,7 @@ import { createRareClient } from '@rareprotocol/rare-sdk';
 const api = createRareClient({ apiBaseUrl: 'https://api.superrare.com' });
 const room = await api.messaging.public.resolveRoom({ type: 'auction', id: auctionId });
 const page = await api.messaging.public.history(room.id, { limit: 50 });
-const sent = await account.messaging.sendPublic(room.id, {
+const sent = await account.messaging.public.send(room.id, {
   clientMessageId: crypto.randomUUID(), body: 'Great artwork!', mentionUserIds: [],
 });
 ```

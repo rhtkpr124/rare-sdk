@@ -78,11 +78,11 @@ export type RareAccountProfile = {
     bio: string | null;
     avatar: string | null;
     website?: string | null;
-    twitterlink?: string | null;
-    discordlink?: string | null;
-    instagramlink?: string | null;
-    youtubelink?: string | null;
-    masthead_universal_token_id?: string | null;
+    twitterLink?: string | null;
+    discordLink?: string | null;
+    instagramLink?: string | null;
+    youtubeLink?: string | null;
+    mastheadUniversalTokenId?: string | null;
   };
 };
 
@@ -94,11 +94,11 @@ export type RareAccountProfilePatch = {
     bio?: string;
     avatar?: string;
     website?: string;
-    twitterlink?: string;
-    discordlink?: string;
-    instagramlink?: string;
-    youtubelink?: string;
-    masthead_universal_token_id?: string;
+    twitterLink?: string;
+    discordLink?: string;
+    instagramLink?: string;
+    youtubeLink?: string;
+    mastheadUniversalTokenId?: string;
   };
 };
 

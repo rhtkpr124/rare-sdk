@@ -238,10 +238,10 @@ describe('account integration with deployed services', () => {
           email: originalEmail,
           profile: {
             fullName: initial.profile.fullName ?? '', bio: initial.profile.bio ?? '',
-            website: initial.profile.website ?? '', twitterlink: initial.profile.twitterlink ?? '',
-            discordlink: initial.profile.discordlink ?? '', instagramlink: initial.profile.instagramlink ?? '',
-            youtubelink: initial.profile.youtubelink ?? '',
-            masthead_universal_token_id: initial.profile.masthead_universal_token_id ?? '',
+            website: initial.profile.website ?? '', twitterLink: initial.profile.twitterLink ?? '',
+            discordLink: initial.profile.discordLink ?? '', instagramLink: initial.profile.instagramLink ?? '',
+            youtubeLink: initial.profile.youtubeLink ?? '',
+            mastheadUniversalTokenId: initial.profile.mastheadUniversalTokenId ?? '',
           },
         });
       };
@@ -259,9 +259,9 @@ describe('account integration with deployed services', () => {
         if (!artwork?.universalTokenId) throw new Error('Live masthead test requires an indexed artwork');
         const fields = {
           fullName: 'SDK profile fields', bio: 'Preserve omitted fields', website: 'https://example.test/artist',
-          twitterlink: 'https://x.com/rareartist', discordlink: 'https://discord.gg/rareartist',
-          instagramlink: 'https://instagram.com/rareartist', youtubelink: 'https://youtube.com/rareartist',
-          masthead_universal_token_id: artwork.universalTokenId,
+          twitterLink: 'https://x.com/rareartist', discordLink: 'https://discord.gg/rareartist',
+          instagramLink: 'https://instagram.com/rareartist', youtubeLink: 'https://youtube.com/rareartist',
+          mastheadUniversalTokenId: artwork.universalTokenId,
         };
         const saved = await client.profile.update({ email: 'sdk-fields@example.test', profile: fields });
         expect(saved).toEqual({ ...renamed, email: 'sdk-fields@example.test', profile: { ...renamed.profile, ...fields } });
@@ -280,7 +280,7 @@ describe('account integration with deployed services', () => {
         expect(indexed).not.toHaveProperty('email');
         expect(indexed).not.toHaveProperty('isCompromised');
         for (const selector of [{ username }, { address: initial.address }, { userId: Number(initial.accountId) }]) {
-          expect(await publicApi.user.resolve(selector)).toEqual(indexed);
+          expect(await publicApi.user.get(selector)).toEqual(indexed);
         }
 
         const session = await client.auth.getSession();
@@ -293,7 +293,7 @@ describe('account integration with deployed services', () => {
           expect(response.status).toBe(400);
           expect(await client.profile.get()).toEqual(patched);
         }
-        const cleared = { fullName: '', bio: '', website: '', twitterlink: '', discordlink: '', instagramlink: '', youtubelink: '', masthead_universal_token_id: '' };
+        const cleared = { fullName: '', bio: '', website: '', twitterLink: '', discordLink: '', instagramLink: '', youtubeLink: '', mastheadUniversalTokenId: '' };
         expect(await client.profile.update({ profile: cleared })).toEqual({ ...patched, profile: { ...patched.profile, ...cleared } });
         expect((await client.profile.get()).profile).toMatchObject(cleared);
       } catch (error) {
@@ -343,17 +343,17 @@ describe('account integration with deployed services', () => {
         email: 'rare-sdk-profile@example.test',
         profile: {
           website: 'https://example.test/artist',
-          twitterlink: 'https://x.com/rareartist',
-          discordlink: 'https://discord.gg/rareartist',
-          instagramlink: 'https://instagram.com/rareartist',
-          youtubelink: 'https://youtube.com/rareartist',
-          masthead_universal_token_id: '',
+          twitterLink: 'https://x.com/rareartist',
+          discordLink: 'https://discord.gg/rareartist',
+          instagramLink: 'https://instagram.com/rareartist',
+          youtubeLink: 'https://youtube.com/rareartist',
+          mastheadUniversalTokenId: '',
         },
       };
       expect(await first.profile.update(settings)).toMatchObject(settings);
       const publicApi = createRareClient({ apiBaseUrl: apiBaseUrl });
       const publicProfile = await waitForIndexedProfile(
-        () => publicApi.user.resolve({ username: initial.username }),
+        () => publicApi.user.get({ username: initial.username }),
         profile => profile.website === settings.profile.website,
       );
       expect(publicProfile.address.toLowerCase()).toBe(initial.address.toLowerCase());

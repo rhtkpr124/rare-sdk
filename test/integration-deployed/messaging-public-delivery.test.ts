@@ -55,7 +55,7 @@ describe('public room notification delivery and trusted system messages', () => 
           const sent: { actor: MessagingActor; id: string }[] = [];
           const send = async (actor: MessagingActor, body: string, mentionUserIds: string[] = []) => {
             const input = { clientMessageId: randomUUID(), body, mentionUserIds };
-            const message = await retryPublicSend(() => actor.account.messaging.sendPublic(room.id, input));
+            const message = await retryPublicSend(() => actor.account.messaging.public.send(room.id, input));
             // eslint-disable-next-line functional/immutable-data
             sent.push({ actor, id: message.id });
             expect((await api.messaging.public.history(room.id)).messages.find(row => row.id === message.id)).toMatchObject({ body, type: 'user', author: { id: actor.user.id } });
@@ -73,7 +73,7 @@ describe('public room notification delivery and trusted system messages', () => 
             await recipient.account.messaging.command(room.id, { action: 'read', sequence: (await api.messaging.public.history(room.id)).room.latestSequence });
             const before = (await notifications(recipient, room.id)).map(row => row.id);
             const ordinary = await send(owner, `SDK public delivery ${randomUUID()}`);
-            await retryPublicSend(() => owner.account.messaging.sendPublic(room.id, ordinary.input));
+            await retryPublicSend(() => owner.account.messaging.public.send(room.id, ordinary.input));
             const notice = await delivered(recipient, room.id, before);
             expect(notice.readAt).toBeNull();
             expect((await notifications(recipient, room.id)).filter(row => !before.includes(row.id))).toHaveLength(1);
