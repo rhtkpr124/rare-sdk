@@ -2536,14 +2536,14 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/v1/prints/specifications": {
+    "/v1/prints/products": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Supported print sizes and papers; pricing is quoted separately */
+        /** Selected print products and creator file requirements; prices are quoted at checkout */
         get: {
             parameters: {
                 query?: never;
@@ -2553,7 +2553,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Print specifications */
+                /** @description Curated print products */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -2562,12 +2562,128 @@ export interface paths {
                         "application/json": {
                             data: {
                                 id: string;
+                                description: string;
                                 paper: string;
                                 size: string;
                                 widthInches: number;
                                 heightInches: number;
+                                /** @enum {string} */
+                                sizeCategory: "small" | "medium" | "large" | "extraLarge";
+                                /** @enum {string} */
+                                format: "rectangular" | "square";
+                                /** @enum {boolean} */
+                                automaticOrientation: true;
+                                fileRequirements: {
+                                    acceptedContentTypes: ("image/jpeg" | "image/png")[];
+                                    maximumBytes: number;
+                                };
+                                printAreas: {
+                                    name: string;
+                                    required: boolean;
+                                    recommendedWidthPixels: number;
+                                    recommendedHeightPixels: number;
+                                }[];
                             }[];
                         };
+                    };
+                };
+                /** @description Print dependency unavailable */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CartErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/prints/products/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Creator file requirements for a selected print product */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Print product */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                id: string;
+                                description: string;
+                                paper: string;
+                                size: string;
+                                widthInches: number;
+                                heightInches: number;
+                                /** @enum {string} */
+                                sizeCategory: "small" | "medium" | "large" | "extraLarge";
+                                /** @enum {string} */
+                                format: "rectangular" | "square";
+                                /** @enum {boolean} */
+                                automaticOrientation: true;
+                                fileRequirements: {
+                                    acceptedContentTypes: ("image/jpeg" | "image/png")[];
+                                    maximumBytes: number;
+                                };
+                                printAreas: {
+                                    name: string;
+                                    required: boolean;
+                                    recommendedWidthPixels: number;
+                                    recommendedHeightPixels: number;
+                                }[];
+                            };
+                        };
+                    };
+                };
+                /** @description Invalid print request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CartErrorResponse"];
+                    };
+                };
+                /** @description Print not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CartErrorResponse"];
+                    };
+                };
+                /** @description Print dependency unavailable */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CartErrorResponse"];
                     };
                 };
             };

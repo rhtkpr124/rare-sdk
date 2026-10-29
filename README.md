@@ -945,9 +945,21 @@ The generated reference is written to `docs/reference/`.
 
 ## Print authoring and delivery checkout
 
-`rare.prints` exposes creator-owned drops, supported specifications, production
+`rare.prints` exposes creator-owned drops, supported print products, production
 quotes, frozen Listing preparations, and public print reads. It uses Rare API
 directly and shares the account session configured through `createRareClient`.
+
+Print products are public reads: `await rare.prints.products.list({ signal })` and
+`await rare.prints.products.get("GLOBAL-FAP-8X12", { signal })`. The catalog has eight
+Enhanced matte art paper presets in rectangular and square sizes. `printAreas`
+contains provider recommended pixel dimensions, not upload minimums. Orientation
+is automatic. `fileRequirements` reports accepted content types and maximum bytes.
+Use the selected product `id` in the existing draft `specificationId`
+field. Product responses omit prices, shipping and destination country lists.
+
+Run `npm run test:integration:print-products` against a deployment containing the
+product endpoints for a read-only catalog check. This check requires only
+`RARE_API_BASE_URL`.
 
 Upload print masters with `rare.upload(file, filename, { access:
 'private' })`. Pass the returned `key` as `print.productionUploadKey` when creating

@@ -105,7 +105,10 @@ export function createPrintsNamespace(config: RareClientConfig, authenticatedFet
     }
   };
   return {
-    specifications: { list: () => data(publicClient.GET('/v1/prints/specifications')) },
+    products: {
+      list: (options = {}) => data(publicClient.GET('/v1/prints/products', { signal: options.signal })),
+      get: (id, options = {}) => data(publicClient.GET('/v1/prints/products/{id}', { params: { path: { id } }, signal: options.signal })),
+    },
     drops: {
       create,
       update: (id, input) => data(client.PATCH('/v1/prints/drops/{id}', { params: { path: { id } }, body: input })),

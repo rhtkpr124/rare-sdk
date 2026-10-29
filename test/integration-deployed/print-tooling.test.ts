@@ -37,9 +37,9 @@ describe('print tooling through deployed Rare API', () => {
       signMessage: message => wallet.signMessage({ message }) });
     try {
       // Fail before uploads or persistent changes when this deployment is missing print tooling.
-      const specifications = await rare.prints.specifications.list();
-      const specification = specifications[0];
-      if (!specification) throw new Error('The API returned no user-facing print specifications.');
+      const products = await rare.prints.products.list();
+      const product = products.find(item => item.id === 'GLOBAL-FAP-8X12');
+      if (!product) throw new Error('The API returned no print products.');
       const addressesBefore = await rare.shippingAddresses.list();
       const details = { name: 'SDK fulfillment fixture', email: 'sdk-fixture@example.test', phoneNumber: '+12025550100',
         addressLine1: '123 Test Street', addressLine2: '', townOrCity: 'New York', stateOrCounty: 'NY',
@@ -56,7 +56,7 @@ describe('print tooling through deployed Rare API', () => {
       const photo = await rare.upload(bytes, 'preview.jpg', { contentType: 'image/jpeg' });
       const input: CreatePrintDrop = { idempotencyKey: randomUUID(), chainId: '11155111', name: 'SDK print tooling fixture', description: 'Draft only, no purchase or fulfillment.',
         print: { name: 'SDK print tooling fixture', description: 'Draft only, no purchase or fulfillment.', tags: ['sdk-integration'],
-          productionUploadKey: production.key, images: [photo.url], specificationId: specification.id } };
+          productionUploadKey: production.key, images: [photo.url], specificationId: product.id } };
       const batchCreated = await rare.prints.drops.create([{ key: 'print', input }]);
       const createdResult = batchCreated[0];
       if (createdResult?.status !== 'fulfilled') throw new Error('Batch print creation failed', { cause: createdResult });

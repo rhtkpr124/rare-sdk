@@ -103,7 +103,7 @@ describe('print batch authoring over HTTP', () => {
     const rare = createRareClient({ apiBaseUrl, publicClient: createPublicClient({ chain: sepolia, transport: http() }),
       transport: (path, init) => fetch(`${apiBaseUrl}${path}`, init) });
     const print = { name: 'Print edition', description: 'Archival print', tags: [],
-      productionUploadKey: 'a'.repeat(64), images: ['https://example.com/preview.png'], specificationId: 'archival-a4' };
+      productionUploadKey: 'a'.repeat(64), images: ['https://example.com/preview.png'], specificationId: 'GLOBAL-FAP-8X12' };
     const first: CreatePrintDrop = { name: 'First', chainId: '11155111', idempotencyKey: randomUUID(), print };
     const second: CreatePrintDrop = { name: 'Second', chainId: '11155111', idempotencyKey: randomUUID(), print };
     const items = [{ key: 'first', input: first }, { key: 'second', input: second }];

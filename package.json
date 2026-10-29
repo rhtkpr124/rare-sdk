@@ -84,6 +84,7 @@
     "generate:types": "tsx scripts/generate-openapi-types.ts",
     "generate:cart-types": "tsx scripts/generate-cart-types.ts",
     "generate:commerce-types": "tsx scripts/generate-commerce-types.ts",
+    "test:integration:print-products": "npm run build && npm run test:typecheck && vitest run test/integration-deployed/print-products.test.ts",
     "test:integration:prints": "npm run build && npm run test:typecheck && vitest run test/integration-deployed/print-tooling.test.ts",
     "docs:build": "typedoc",
     "package:check": "tsx scripts/validate-package.ts",

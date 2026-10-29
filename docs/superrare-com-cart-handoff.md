@@ -280,7 +280,7 @@ Use the authenticated `rare.prints` methods rather than component-local Rare API
 requests. Keep platform fee rules, provider credentials, and administrative
 configuration out of creator controls.
 
-1. Load paper and size choices with `rare.prints.specifications.list()`.
+1. Load paper and size choices with `rare.prints.products.list()`. Read one product with `rare.prints.products.get(id, { signal })`. Both reads are public. Products include provider recommended print-area dimensions, automatic orientation, and `fileRequirements` for accepted content types and maximum bytes. Send the selected product ID in the existing `specificationId` draft field.
 2. Upload the master with
    `rare.upload(file, filename, { access: 'private' })`.
 3. Upload display photos through the same uploader with `access: 'public'`.

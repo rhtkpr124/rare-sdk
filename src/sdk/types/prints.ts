@@ -14,7 +14,9 @@ export type UpdatePrintDrop = paths['/v1/prints/drops/{id}']['patch']['requestBo
 export type PreparePrintListing = paths['/v1/prints/listings/prepare']['post']['requestBody']['content']['application/json'];
 export type PrintListingPreparation = paths['/v1/prints/listings/prepare']['post']['responses'][201]['content']['application/json']['data'];
 export type PrintActivity = paths['/v1/prints/drops/{id}/activity']['get']['responses'][200]['content']['application/json']['data'];
-export type PrintSpecification = paths['/v1/prints/specifications']['get']['responses'][200]['content']['application/json']['data'][number];
+export type PrintProduct = paths['/v1/prints/products/{id}']['get']['responses'][200]['content']['application/json']['data'];
+/** Request cancellation is separate from the product identifier and response. */
+export type PrintProductRequestOptions = { signal?: AbortSignal };
 
 export type SignedPrintListingArtifact = CartListingRootArtifact & { signature: Hex };
 export type PrintBatchItem<T> = { key: string; input: T };
@@ -51,7 +53,10 @@ export type PrintPublishOperation = {
 
 /** Print authoring uses the account session; purchasing uses rare.cart.checkout. */
 export type PrintsNamespace = {
-  specifications: { list: () => Promise<PrintSpecification[]> };
+  products: {
+    list: (options?: PrintProductRequestOptions) => Promise<PrintProduct[]>;
+    get: (id: string, options?: PrintProductRequestOptions) => Promise<PrintProduct>;
+  };
   drops: {
     create: PrintCreateOperation;
     update: (id: string, input: UpdatePrintDrop) => Promise<Omit<PrintDrop, 'options'>>;
