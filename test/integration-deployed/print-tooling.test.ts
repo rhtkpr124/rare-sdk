@@ -1,3 +1,4 @@
+import { downloadTestImage } from '../helpers/test-image.js';
 import { randomUUID } from 'node:crypto';
 import { createPublicClient, createWalletClient, getAddress, http, isAddressEqual, isHex, keccak256, toHex, zeroAddress } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
@@ -48,11 +49,11 @@ describe('print tooling through deployed Rare API', () => {
       expect(saved.id).toBe(addressId);
       expect(saved.details).toEqual(details);
       expect((await rare.shippingAddresses.list()).find(address => address.id === addressId)?.details).toEqual(details);
-      const bytes = Uint8Array.from(Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jio8AAAAASUVORK5CYII=', 'base64'));
-      const production = await rare.upload(bytes, 'production.png', { access: 'private', contentType: 'image/png' });
+      const bytes = await downloadTestImage();
+      const production = await rare.upload(bytes, 'production.jpg', { access: 'private', contentType: 'image/jpeg' });
       expect(production.access).toBe('private');
       expect('url' in production).toBe(false);
-      const photo = await rare.upload(bytes, 'preview.png', { contentType: 'image/png' });
+      const photo = await rare.upload(bytes, 'preview.jpg', { contentType: 'image/jpeg' });
       const input: CreatePrintDrop = { idempotencyKey: randomUUID(), chainId: '11155111', name: 'SDK print tooling fixture', description: 'Draft only, no purchase or fulfillment.',
         print: { name: 'SDK print tooling fixture', description: 'Draft only, no purchase or fulfillment.', tags: ['sdk-integration'],
           productionUploadKey: production.key, images: [photo.url], specificationId: specification.id } };
@@ -121,8 +122,8 @@ describe('print tooling through deployed Rare API', () => {
       // A creator may replace the private master on the same published edition.
       // Existing authorizations retain their saved fulfillment snapshot; the backend
       // integration suite verifies private old/new asset references directly.
-      const replacementBytes = Uint8Array.from(Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a9uQAAAAASUVORK5CYII=', 'base64'));
-      const replacement = await rare.upload(replacementBytes, 'replacement-production.png', { access: 'private', contentType: 'image/png' });
+      const replacementBytes = await downloadTestImage();
+      const replacement = await rare.upload(replacementBytes, 'replacement-production.jpg', { access: 'private', contentType: 'image/jpeg' });
       expect(replacement.key).not.toBe(production.key);
       const updatedMaster = await rare.prints.drops.update(created.id, { productionUploadKey: replacement.key });
       expect(updatedMaster.status).toBe('PUBLISHED');
@@ -165,7 +166,7 @@ describe('print tooling through deployed Rare API', () => {
           if (!nftListing) throw new Error('Mixed delivery requires a normal ERC-721 Listing.');
           const editions = await rare.collection.deploy.erc1155({ name: `Mixed editions ${randomUUID()}`, symbol: 'MIX', baseUri: '' });
           const edition = await rare.collection.erc1155.createToken({ contract: editions.contract, maxSupply: 10n,
-            tokenUri: 'data:application/json,%7B%22name%22%3A%22Mixed%20edition%22%7D' });
+            tokenUri: `data:application/json,${encodeURIComponent(JSON.stringify({ name: 'Mixed edition', image: photo.url }))}` });
           await rare.collection.erc1155.mint({ contract: editions.contract, tokenId: edition.tokenId, quantity: 2n });
           const editionPublication = await rare.cart.listing.publish({ preparation: await rare.cart.listing.prepare({
             seller: wallet.address, deadline: BigInt(Math.floor(Date.now() / 1000) + 3600), listings: [{
