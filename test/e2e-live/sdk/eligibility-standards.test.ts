@@ -36,7 +36,7 @@ describe.sequential('quantity-aware eligibility across token standards', () => {
     await buyer.profile.get();
     const collection = await creator.rare.collection.deploy.erc1155({ name: `Eligibility rewards ${randomUUID()}`, symbol: 'RIGHT', baseUri: '' });
     const token = await creator.rare.collection.erc1155.createToken({ contract: collection.contract, maxSupply: 100n,
-      tokenUri: 'data:application/json,%7B%22name%22%3A%22Eligibility%20reward%22%7D' });
+      tokenUri: `data:application/json,${encodeURIComponent(JSON.stringify({ name: 'Eligibility reward', image: creator.imageUrl }))}` });
     await creator.rare.collection.erc1155.mint({ contract: collection.contract, tokenId: token.tokenId, quantity: 100n });
     const product = await creator.rare.cart.catalog.products.create({ metadata: { title: 'Eligibility reward fixture' } });
     const configured = await creator.rare.cart.catalog.variants.add(product.id, {
@@ -93,12 +93,12 @@ describe.sequential('quantity-aware eligibility across token standards', () => {
         const source: Source = await (async () => {
           if (standard === 'ERC721') {
             const collection = await creator.rare.collection.deploy.erc721({ name: `Claim source ${randomUUID()}`, symbol: 'CLAIM', maxTokens: 1 });
-            const token = await creator.rare.collection.mint({ contract: collection.contract, tokenUri: 'data:application/json,%7B%22name%22%3A%22Claim%20source%22%7D' });
+            const token = await creator.rare.collection.mint({ contract: collection.contract, tokenUri: `data:application/json,${encodeURIComponent(JSON.stringify({ name: 'Claim source', image: creator.imageUrl }))}` });
             return { contract: collection.contract, tokenId: token.tokenId, quantity: 1n, fulfillmentKind: 2 };
           }
           const collection = await creator.rare.collection.deploy.erc1155({ name: `Claim editions ${randomUUID()}`, symbol: 'CLAIM', baseUri: '' });
           const token = await creator.rare.collection.erc1155.createToken({ contract: collection.contract, maxSupply: 5n,
-            tokenUri: 'data:application/json,%7B%22name%22%3A%22Claim%20source%22%7D' });
+            tokenUri: `data:application/json,${encodeURIComponent(JSON.stringify({ name: 'Claim source', image: creator.imageUrl }))}` });
           await creator.rare.collection.erc1155.mint({ contract: collection.contract, tokenId: token.tokenId, quantity: 5n });
           return { contract: collection.contract, tokenId: token.tokenId, quantity: 5n, fulfillmentKind: 3 };
         })();
