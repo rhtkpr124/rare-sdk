@@ -55,7 +55,7 @@ export async function createCreatorCartScenario() {
     }
     await rare.cart.catalog.products.publish(createdProduct.id);
     const product = await rare.cart.catalog.products.get(createdProduct.id);
-    await rare.cart.approval.approve(collection.contract);
+    await rare.cart.approval.approve({ contract: collection.contract });
     const artifact = preparation.artifact;
     const listingNonce = BigInt(artifact.root.nonce);
     const publication = await rare.cart.listing.publish({ preparation, autoApprove: true });
