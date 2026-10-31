@@ -111,6 +111,7 @@ export type CartValidationIssue = { code: string; field: string; message: string
 export type CartValidationResult<T> = { isValid: true; value: T } | { isValid: false; issues: CartValidationIssue[] };
 
 export type CartNamespace = {
+  fees:CartApiNamespace['fees'];
   catalog: {
     products: CartApiNamespace['catalog']['products'];
     variants: CartApiNamespace['catalog']['variants'];

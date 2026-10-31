@@ -2221,197 +2221,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/v1/cart/skus": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List Cart SKUs */
-        get: {
-            parameters: {
-                query?: {
-                    page?: number;
-                    perPage?: number;
-                };
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Cart SKUs */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["CartSkuListResponse"];
-                    };
-                };
-                /** @description Invalid Cart request */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["CartErrorResponse"];
-                    };
-                };
-                /** @description Cart account authentication is required */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["CartErrorResponse"];
-                    };
-                };
-                /** @description Cart resource not found */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["CartErrorResponse"];
-                    };
-                };
-                /** @description Cart request conflicts with current state */
-                409: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["CartErrorResponse"];
-                    };
-                };
-                /** @description Cart request cannot be executed */
-                422: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["CartErrorResponse"];
-                    };
-                };
-                /** @description Cart request failed */
-                500: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["CartErrorResponse"];
-                    };
-                };
-                /** @description Cart dependency is unavailable */
-                503: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["CartErrorResponse"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        /** Create Cart SKU */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["CartSkuCreateRequest"];
-                };
-            };
-            responses: {
-                /** @description Cart SKU created */
-                201: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            data: components["schemas"]["CartSku"];
-                        };
-                    };
-                };
-                /** @description Invalid Cart request */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["CartErrorResponse"];
-                    };
-                };
-                /** @description Cart account authentication is required */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["CartErrorResponse"];
-                    };
-                };
-                /** @description Cart resource not found */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["CartErrorResponse"];
-                    };
-                };
-                /** @description Cart request conflicts with current state */
-                409: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["CartErrorResponse"];
-                    };
-                };
-                /** @description Cart request cannot be executed */
-                422: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["CartErrorResponse"];
-                    };
-                };
-                /** @description Cart request failed */
-                500: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["CartErrorResponse"];
-                    };
-                };
-                /** @description Cart dependency is unavailable */
-                503: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["CartErrorResponse"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/v1/cart/skus/{sku}": {
         parameters: {
             query?: never;
@@ -2509,94 +2318,7 @@ export interface paths {
         };
         put?: never;
         post?: never;
-        /** Delete an Unused Cart SKU (Admin) */
-        delete: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    sku: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Cart SKU deleted */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            data: components["schemas"]["CartSku"];
-                        };
-                    };
-                };
-                /** @description Invalid Cart request */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["CartErrorResponse"];
-                    };
-                };
-                /** @description Cart account authentication is required */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["CartErrorResponse"];
-                    };
-                };
-                /** @description Cart resource not found */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["CartErrorResponse"];
-                    };
-                };
-                /** @description Cart request conflicts with current state */
-                409: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["CartErrorResponse"];
-                    };
-                };
-                /** @description Cart request cannot be executed */
-                422: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["CartErrorResponse"];
-                    };
-                };
-                /** @description Cart request failed */
-                500: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["CartErrorResponse"];
-                    };
-                };
-                /** @description Cart dependency is unavailable */
-                503: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["CartErrorResponse"];
-                    };
-                };
-            };
-        };
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -3908,6 +3630,345 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+
+    "/v1/cart/fees": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List platform fee assignments */
+        get: {
+            parameters: {
+                query?: {
+                    phase?: "LISTING_CONFIGURATION" | "CHECKOUT";
+                    page?: number;
+                    perPage?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Fee assignments */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** @enum {string} */
+                                phase: "LISTING_CONFIGURATION" | "CHECKOUT";
+                                code: string;
+                                calculation: {
+                                    /** @enum {string} */
+                                    type: "FIXED";
+                                    amount: string;
+                                    /** @enum {string} */
+                                    currencyMode: "COMPONENT_CURRENCY";
+                                } | {
+                                    /** @enum {string} */
+                                    type: "PER_UNIT";
+                                    amount: string;
+                                    /** @enum {string} */
+                                    currencyMode: "COMPONENT_CURRENCY";
+                                } | {
+                                    /** @enum {string} */
+                                    type: "PERCENTAGE";
+                                    basisPoints: number;
+                                    /** @enum {string} */
+                                    currencyMode: "COMPONENT_CURRENCY";
+                                };
+                                recipient: {
+                                    /** @enum {string} */
+                                    type: "FIXED";
+                                    address: string;
+                                } | {
+                                    /** @enum {string} */
+                                    type: "TOKEN_CREATOR";
+                                };
+                                /** @default {} */
+                                scope: {
+                                    chainIds?: string[];
+                                    sellerAddresses?: string[];
+                                    nfts?: {
+                                        chainId: string;
+                                        contract: string;
+                                        tokenId: string;
+                                    }[];
+                                    collections?: {
+                                        chainId: string;
+                                        contract: string;
+                                    }[];
+                                    skus?: string[];
+                                    fulfillmentKinds?: number[];
+                                    settlementCurrencies?: string[];
+                                    paymentCurrencies?: string[];
+                                    productIds?: string[];
+                                    saleTypes?: ("PRIMARY_SALE" | "SECONDARY_SALE")[];
+                                };
+                                priority: number;
+                                /** Format: date-time */
+                                validFrom?: string | null;
+                                /** Format: date-time */
+                                validUntil?: string | null;
+                                id: string;
+                                ruleId: string;
+                                chargeSku: string;
+                            }[];
+                            hasNextPage: boolean;
+                        };
+                    };
+                };
+                /** @description Invalid fee configuration */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CartErrorResponse"];
+                    };
+                };
+                /** @description Authentication required */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CartErrorResponse"];
+                    };
+                };
+                /** @description Fee administrator user ID required */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CartErrorResponse"];
+                    };
+                };
+                /** @description Fee assignment not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CartErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Create a platform fee rule and scoped assignment */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CartFeeCreate"];
+                };
+            };
+            responses: {
+                /** @description Fee configured */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** @enum {string} */
+                                phase: "LISTING_CONFIGURATION" | "CHECKOUT";
+                                code: string;
+                                calculation: {
+                                    /** @enum {string} */
+                                    type: "FIXED";
+                                    amount: string;
+                                    /** @enum {string} */
+                                    currencyMode: "COMPONENT_CURRENCY";
+                                } | {
+                                    /** @enum {string} */
+                                    type: "PER_UNIT";
+                                    amount: string;
+                                    /** @enum {string} */
+                                    currencyMode: "COMPONENT_CURRENCY";
+                                } | {
+                                    /** @enum {string} */
+                                    type: "PERCENTAGE";
+                                    basisPoints: number;
+                                    /** @enum {string} */
+                                    currencyMode: "COMPONENT_CURRENCY";
+                                };
+                                recipient: {
+                                    /** @enum {string} */
+                                    type: "FIXED";
+                                    address: string;
+                                } | {
+                                    /** @enum {string} */
+                                    type: "TOKEN_CREATOR";
+                                };
+                                /** @default {} */
+                                scope: {
+                                    chainIds?: string[];
+                                    sellerAddresses?: string[];
+                                    nfts?: {
+                                        chainId: string;
+                                        contract: string;
+                                        tokenId: string;
+                                    }[];
+                                    collections?: {
+                                        chainId: string;
+                                        contract: string;
+                                    }[];
+                                    skus?: string[];
+                                    fulfillmentKinds?: number[];
+                                    settlementCurrencies?: string[];
+                                    paymentCurrencies?: string[];
+                                    productIds?: string[];
+                                    saleTypes?: ("PRIMARY_SALE" | "SECONDARY_SALE")[];
+                                };
+                                priority: number;
+                                /** Format: date-time */
+                                validFrom?: string | null;
+                                /** Format: date-time */
+                                validUntil?: string | null;
+                                id: string;
+                                ruleId: string;
+                                chargeSku: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Invalid fee configuration */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CartErrorResponse"];
+                    };
+                };
+                /** @description Authentication required */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CartErrorResponse"];
+                    };
+                };
+                /** @description Fee administrator user ID required */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CartErrorResponse"];
+                    };
+                };
+                /** @description Fee assignment not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CartErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/cart/fees/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Disable a platform fee assignment */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Fee assignment disabled */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                id: string;
+                                disabled: boolean;
+                            };
+                        };
+                    };
+                };
+                /** @description Invalid fee configuration */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CartErrorResponse"];
+                    };
+                };
+                /** @description Authentication required */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CartErrorResponse"];
+                    };
+                };
+                /** @description Fee administrator user ID required */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CartErrorResponse"];
+                    };
+                };
+                /** @description Fee assignment not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CartErrorResponse"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -4568,7 +4629,65 @@ export interface components {
             };
         };
         /** @description A JSON object whose values may contain nested JSON data. */
-    };
+    
+        CartFeeCreate: {
+            /** @enum {string} */
+            phase: "LISTING_CONFIGURATION" | "CHECKOUT";
+            code: string;
+            calculation: {
+                /** @enum {string} */
+                type: "FIXED";
+                amount: string;
+                /** @enum {string} */
+                currencyMode: "COMPONENT_CURRENCY";
+            } | {
+                /** @enum {string} */
+                type: "PER_UNIT";
+                amount: string;
+                /** @enum {string} */
+                currencyMode: "COMPONENT_CURRENCY";
+            } | {
+                /** @enum {string} */
+                type: "PERCENTAGE";
+                basisPoints: number;
+                /** @enum {string} */
+                currencyMode: "COMPONENT_CURRENCY";
+            };
+            recipient: {
+                /** @enum {string} */
+                type: "FIXED";
+                address: string;
+            } | {
+                /** @enum {string} */
+                type: "TOKEN_CREATOR";
+            };
+            /** @default {} */
+            scope: {
+                chainIds?: string[];
+                sellerAddresses?: string[];
+                nfts?: {
+                    chainId: string;
+                    contract: string;
+                    tokenId: string;
+                }[];
+                collections?: {
+                    chainId: string;
+                    contract: string;
+                }[];
+                skus?: string[];
+                fulfillmentKinds?: number[];
+                settlementCurrencies?: string[];
+                paymentCurrencies?: string[];
+                productIds?: string[];
+                saleTypes?: ("PRIMARY_SALE" | "SECONDARY_SALE")[];
+            };
+            priority: number;
+            /** Format: date-time */
+            validFrom?: string | null;
+            /** Format: date-time */
+            validUntil?: string | null;
+        };
+};
     responses: never;
     parameters: never;
     requestBodies: never;

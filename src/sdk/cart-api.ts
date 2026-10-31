@@ -1,3 +1,4 @@
+import {createCartFeesNamespace} from './cart-fees-shell.js';
 import { cartCatalogPage } from './cart-pagination-core.js';
 import { getAddress, isAddress, isHex, type Address, type Hex } from 'viem';
 import { createCartApiClient } from '../data-access/client.js';
@@ -37,6 +38,7 @@ import type {
 } from './types/cart-api.js';
 
 type CartApiTransport = {
+  DELETE:(path:string,options?:unknown)=>Promise<{data?:unknown}>;
   GET: (path: string, options?: unknown) => Promise<{ data?: unknown }>;
   POST: (path: string, options?: unknown) => Promise<{ data?: unknown }>;
 };
@@ -190,7 +192,7 @@ export function createCartApiNamespace(
     },
   };
 
-  return { catalog, listing, checkout };
+  return { catalog, listing, checkout, fees:createCartFeesNamespace(protectedClient) };
 }
 
 export function toCartListingRootArtifactWire(

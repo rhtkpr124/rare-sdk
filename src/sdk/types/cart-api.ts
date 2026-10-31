@@ -1,3 +1,5 @@
+import type {CartFeesNamespace} from '../cart-fees-core.js';
+export type {CartFeeCreateParams,CartFee,CartFeeListParams,CartFeeRequestOptions} from '../cart-fees-core.js';
 import type { Address, Hex } from 'viem';
 import type { IntegerInput } from './common.js';
 import type {
@@ -329,6 +331,7 @@ export type AttachCartSku = import('../../data-access/cart-schema.js').component
 export type CartProductSku = import('../../data-access/cart-schema.js').components['schemas']['CartProductSku'];
 
 export type CartApiNamespace = {
+  fees:CartFeesNamespace;
   catalog: {
     products: {
       create: (input: CreateCartProduct, options?: { idempotencyKey?: string }) => Promise<CartApiProduct>;

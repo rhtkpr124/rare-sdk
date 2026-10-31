@@ -228,14 +228,9 @@ async function createCartScenario() {
     slug: `sdk-cart-${runId}`,
     metadata: { source: 'rare-sdk', test: 'cart-api', runId },
   });
-  const skuA = await postCartFixture<{ sku: `0x${string}` }>(apiFetch, apiBaseUrl, '/v1/cart/skus',
-    { metadata: { chainId, tokenContract, tokenId: '1000' } });
-  const skuB = await postCartFixture<{ sku: `0x${string}` }>(apiFetch, apiBaseUrl, '/v1/cart/skus',
-    { metadata: { chainId, tokenContract, tokenId: '2000' } });
-  await postCartFixture(apiFetch, apiBaseUrl, `/v1/cart/products/${product.id}/skus`,
-    { sku: skuA.sku, position: 0, metadata: { runId } });
-  await postCartFixture(apiFetch, apiBaseUrl, `/v1/cart/products/${product.id}/skus`,
-    { sku: skuB.sku, position: 1, metadata: { runId } });
+  const configuredVariants = await postCartFixture<{variants:Array<{sku: `0x${string}`}>}>(apiFetch, apiBaseUrl, `/v1/cart/products/${product.id}/variants`, {variants:[{metadata:{chainId:chainId.toString(),tokenContract,tokenId:'1000'}},{metadata:{chainId:chainId.toString(),tokenContract,tokenId:'2000'}}]});
+  const skuA=configuredVariants.variants[0],skuB=configuredVariants.variants[1];
+  if(skuA===undefined||skuB===undefined)throw new Error('Creator fixture did not return its variants');
   const listingInputs = [
     { sku: skuA.sku, price: 1000n },
     { sku: skuB.sku, price: 2000n },
