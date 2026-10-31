@@ -63,7 +63,7 @@ describeLive('SDK Cart mainnet route discovery integration', () => {
     expect(result.evidence.compilerRequestIds).toHaveLength(1);
     expect(result.settlements).toEqual([{
       settlementCurrency,
-      amount,
+      amount: amount.toString(),
       routed: true,
     }]);
     expect(BigInt(result.maximumPaymentInput)).toBeGreaterThanOrEqual(BigInt(result.expectedPaymentInput));
@@ -79,7 +79,7 @@ describeLive('SDK Cart mainnet route discovery integration', () => {
     expect(result.mode).toBe('exact-input');
     expect(result.evidence.quoteIds).toHaveLength(2);
     expect(result.expectedPaymentInput).toBe(result.maximumPaymentInput);
-    expect(result.evidence.exactOutputs).toEqual([{ settlementCurrency: rare, amount }]);
+    expect(result.evidence.exactOutputs).toEqual([{ settlementCurrency: rare, amount: amount.toString() }]);
     expect(size(result.route.commands)).toBe(result.route.inputs.length);
   }, 60_000);
 

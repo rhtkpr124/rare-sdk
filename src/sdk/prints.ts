@@ -60,21 +60,16 @@ export function createPrintsNamespace(config: RareClientConfig, authenticatedFet
     };
     return isPrintBatch<PreparePrintListing>(input) ? runPrintBatch(input, options, operation) : operation(input);
   }
-  function submitSigned(id: string, artifact: SignedPrintListingArtifact): Promise<PrintListingPreparation>;
+  function submitSigned(input: PrintListingPublication): Promise<PrintListingPreparation>;
   function submitSigned(input: readonly PrintBatchItem<PrintListingPublication>[], options?: PrintBatchOptions<PrintListingPreparation>): Promise<PrintBatchResult<PrintListingPreparation>[]>;
-  function submitSigned(input: string | readonly PrintBatchItem<PrintListingPublication>[], options?: SignedPrintListingArtifact | PrintBatchOptions<PrintListingPreparation>) {
-    if (typeof input === 'string') {
-      if (options === undefined || !('signature' in options)) throw new Error('A signed artifact is required for publication.');
-      return publishOne(input, options);
-    }
-    if (options !== undefined && 'signature' in options) throw new Error('Batch publication expects batch options.');
-    return runPrintBatch(input, options ?? {}, item => publishOne(item.preparationId, item.artifact));
+  function submitSigned(input: PrintListingPublication | readonly PrintBatchItem<PrintListingPublication>[], options: PrintBatchOptions<PrintListingPreparation> = {}) {
+    const operation = (value: PrintListingPublication) => publishOne(value.preparationId, value.artifact);
+    return isPrintBatch<PrintListingPublication>(input) ? runPrintBatch(input, options, operation) : operation(input);
   }
-  function publish(preparation: PrintListingPreparation): Promise<PrintPublication>;
+  function publish(input: PrintListingSigning): Promise<PrintPublication>;
   function publish(items: readonly PrintBatchItem<PrintListingSigning>[], options?: PrintBatchOptions<PrintPublication>): Promise<PrintBatchResult<PrintPublication>[]>;
-  function publish(input: PrintListingPreparation | readonly PrintBatchItem<PrintListingSigning>[], options: PrintBatchOptions<PrintPublication> = {}) {
-    if (!isPrintBatch<PrintListingSigning>(input)) return signOne(input);
-    return runPrintBatch(input, options, async item => {
+  function publish(input: PrintListingSigning | readonly PrintBatchItem<PrintListingSigning>[], options: PrintBatchOptions<PrintPublication> = {}) {
+    const operation = async (item: PrintListingSigning): Promise<PrintPublication> => {
       if (item.signedArtifact === undefined) return signOne(item.preparation);
       validatePrintPublicationArtifact(item.preparation, item.signedArtifact);
       try {

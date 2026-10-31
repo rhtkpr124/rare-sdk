@@ -49,7 +49,7 @@ describeLive('SDK Cart routing integration', () => {
         paymentCurrency: payment.address,
         obligations: [{ settlementCurrency: payment.address, amount: payment.amount }],
       });
-      expect(direct.route).toEqual({ commands: '0x', inputs: [], routerValue: 0n });
+      expect(direct.route).toEqual({ commands: '0x', inputs: [], routerValue: '0' });
 
       for (const settlement of currencies) {
         if (isAddressEqual(payment.address, settlement.address)) continue;
@@ -58,7 +58,7 @@ describeLive('SDK Cart routing integration', () => {
           obligations: [{ settlementCurrency: settlement.address, amount: settlement.amount }],
         });
         expect(BigInt(quote.maximumPaymentInput)).toBeGreaterThanOrEqual(BigInt(quote.expectedPaymentInput));
-        expect(quote.settlements).toEqual([{ settlementCurrency: settlement.address, amount: settlement.amount, routed: true }]);
+        expect(quote.settlements).toEqual([{ settlementCurrency: settlement.address, amount: settlement.amount.toString(), routed: true }]);
         await expectRoutePolicy(publicClient, lens, cart, quote.route);
       }
     }
@@ -105,7 +105,7 @@ describeLive('SDK Cart routing integration', () => {
       obligations: [{ settlementCurrency: liquidEdition, amount }],
     });
     expect(quote.evidence.source).toBe('known-pool-rpc');
-    expect(quote.settlements).toEqual([{ settlementCurrency: liquidEdition, amount, routed: true }]);
+    expect(quote.settlements).toEqual([{ settlementCurrency: liquidEdition, amount: amount.toString(), routed: true }]);
     expect(BigInt(quote.maximumPaymentInput)).toBeGreaterThanOrEqual(BigInt(quote.expectedPaymentInput));
     await expectRoutePolicy(publicClient, lens, cart, quote.route);
   }, 60_000);
