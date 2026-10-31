@@ -77,11 +77,11 @@ export type PrintPrepareOperation = {
   (items: readonly PrintBatchItem<PreparePrintListing>[], options?: PrintBatchOptions<PrintListingPreparation>): Promise<PrintBatchResult<PrintListingPreparation>[]>;
 };
 export type PrintSubmitSignedOperation = {
-  (preparationId: string, artifact: SignedPrintListingArtifact): Promise<PrintListingPreparation>;
+  (input: PrintListingPublication): Promise<PrintListingPreparation>;
   (items: readonly PrintBatchItem<PrintListingPublication>[], options?: PrintBatchOptions<PrintListingPreparation>): Promise<PrintBatchResult<PrintListingPreparation>[]>;
 };
 export type PrintPublishOperation = {
-  (preparation: PrintListingPreparation): Promise<PrintPublication>;
+  (input: PrintListingSigning): Promise<PrintPublication>;
   (items: readonly PrintBatchItem<PrintListingSigning>[], options?: PrintBatchOptions<PrintPublication>): Promise<PrintBatchResult<PrintPublication>[]>;
 };
 

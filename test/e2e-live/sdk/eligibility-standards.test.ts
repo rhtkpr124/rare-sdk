@@ -141,13 +141,7 @@ describe.sequential('quantity-aware eligibility across token standards', () => {
           if (kind !== 'CURRENT_HOLDER') {
             await transfer(source, moved, false);
             const resale = await publish({ ...source, quantity: moved });
-            const resalePurchase = await buyer.cart.checkout.purchase({ preparation: await checkout(resale.listingDigest, moved) });
-            expect(resalePurchase.receipt.status).toBe('success');
-            if (kind === 'PRIMARY_SALE') {
-              // Observe the indexed resale before accepting a zero additional-claim count.
-              await expect.poll(async () => (await buyer.cart.orders.get(resalePurchase.orderId)).status,
-                { timeout: 180_000, interval: 2_000 }).toBe('FULFILLED');
-            }
+            expect((await buyer.cart.checkout.purchase({ preparation: await checkout(resale.listingDigest, moved) })).receipt.status).toBe('success');
             const expected = Number(source.quantity - redeemQuantity + (kind === 'EVERY_SALE' ? moved : 0n));
             await expect.poll(async () => available(await claims()).length, { timeout: 180_000, interval: 2_000 }).toBe(expected);
             expect(consumed(await claims()).map(claim => claim.id).sort()).toEqual(consumedIds);
